@@ -1,0 +1,163 @@
+import { AlertTriangle, ShieldAlert } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Alert, Card, Spinner, cx } from '../components/ui'
+import { api, ApiError } from '../lib/api'
+import { BAND_LABEL } from '../lib/questionnaire'
+import type { Answer, Question, Questionnaire, ReviewerCheckin } from '../lib/types'
+
+const RISK_STYLE: Record<string, string> = {
+  high: 'bg-red-50 text-red-800 ring-red-200',
+  medium: 'bg-amber-50 text-amber-800 ring-amber-200',
+  low: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  unknown: 'bg-slate-100 text-slate-700 ring-slate-200',
+}
+const BAND_STYLE: Record<string, string> = {
+  minimal: 'text-emerald-700', mild: 'text-sky-700', moderate: 'text-amber-700',
+  moderately_severe: 'text-orange-700', severe: 'text-red-700',
+}
+
+function RiskBadge({ risk }: { risk: string }) {
+  return (
+    <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1 ring-inset', RISK_STYLE[risk])}>
+      {risk}
+    </span>
+  )
+}
+
+function answerText(q: Question, a: Answer | undefined): string {
+  if (a === undefined) return 'Skipped'
+  if (typeof a === 'string') return a
+  if (Array.isArray(a)) return a.map((v) => q.options.find((o) => o.value === v)?.label ?? v).join(', ')
+  return q.options.find((o) => o.value === a)?.label ?? String(a)
+}
+
+export default function Reviewer() {
+  const [rows, setRows] = useState<ReviewerCheckin[] | null>(null)
+  const [qn, setQn] = useState<Questionnaire | null>(null)
+  const [error, setError] = useState('')
+  const [selected, setSelected] = useState<number | null>(null)
+
+  useEffect(() => {
+    Promise.all([api.reviewerCheckins(), api.questionnaire()])
+      .then(([r, q]) => { setRows(r); setQn(q); setSelected(r[0]?.id ?? null) })
+      .catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load check-ins.'))
+  }, [])
+
+  const current = useMemo(() => rows?.find((r) => r.id === selected) ?? null, [rows, selected])
+
+  if (error) return <Alert>{error}</Alert>
+  if (!rows || !qn) return <Spinner label="Loading check-ins" />
+
+  return (
+    <div>
+      <h1 className="font-display text-3xl font-medium text-slate-900">Review queue</h1>
+      <p className="mt-1.5 text-sm text-slate-600">Check-ins sorted by urgency. Escalated cases appear first.</p>
+
+      {rows.length === 0 ? (
+        <Card className="mt-8 p-10 text-center text-slate-600">No completed check-ins yet.</Card>
+      ) : (
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <Card className="overflow-hidden">
+            <ul className="divide-y divide-slate-100" aria-label="Check-ins">
+              {rows.map((r) => (
+                <li key={r.id}>
+                  <button onClick={() => setSelected(r.id)} aria-current={r.id === selected}
+                    className={cx('flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50', r.id === selected && 'bg-brand-50/70')}>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium text-slate-900">{r.user_name}</span>
+                        {r.escalated && <ShieldAlert className="size-4 shrink-0 text-red-600" aria-label="Escalated" />}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    </span>
+                    <RiskBadge risk={r.baseline_risk} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {current && <Detail c={current} qn={qn} />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Detail({ c, qn }: { c: ReviewerCheckin; qn: Questionnaire }) {
+  const { phq9, gad7, safety } = c.scores
+  const byId = new Map(qn.questions.map((q) => [q.id, q]))
+  return (
+    <Card className="p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-medium text-slate-900">{c.user_name}</h2>
+          <p className="text-sm text-slate-600">{c.user_email}{c.is_minor && ' · Minor'}</p>
+          {c.emergency_contact && <p className="text-sm text-slate-600">Emergency contact: {c.emergency_contact}</p>}
+        </div>
+        <RiskBadge risk={c.baseline_risk} />
+      </div>
+
+      {safety.flag && (
+        <div className={cx('mt-5 flex gap-3 rounded-lg border p-4 text-sm', safety.escalate ? 'border-red-200 bg-red-50 text-red-900' : 'border-amber-200 bg-amber-50 text-amber-900')}>
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-medium">
+              Suicide risk screen (C-SSRS): <span className="capitalize">{safety.tier_label}</span>
+            </p>
+            <p className="mt-0.5">{safety.escalate ? 'Needs prompt human follow-up.' : 'Self-harm thoughts endorsed. Crisis resources were shown to the user.'}</p>
+          </div>
+        </div>
+      )}
+
+      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+        {[['Depression (PHQ-9)', phq9], ['Anxiety (GAD-7)', gad7]].map(([label, s]) => {
+          const sc = s as typeof phq9
+          return (
+            <div key={label as string} className="rounded-lg border border-slate-200 p-4">
+              <dt className="text-xs text-slate-500">{label as string}</dt>
+              <dd className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-slate-900">{sc.score}</span>
+                <span className="text-sm text-slate-500">/ {sc.max}</span>
+                <span className={cx('ml-auto text-sm font-medium', BAND_STYLE[sc.band])}>{BAND_LABEL[sc.band]}</span>
+              </dd>
+              {!sc.complete && <p className="mt-1 text-xs text-amber-700">Incomplete: {sc.answered} of {sc.max === 27 ? 9 : 7} items answered</p>}
+            </div>
+          )
+        })}
+      </dl>
+
+      {c.free_text && (
+        <>
+          <h3 className="mt-6 text-sm font-medium text-slate-900">In their own words</h3>
+          <blockquote className="mt-2 border-l-2 border-brand-400 bg-slate-50 py-2.5 pl-4 pr-3 text-sm italic leading-relaxed text-slate-700">
+            {c.free_text}
+          </blockquote>
+        </>
+      )}
+
+      <h3 className="mt-6 text-sm font-medium text-slate-900">All answers</h3>
+      <div className="mt-2 divide-y divide-slate-100 text-sm">
+        {qn.sections.map((s) => {
+          const qs = qn.questions.filter((q) => q.section === s.id && q.id in c.answers && q.type !== 'text')
+          if (!qs.length) return null
+          return (
+            <div key={s.id} className="py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.title}</p>
+              <ul className="mt-2 space-y-1.5">
+                {qs.map((q) => (
+                  <li key={q.id} className="flex justify-between gap-4">
+                    <span className="text-slate-600">{byId.get(q.id)?.prompt}</span>
+                    <span className="shrink-0 text-right font-medium text-slate-900">{answerText(q, c.answers[q.id])}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}

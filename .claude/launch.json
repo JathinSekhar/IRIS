@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "iris-api",
+      "runtimeExecutable": "D:\\IRIS\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "D:\\IRIS\\backend", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "iris-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "D:\\IRIS\\frontend", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}
