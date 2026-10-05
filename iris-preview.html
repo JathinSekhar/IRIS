@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IRIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg1:#060918;--bg2:#0d1333;--bg3:#1a1f4d;
+  --glass:rgba(255,255,255,.055);--glass-2:rgba(255,255,255,.09);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.22);
+  --text:#EEF0FF;--text-2:#B4B9DD;--text-3:#7D83AE;
+  --accent:#8B93FF;--accent-2:#A8C8FF;--teal:#7FE0D0;--rose:#FF9EB5;--amber:#FFD08A;
+  --glow:0 0 28px rgba(139,147,255,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--text);
+  background:radial-gradient(1200px 800px at 75% -10%,#2a2f6e 0%,transparent 60%),
+             radial-gradient(900px 700px at 0% 110%,#123a4d 0%,transparent 55%),
+             linear-gradient(180deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+  background-attachment:fixed;overflow-x:hidden;
+}
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none}
+.aurora{position:fixed;border-radius:50%;filter:blur(80px);opacity:.35;z-index:0;pointer-events:none;animation:drift 22s ease-in-out infinite alternate}
+.a1{width:520px;height:520px;background:#5b4bd6;top:-120px;left:-140px}
+.a2{width:460px;height:460px;background:#1f9e8f;bottom:-160px;right:-120px;animation-delay:-8s}
+.a3{width:300px;height:300px;background:#c06bd6;top:40%;left:55%;opacity:.18;animation-delay:-14s}
+@keyframes drift{to{transform:translate(60px,40px) scale(1.12)}}
+.moon{position:fixed;top:56px;right:8vw;width:74px;height:74px;border-radius:50%;z-index:0;
+  background:radial-gradient(circle at 35% 35%,#fffbea,#f3e7c3 55%,#d9c88f);
+  box-shadow:0 0 60px 18px rgba(255,240,200,.18),0 0 140px 40px rgba(160,170,255,.12)}
+.moon::after{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:rgba(190,170,120,.35);top:22px;left:40px;box-shadow:-18px 20px 0 -3px rgba(190,170,120,.3),6px 28px 0 -5px rgba(190,170,120,.25)}
+
+header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:22px clamp(16px,4vw,48px)}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Fraunces',serif;font-size:24px;letter-spacing:.5px}
+.orb{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--accent-2) 30%,var(--accent) 70%,#4b4fc9);box-shadow:var(--glow);animation:breathe 6s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.help{font-size:13px;color:var(--text-2);display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--glass);backdrop-filter:blur(10px)}
+.help b{color:var(--text);font-weight:600}
+
+main{position:relative;z-index:2;min-height:calc(100vh - 150px);display:flex;align-items:center;justify-content:center;padding:12px 16px 40px}
+.glass{width:100%;max-width:460px;background:var(--glass);border:1px solid var(--line);border-radius:28px;padding:clamp(24px,4vw,40px);
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+  box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+.glass.wide{max-width:620px}
+.enter{animation:enter .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes enter{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}
+
+h1,h2{font-family:'Fraunces',serif;font-weight:400;margin:0;letter-spacing:.2px}
+h1{font-size:clamp(28px,4vw,34px);line-height:1.2}
+h2{font-size:clamp(22px,3.2vw,27px);line-height:1.35}
+.sub{color:var(--text-2);font-size:15px;line-height:1.65;margin:8px 0 0}
+.muted{color:var(--text-3);font-size:13px}
+.center{text-align:center}
+
+.field{margin-top:16px}
+.field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:7px}
+.inp{position:relative}
+.inp i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:18px;pointer-events:none}
+input,select,textarea{width:100%;font:inherit;font-size:15px;color:var(--text);background:rgba(10,14,40,.45);border:1px solid var(--line);border-radius:14px;padding:13px 14px;outline:none;transition:border .2s,box-shadow .2s}
+.inp input,.inp select{padding-left:42px}
+select{appearance:none;cursor:pointer}
+select option{background:#151a40}
+input::placeholder,textarea::placeholder{color:var(--text-3)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(139,147,255,.18)}
+input[type=date]{color-scheme:dark}
+textarea{min-height:130px;resize:vertical;line-height:1.6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:600;font-size:15px;border:none;border-radius:999px;padding:14px 26px;cursor:pointer;transition:transform .15s,box-shadow .25s,background .2s}
+.btn:active{transform:scale(.98)}
+.primary{width:100%;margin-top:22px;color:#0b0f2a;background:linear-gradient(135deg,var(--accent-2),var(--accent));box-shadow:0 8px 30px rgba(139,147,255,.35)}
+.primary:hover{box-shadow:0 10px 40px rgba(139,147,255,.6)}
+.ghost{background:transparent;color:var(--text-2);border:1px solid var(--line);padding:11px 18px}
+.ghost:hover{background:var(--glass-2);color:var(--text)}
+.link{background:none;border:none;color:var(--accent-2);font:inherit;font-size:14px;cursor:pointer;padding:0}
+.link:hover{text-decoration:underline}
+.err{color:var(--rose);font-size:13px;min-height:18px;margin-top:10px}
+.divider{display:flex;align-items:center;gap:12px;color:var(--text-3);font-size:12px;margin:20px 0 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.hero-orb{width:96px;height:96px;margin:0 auto 18px;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 35% 30%,#fff 0%,var(--accent-2) 22%,var(--accent) 60%,#3d3fb0 100%);
+  box-shadow:0 0 50px rgba(139,147,255,.55),0 0 120px rgba(127,224,208,.2);animation:breathe 6s ease-in-out infinite}
+.hero-orb::before{content:"";position:absolute;inset:-14px;border-radius:50%;border:1px solid rgba(168,200,255,.25);animation:ring 6s ease-in-out infinite}
+@keyframes ring{0%,100%{transform:scale(.92);opacity:.3}50%{transform:scale(1.12);opacity:.8}}
+
+.promise{display:grid;gap:12px;margin-top:22px}
+.promise div{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:14px;color:var(--text-2)}
+.promise i{font-size:20px;color:var(--teal);width:36px;height:36px;display:grid;place-items:center;border-radius:12px;background:rgba(127,224,208,.1);flex:none}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:18px;font-size:14px;color:var(--text);cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent);margin:1px 0 0;flex:none;padding:0}
+
+.breath{margin:26px auto 4px;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font-family:'Fraunces',serif;font-size:17px;color:#0b0f2a;
+  background:radial-gradient(circle at 40% 35%,#fff,var(--accent-2) 40%,var(--accent));box-shadow:0 0 60px rgba(139,147,255,.5);transform:scale(.7);transition:transform 4s ease-in-out}
+.breath.in{transform:scale(1.05)}
+
+.steps{display:flex;justify-content:space-between;gap:6px;margin-bottom:18px}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--text-3)}
+.step .dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:17px;border:1px solid var(--line);background:rgba(255,255,255,.03);transition:all .3s}
+.step.done .dot{color:var(--teal);border-color:rgba(127,224,208,.4);background:rgba(127,224,208,.08)}
+.step.now{color:var(--text)}
+.step.now .dot{color:#0b0f2a;background:linear-gradient(135deg,var(--accent-2),var(--accent));border-color:transparent;box-shadow:var(--glow)}
+@media(max-width:480px){.step span{display:none}}
+.bar{height:5px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:26px}
+.bar div{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--teal),var(--accent));box-shadow:0 0 14px rgba(139,147,255,.6);transition:width .5s}
+.stem{color:var(--text-3);font-size:13px;margin:0 0 8px;text-transform:none}
+.qtext{font-family:'Fraunces',serif;font-size:clamp(21px,3vw,25px);line-height:1.4;margin:0 0 22px}
+
+.scale{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.scale{grid-template-columns:1fr}}
+.opt{position:relative;text-align:left;font:inherit;font-size:15px;color:var(--text);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:18px;padding:16px 16px 16px 16px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:10px}
+.opt:hover{background:rgba(255,255,255,.08);border-color:var(--line-2);transform:translateY(-2px)}
+.opt.on{border-color:var(--accent);background:rgba(139,147,255,.16);box-shadow:0 0 0 1px var(--accent),0 8px 30px rgba(139,147,255,.25)}
+.opt .meter{display:flex;gap:5px}
+.opt .meter span{width:18px;height:6px;border-radius:4px;background:rgba(255,255,255,.12)}
+.opt .meter span.f{background:var(--c)}
+.opt .key{position:absolute;top:12px;right:14px;font-size:11px;color:var(--text-3);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.list{display:grid;gap:10px}
+.list .opt{flex-direction:row;align-items:center;gap:14px;padding:15px 16px}
+.list .opt i{font-size:20px;color:var(--accent-2)}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.chips .opt{flex-direction:row;align-items:center;gap:10px;padding:13px 14px;font-size:14px}
+.chips .opt i{font-size:19px;color:var(--accent-2)}
+.qnav{display:flex;align-items:center;gap:10px;margin-top:22px}
+.qnav .spacer{flex:1}
+
+.intro-icon{width:84px;height:84px;margin:6px auto 20px;border-radius:26px;display:grid;place-items:center;font-size:38px;color:var(--c,var(--accent-2));
+  background:rgba(255,255,255,.05);border:1px solid var(--line);box-shadow:0 0 50px color-mix(in srgb,var(--c,#8B93FF) 35%,transparent)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text-2)}
+
+.care{border-radius:20px;padding:20px;background:linear-gradient(135deg,rgba(255,158,181,.12),rgba(139,147,255,.12));border:1px solid rgba(255,158,181,.25)}
+.line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-top:10px}
+.line b{font-size:18px;letter-spacing:.5px}
+.line a{color:#0b0f2a;background:var(--teal);border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;gap:6px;align-items:center}
+
+.rev{margin-top:26px;border-top:1px dashed var(--line-2);padding-top:22px}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.gauge{border-radius:18px;padding:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);display:flex;align-items:center;gap:14px}
+.ring{--p:0;--c:var(--accent);width:62px;height:62px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:conic-gradient(var(--c) calc(var(--p)*1%),rgba(255,255,255,.08) 0)}
+.ring::before{content:attr(data-v);width:48px;height:48px;border-radius:50%;background:#12173d;display:grid;place-items:center;font-weight:600;font-size:15px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv span:first-child{color:var(--text-2)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 14px;border-radius:999px}
+.quote{font-family:'Fraunces',serif;font-style:italic;color:var(--text-2);font-size:15px;line-height:1.6;margin:10px 0 0;padding:12px 16px;border-left:2px solid var(--accent);background:rgba(255,255,255,.03);border-radius:0 12px 12px 0}
+
+.dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;display:flex;gap:4px;padding:6px;border-radius:999px;background:rgba(10,14,40,.7);border:1px solid var(--line);backdrop-filter:blur(14px);max-width:calc(100vw - 24px);overflow-x:auto}
+.dock button{font:inherit;font-size:12px;color:var(--text-2);background:none;border:none;border-radius:999px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.dock button:hover{background:var(--glass-2);color:var(--text)}
+.dock .lbl{font-size:11px;color:var(--text-3);padding:7px 8px 7px 12px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div>
+<div class="moon"></div>
+<header>
+  <div class="brand"><div class="orb"></div>iris</div>
+  <div class="help"><i class="ti ti-phone"></i> Need help now? <b>14416</b></div>
+</header>
+<main><div id="card" class="glass"></div></main>
+<nav class="dock" aria-label="Preview screens">
+  <span class="lbl">Preview</span>
+  <button data-go="login">Login</button><button data-go="signup">Sign up</button><button data-go="consent">Consent</button>
+  <button data-go="q">Check-in</button><button data-go="care">Support</button><button data-go="done">Profile</button>
+</nav>
+
+<script>
+/* ---------- starfield ---------- */
+(() => {
+  const c = document.getElementById('sky'), x = c.getContext('2d');
+  let W, H, stars = [], shoot = null;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function size() {
+    W = c.width = innerWidth * devicePixelRatio; H = c.height = innerHeight * devicePixelRatio;
+    stars = Array.from({length: Math.round(innerWidth * innerHeight / 3500)}, () => ({
+      x: Math.random() * W, y: Math.random() * H, r: (Math.random() * 1.2 + .3) * devicePixelRatio,
+      p: Math.random() * Math.PI * 2, s: Math.random() * .02 + .005
+    }));
+  }
+  function frame() {
+    x.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      s.p += s.s;
+      x.globalAlpha = .35 + Math.sin(s.p) * .35 + .3;
+      x.fillStyle = '#fff'; x.beginPath(); x.arc(s.x, s.y, s.r, 0, 7); x.fill();
+    }
+    if (!shoot && Math.random() < .004) shoot = {x: Math.random() * W * .7, y: Math.random() * H * .3, l: 0};
+    if (shoot) {
+      shoot.l += 1;
+      const len = 120 * devicePixelRatio, px = shoot.x + shoot.l * 9, py = shoot.y + shoot.l * 4;
+      const g = x.createLinearGradient(px, py, px - len, py - len * .45);
+      g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      x.globalAlpha = Math.max(0, 1 - shoot.l / 50); x.strokeStyle = g; x.lineWidth = 1.5 * devicePixelRatio;
+      x.beginPath(); x.moveTo(px, py); x.lineTo(px - len, py - len * .45); x.stroke();
+      if (shoot.l > 50) shoot = null;
+    }
+    x.globalAlpha = 1;
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  addEventListener('resize', size); size(); frame();
+})();
+
+/* ---------- data ---------- */
+const FREQ = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
+const FREQC = ['#7FE0D0', '#A8C8FF', '#FFD08A', '#FF9EB5'];
+const YN = ['No', 'Yes'];
+const STEM = 'Over the last 2 weeks, how often have you been bothered by…';
+const SECTIONS = {
+  about:  {name: 'About you',  icon: 'ti-user-heart', c: '#A8C8FF', intro: 'Tell us a little about what brought you here. There are no right or wrong answers.'},
+  mood:   {name: 'Mood',       icon: 'ti-moon-stars', c: '#B9A8FF', intro: 'A few questions about how you\'ve been feeling over the last 2 weeks.'},
+  worry:  {name: 'Worry',      icon: 'ti-cloud',      c: '#7FE0D0', intro: 'Now some questions about worry and nervousness. Answer for the last 2 weeks.'},
+  daily:  {name: 'Daily life', icon: 'ti-sun',        c: '#FFD08A', intro: 'How things have been with sleep, studies, habits, and the people around you.'},
+  health: {name: 'History',    icon: 'ti-notes',      c: '#A8C8FF', intro: 'A few questions about your health history, like a doctor would ask at a first visit.'},
+  safety: {name: 'Safety',     icon: 'ti-heart-handshake', c: '#FF9EB5', intro: 'These last questions matter a lot. Please answer honestly. Whatever you share, you won\'t be judged.'}
+};
+const ORDER = Object.keys(SECTIONS);
+const Q = [
+  {id: 'a1', sec: 'about', t: 'In your own words, what has been troubling you lately?', ty: 'text'},
+  {id: 'a2', sec: 'about', t: 'How long have you been feeling this way?', ty: 'list', o: ['Less than 2 weeks', '2 weeks to 1 month', '1 to 6 months', 'More than 6 months'], ic: ['ti-clock', 'ti-calendar', 'ti-calendar-month', 'ti-calendar-time']},
+  {id: 'a3', sec: 'about', t: 'Has anything happened recently that\'s been weighing on you?', ty: 'multi', o: ['Studies or exams', 'Relationship', 'Family', 'Money', 'Health', 'Losing someone close', 'Work', 'Nothing specific'], ic: ['ti-book', 'ti-heart-broken', 'ti-home', 'ti-coin', 'ti-stethoscope', 'ti-flower', 'ti-briefcase', 'ti-circle-dashed']},
+  ...['Little interest or pleasure in doing things', 'Feeling down, depressed, or hopeless', 'Trouble falling or staying asleep, or sleeping too much', 'Feeling tired or having little energy', 'Poor appetite or overeating', 'Feeling bad about yourself, or that you are a failure or have let yourself or your family down', 'Trouble concentrating on things, such as reading or watching television', 'Moving or speaking so slowly that other people could have noticed, or being so fidgety or restless that you\'ve been moving around a lot more than usual']
+    .map((t, k) => ({id: 'm' + (k + 1), sec: 'mood', st: STEM, t, ty: 'freq'})),
+  ...['Feeling nervous, anxious, or on edge', 'Not being able to stop or control worrying', 'Worrying too much about different things', 'Trouble relaxing', 'Being so restless that it\'s hard to sit still', 'Becoming easily annoyed or irritable', 'Feeling afraid, as if something awful might happen']
+    .map((t, k) => ({id: 'g' + (k + 1), sec: 'worry', st: STEM, t, ty: 'freq'})),
+  {id: 'f1', sec: 'daily', t: 'How difficult have these problems made it to do your studies or work, take care of things at home, or get along with people?', ty: 'list', o: ['Not difficult at all', 'Somewhat difficult', 'Very difficult', 'Extremely difficult'], ic: ['ti-mood-smile', 'ti-mood-neutral', 'ti-mood-sad', 'ti-mood-cry']},
+  {id: 'f2', sec: 'daily', t: 'How many hours do you usually sleep at night?', ty: 'list', o: ['Less than 4 hours', '4 to 6 hours', '6 to 8 hours', 'More than 8 hours'], ic: ['ti-battery-1', 'ti-battery-2', 'ti-battery-4', 'ti-zzz']},
+  {id: 'f3', sec: 'daily', t: 'How often do you have a drink containing alcohol?', ty: 'list', o: ['Never', 'Monthly or less', '2 to 4 times a month', '2 or more times a week'], ic: ['ti-circle-off', 'ti-glass', 'ti-glass-full', 'ti-bottle']},
+  {id: 'f4', sec: 'daily', t: 'Do you use tobacco or any other substances?', ty: 'list', o: ['No', 'Tobacco', 'Other substances', 'Prefer not to say'], ic: ['ti-circle-off', 'ti-smoking', 'ti-pill', 'ti-eye-off']},
+  {id: 'f5', sec: 'daily', t: 'Is there someone you trust that you can talk to?', ty: 'list', o: ['Yes', 'Not sure', 'No'], ic: ['ti-users', 'ti-help-circle', 'ti-user']},
+  {id: 'h1', sec: 'health', t: 'Have you ever talked to a counsellor, psychologist, or psychiatrist?', ty: 'list', o: ['No, never', 'Yes, in the past', 'Yes, currently'], ic: ['ti-circle-off', 'ti-history', 'ti-user-check']},
+  {id: 'h2', sec: 'health', t: 'Are you taking any medicine for your mental health?', ty: 'list', o: ['No', 'Yes', 'Prefer not to say'], ic: ['ti-circle-off', 'ti-pill', 'ti-eye-off']},
+  {id: 'h3', sec: 'health', t: 'Has anyone in your family had mental health difficulties?', ty: 'list', o: ['No', 'Yes', 'Not sure'], ic: ['ti-circle-off', 'ti-users-group', 'ti-help-circle']},
+  {id: 'h4', sec: 'health', t: 'Do you have any long-term physical health condition?', ty: 'list', o: ['No', 'Yes', 'Prefer not to say'], ic: ['ti-circle-off', 'ti-heartbeat', 'ti-eye-off']},
+  {id: 's0', sec: 'safety', st: STEM, t: 'Thoughts that you would be better off dead, or of hurting yourself in some way', ty: 'freq'},
+  {id: 'c1', sec: 'safety', t: 'In the past month, have you wished you were dead, or wished you could go to sleep and not wake up?', ty: 'yn', c: a => a.s0 > 0},
+  {id: 'c2', sec: 'safety', t: 'In the past month, have you had any actual thoughts of ending your life?', ty: 'yn', c: a => a.s0 > 0},
+  {id: 'c3', sec: 'safety', t: 'Have you been thinking about how you might do this?', ty: 'yn', c: a => a.c2 == 1},
+  {id: 'c4', sec: 'safety', t: 'Have you had these thoughts and had some intention of acting on them?', ty: 'yn', c: a => a.c2 == 1},
+  {id: 'c5', sec: 'safety', t: 'Have you started to work out, or worked out, the details of how to do it? Do you intend to carry out this plan?', ty: 'yn', c: a => a.c2 == 1},
+  {id: 'c6', sec: 'safety', t: 'Have you ever done anything, started to do anything, or prepared to do anything to end your life?', ty: 'yn', c: a => a.s0 > 0},
+  {id: 'c7', sec: 'safety', t: 'Was this within the past 3 months?', ty: 'yn', c: a => a.c6 == 1}
+];
+
+let A = {}, qi = 0, user = {name: 'Priya'};
+const card = document.getElementById('card');
+const vis = () => Q.map((q, k) => k).filter(k => !Q[k].c || Q[k].c(A));
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[ch]));
+
+/* ---------- screens ---------- */
+const V = {
+  login: () => `
+    <div class="hero-orb"></div>
+    <h1 class="center">Welcome back</h1>
+    <p class="sub center">Take a slow breath. You're in a safe space.</p>
+    <div class="field"><label>Email</label><div class="inp"><i class="ti ti-mail"></i><input id="e" type="email" placeholder="name@college.edu"></div></div>
+    <div class="field"><label>Password</label><div class="inp"><i class="ti ti-lock"></i><input id="p" type="password" placeholder="Your password"></div></div>
+    <div style="text-align:right;margin-top:10px"><button class="link">Forgot password?</button></div>
+    <div class="err" id="err"></div>
+    <button class="btn primary" id="go" style="margin-top:6px">Log in <i class="ti ti-arrow-right"></i></button>
+    <div class="divider">new to iris?</div>
+    <button class="btn ghost" data-go="signup" style="width:100%;margin-top:14px">Create an account</button>`,
+
+  signup: () => `
+    <h1>Create your account</h1>
+    <p class="sub">Everything you share stays private and protected.</p>
+    <div class="grid2">
+      <div class="field"><label>Full name</label><div class="inp"><i class="ti ti-user"></i><input id="n" placeholder="Priya Sharma"></div></div>
+      <div class="field"><label>Email</label><div class="inp"><i class="ti ti-mail"></i><input id="e" type="email" placeholder="name@college.edu"></div></div>
+      <div class="field"><label>Date of birth</label><div class="inp"><i class="ti ti-cake"></i><input id="d" type="date"></div></div>
+      <div class="field"><label>Gender</label><div class="inp"><i class="ti ti-gender-bigender"></i><select><option>Prefer not to say</option><option>Female</option><option>Male</option><option>Non-binary</option></select></div></div>
+      <div class="field"><label>I am</label><div class="inp"><i class="ti ti-school"></i><select><option>A student</option><option>Working</option><option>Other</option></select></div></div>
+      <div class="field"><label>Preferred language</label><div class="inp"><i class="ti ti-language"></i><select><option>English</option><option>Hindi</option><option>Telugu</option><option>Tamil</option></select></div></div>
+      <div class="field"><label>Phone <span class="muted">(optional)</span></label><div class="inp"><i class="ti ti-phone"></i><input placeholder="+91 98765 43210"></div></div>
+      <div class="field"><label>Emergency contact <span class="muted">(optional)</span></label><div class="inp"><i class="ti ti-shield-heart"></i><input placeholder="Name and phone"></div></div>
+    </div>
+    <div class="field"><label>Password</label><div class="inp"><i class="ti ti-lock"></i><input id="p" type="password" placeholder="At least 8 characters"></div></div>
+    <div class="err" id="err"></div>
+    <button class="btn primary" id="go" style="margin-top:6px">Create account <i class="ti ti-arrow-right"></i></button>
+    <p class="muted center" style="margin-top:16px">Already have an account? <button class="link" data-go="login">Log in</button></p>`,
+
+  guardian: () => `
+    <div class="intro-icon" style="--c:#FFD08A"><i class="ti ti-users"></i></div>
+    <h2 class="center">A parent or guardian is needed</h2>
+    <p class="sub center">Because you're under 18, a parent or guardian needs to agree before you continue. We'll send them a short consent link.</p>
+    <div class="field"><label>Guardian's name</label><div class="inp"><i class="ti ti-user"></i><input id="gn" placeholder="Their full name"></div></div>
+    <div class="field"><label>Guardian's email</label><div class="inp"><i class="ti ti-mail"></i><input id="ge" type="email" placeholder="parent@email.com"></div></div>
+    <div class="err" id="err"></div>
+    <button class="btn primary" id="go" style="margin-top:6px">Send consent request</button>`,
+
+  consent: () => `
+    <div class="hero-orb" style="width:72px;height:72px"></div>
+    <h2 class="center">Hi ${esc(user.name)}, before we begin</h2>
+    <p class="sub center">A short check-in, like the one you'd have with a doctor, helps us understand how you're really doing.</p>
+    <div class="promise">
+      <div><i class="ti ti-clock-hour-4"></i>About 6 minutes. You can pause anytime.</div>
+      <div><i class="ti ti-lock"></i>Only trained reviewers can see your answers.</div>
+      <div><i class="ti ti-stethoscope"></i>Uses questions doctors use. It's not a diagnosis.</div>
+      <div><i class="ti ti-player-skip-forward"></i>You can skip any question you don't want to answer.</div>
+    </div>
+    <label class="check"><input type="checkbox" id="c"> I understand and agree to take the check-in</label>
+    <div class="err" id="err"></div>
+    <button class="btn primary" id="go" style="margin-top:6px">Begin with one slow breath</button>
+    <p class="center" style="margin-top:14px"><button class="link" data-go="done" data-skip="1">Skip for now</button></p>`,
+
+  breathe: () => `
+    <h2 class="center">Let's breathe together</h2>
+    <p class="sub center">Follow the circle. In through your nose, out through your mouth.</p>
+    <div class="breath" id="br">Breathe in</div>
+    <p class="center" style="margin-top:22px"><button class="link" id="skipb">Skip</button></p>`,
+
+  intro: () => {
+    const s = SECTIONS[Q[qi].sec], n = vis().filter(k => Q[k].sec == Q[qi].sec).length;
+    return `${stepper()}
+    <div class="intro-icon" style="--c:${s.c}"><i class="ti ${s.icon}"></i></div>
+    <p class="center"><span class="chip">Part ${ORDER.indexOf(Q[qi].sec) + 1} of ${ORDER.length} · ${n} question${n > 1 ? 's' : ''}</span></p>
+    <h2 class="center" style="margin-top:14px">${s.name}</h2>
+    <p class="sub center">${s.intro}</p>
+    <button class="btn primary" id="go">Continue <i class="ti ti-arrow-right"></i></button>`;
+  },
+
+  q: () => {
+    const q = Q[qi], v = vis(), pos = v.indexOf(qi), a = A[q.id];
+    let body = '';
+    if (q.ty == 'freq') body = `<div class="scale">${FREQ.map((o, k) => `
+      <button class="opt ${a === k ? 'on' : ''}" data-k="${k}" style="--c:${FREQC[k]}">
+        <span class="key">${k + 1}</span>
+        <span class="meter">${[0, 1, 2, 3].map(j => `<span class="${j <= k ? 'f' : ''}"></span>`).join('')}</span>${o}</button>`).join('')}</div>`;
+    else if (q.ty == 'yn') body = `<div class="scale">${YN.map((o, k) => `
+      <button class="opt ${a === k ? 'on' : ''}" data-k="${k}" style="flex-direction:row;align-items:center;justify-content:center;padding:20px">
+        <i class="ti ${k ? 'ti-check' : 'ti-x'}" style="font-size:20px;color:${k ? 'var(--rose)' : 'var(--teal)'}"></i>${o}</button>`).join('')}</div>`;
+    else if (q.ty == 'list') body = `<div class="list">${q.o.map((o, k) => `
+      <button class="opt ${a === k ? 'on' : ''}" data-k="${k}"><i class="ti ${q.ic[k]}"></i>${o}</button>`).join('')}</div>`;
+    else if (q.ty == 'multi') body = `<p class="muted" style="margin:-10px 0 14px">Choose all that apply</p><div class="chips">${q.o.map((o, k) => `
+      <button class="opt ${(a || []).includes(k) ? 'on' : ''}" data-k="${k}"><i class="ti ${q.ic[k]}"></i>${o}</button>`).join('')}</div>`;
+    else body = `<textarea id="tx" placeholder="Take your time. Write as much or as little as you like.">${esc(a || '')}</textarea>
+      <p class="muted" style="margin-top:8px"><i class="ti ti-lock"></i> Only your care reviewer will read this.</p>`;
+    const manual = q.ty == 'text' || q.ty == 'multi';
+    return `${stepper()}
+      <div class="bar"><div style="width:${Math.round((pos + 1) / v.length * 100)}%"></div></div>
+      ${q.st ? `<p class="stem">${q.st}</p>` : ''}
+      <p class="qtext">${q.t}${q.st ? '?' : ''}</p>
+      ${body}
+      <div class="err" id="err"></div>
+      <div class="qnav">
+        <button class="btn ghost" id="bk"><i class="ti ti-arrow-left"></i> Back</button>
+        <span class="spacer"></span>
+        <span class="muted">${pos + 1} / ${v.length}</span>
+        <button class="link" id="sk" style="margin-left:12px">Skip</button>
+        ${manual ? `<button class="btn primary" id="nx" style="width:auto;margin:0 0 0 8px;padding:11px 22px">Next</button>` : ''}
+      </div>`;
+  },
+
+  care: () => {
+    const hi = score().cs >= 2;
+    return `
+    <div class="intro-icon" style="--c:#FF9EB5"><i class="ti ti-heart-handshake"></i></div>
+    <h2 class="center">Thank you for telling us</h2>
+    <p class="sub center">That took courage. You don't have to carry this alone. People are ready to listen to you right now.</p>
+    <div style="margin-top:20px">
+      <div class="line"><div><div class="muted">Tele-MANAS · 24x7 · free</div><b>14416</b></div><a href="tel:14416"><i class="ti ti-phone"></i>Call</a></div>
+      <div class="line"><div><div class="muted">KIRAN mental health helpline</div><b>1800-599-0019</b></div><a href="tel:18005990019"><i class="ti ti-phone"></i>Call</a></div>
+    </div>
+    ${hi ? `<div class="care" style="margin-top:16px;font-size:14px;color:var(--text-2);display:flex;gap:12px;align-items:center"><i class="ti ti-user-heart" style="font-size:24px;color:var(--rose)"></i>A trained member of our care team has been notified and will reach out to you soon.</div>` : ''}
+    <button class="btn primary" data-go="done">Continue</button>`;
+  },
+
+  done: () => {
+    const r = score();
+    const pb = s => s >= 20 ? 'Severe' : s >= 15 ? 'Moderately severe' : s >= 10 ? 'Moderate' : s >= 5 ? 'Mild' : 'Minimal';
+    const gb = s => s >= 15 ? 'Severe' : s >= 10 ? 'Moderate' : s >= 5 ? 'Mild' : 'Minimal';
+    const col = s => s >= 15 ? '#FF9EB5' : s >= 10 ? '#FFD08A' : s >= 5 ? '#A8C8FF' : '#7FE0D0';
+    const cs = ['None', 'Low', 'Moderate', 'High'][r.cs];
+    const bc = {High: '#FF9EB5', Medium: '#FFD08A', Low: '#7FE0D0', Unknown: '#B4B9DD'}[r.b];
+    const ans = id => { const q = Q.find(x => x.id == id); return A[id] == null ? '<span class="muted">Skipped</span>' : q.o[A[id]]; };
+    return `
+    <div class="hero-orb"></div>
+    <h1 class="center">Thank you, ${esc(user.name)}</h1>
+    <p class="sub center">Whenever you're ready, I'm here to listen. Say anything that's on your mind.</p>
+    <button class="btn primary"><i class="ti ti-message-circle"></i> Start a conversation</button>
+    <div class="rev">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="chip"><i class="ti ti-shield-lock"></i> Reviewer-only view · the user never sees this</span>
+        <span class="badge" style="background:${bc}22;color:${bc};border:1px solid ${bc}55"><i class="ti ti-activity"></i> Baseline: ${r.b}</span>
+      </div>
+      <div class="gauges">
+        <div class="gauge"><div class="ring" data-v="${r.phq}" style="--p:${r.phq / 27 * 100};--c:${col(r.phq)}"></div><div><div class="muted">Depression · PHQ-9</div><div style="font-weight:600;margin-top:2px">${pb(r.phq)}</div><div class="muted">${r.phq} of 27</div></div></div>
+        <div class="gauge"><div class="ring" data-v="${r.gad}" style="--p:${r.gad / 21 * 100};--c:${col(r.gad * 27 / 21)}"></div><div><div class="muted">Anxiety · GAD-7</div><div style="font-weight:600;margin-top:2px">${gb(r.gad)}</div><div class="muted">${r.gad} of 21</div></div></div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="kv"><span>Suicide risk · C-SSRS</span><span style="color:${r.cs >= 2 ? 'var(--rose)' : 'inherit'};font-weight:600">${cs}</span></div>
+        <div class="kv"><span>Daily functioning</span><span>${ans('f1')}</span></div>
+        <div class="kv"><span>Duration</span><span>${ans('a2')}</span></div>
+        <div class="kv"><span>Sleep</span><span>${ans('f2')}</span></div>
+        <div class="kv"><span>Support person</span><span>${ans('f5')}</span></div>
+        <div class="kv"><span>Previous treatment</span><span>${ans('h1')}</span></div>
+      </div>
+      ${A.a1 ? `<p class="muted" style="margin:16px 0 0">In their own words</p><p class="quote">“${esc(A.a1)}”</p>` : ''}
+    </div>`;
+  }
+};
+
+function stepper() {
+  const cur = ORDER.indexOf(Q[qi].sec);
+  return `<div class="steps">${ORDER.map((k, j) => `<div class="step ${j < cur ? 'done' : j == cur ? 'now' : ''}"><div class="dot"><i class="ti ${j < cur ? 'ti-check' : SECTIONS[k].icon}"></i></div><span>${SECTIONS[k].name}</span></div>`).join('')}</div>`;
+}
+
+function score() {
+  const s = k => A[k] ?? 0;
+  const phq = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 's0'].reduce((t, k) => t + s(k), 0);
+  const gad = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7'].reduce((t, k) => t + s(k), 0);
+  const cs = (A.c4 == 1 || A.c5 == 1 || (A.c6 == 1 && A.c7 == 1)) ? 3 : (A.c3 == 1 || A.c6 == 1) ? 2 : (A.c1 == 1 || A.c2 == 1 || s('s0') > 0) ? 1 : 0;
+  const none = !Object.keys(A).length;
+  const b = none ? 'Unknown' : (cs >= 2 || phq >= 20) ? 'High' : (cs == 1 || phq >= 10 || gad >= 10 || s('f1') >= 2) ? 'Medium' : 'Low';
+  return {phq, gad, cs, b};
+}
+
+/* ---------- navigation ---------- */
+let breathTimer;
+function show(n) {
+  clearTimeout(breathTimer);
+  card.className = 'glass' + (n == 'signup' || n == 'q' || n == 'intro' || n == 'done' ? ' wide' : '');
+  card.innerHTML = V[n]();
+  void card.offsetWidth; card.classList.add('enter');
+  bind(n); window.scrollTo({top: 0, behavior: 'smooth'});
+}
+const err = m => { const e = card.querySelector('#err'); if (e) e.textContent = m; };
+const okEmail = v => /^\S+@\S+\.\S+$/.test(v.trim());
+const val = id => card.querySelector('#' + id).value;
+
+const introSeen = {};
+function next() {
+  const v = vis(), pos = v.indexOf(qi);
+  if (pos < v.length - 1) {
+    const k = v[pos + 1];
+    const newSec = Q[k].sec != Q[qi].sec; qi = k;
+    show(newSec && !introSeen[Q[k].sec] ? 'intro' : 'q');
+  } else show(A.s0 > 0 ? 'care' : 'done');
+}
+function prev() {
+  const v = vis(), pos = v.indexOf(qi);
+  if (pos > 0) { qi = v[pos - 1]; show('q'); } else show('consent');
+}
+
+function bind(n) {
+  card.querySelectorAll('input,textarea').forEach(x => x.addEventListener('input', () => err('')));
+  card.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { if (b.dataset.skip) A = {}; show(b.dataset.go); });
+  const go = card.querySelector('#go');
+
+  if (n == 'login') go.onclick = () => {
+    if (!okEmail(val('e'))) return err('Enter a valid email.');
+    if (!val('p')) return err('Enter your password.');
+    show('consent');
+  };
+  if (n == 'signup') go.onclick = () => {
+    if (!val('n').trim()) return err('Enter your name.');
+    if (!okEmail(val('e'))) return err('Enter a valid email.');
+    const d = val('d'); if (!d) return err('Enter your date of birth.');
+    const age = (Date.now() - new Date(d)) / 31557600000;
+    if (age < 13 || age > 100) return err('Enter a valid date of birth. You need to be at least 13.');
+    if (val('p').length < 8) return err('Your password needs at least 8 characters.');
+    user.name = val('n').trim().split(/\s+/)[0];
+    show(age < 18 ? 'guardian' : 'consent');
+  };
+  if (n == 'guardian') go.onclick = () => {
+    if (!val('gn').trim()) return err('Enter your guardian\'s name.');
+    if (!okEmail(val('ge'))) return err('Enter a valid email for your guardian.');
+    show('consent');
+  };
+  if (n == 'consent') {
+    card.querySelector('#c').onchange = () => err('');
+    go.onclick = () => { if (!card.querySelector('#c').checked) return err('Tick the box to continue, or skip for now.'); show('breathe'); };
+  }
+  if (n == 'breathe') {
+    const br = card.querySelector('#br'); let step = 0;
+    const start = () => { qi = 0; Object.keys(introSeen).forEach(k => delete introSeen[k]); show('intro'); };
+    const cycle = () => {
+      if (step == 4) return start();
+      const inhale = step % 2 == 0;
+      br.classList.toggle('in', inhale); br.textContent = inhale ? 'Breathe in' : 'Breathe out';
+      step++; breathTimer = setTimeout(cycle, 4000);
+    };
+    breathTimer = setTimeout(cycle, 300);
+    card.querySelector('#skipb').onclick = start;
+  }
+  if (n == 'intro') go.onclick = () => { introSeen[Q[qi].sec] = 1; show('q'); };
+  if (n == 'q') {
+    const q = Q[qi];
+    card.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+      const k = +b.dataset.k; err('');
+      if (q.ty == 'multi') {
+        let a = A[q.id] || []; a = a.includes(k) ? a.filter(x => x != k) : [...a, k]; A[q.id] = a;
+        b.classList.toggle('on'); return;
+      }
+      A[q.id] = k;
+      card.querySelectorAll('.opt').forEach(x => x.classList.remove('on')); b.classList.add('on');
+      setTimeout(next, 320);
+    });
+    const save = () => { if (q.ty == 'text') { const t = val('tx').trim(); if (t) A[q.id] = t; else delete A[q.id]; } };
+    const nx = card.querySelector('#nx');
+    if (nx) nx.onclick = () => {
+      save(); const a = A[q.id];
+      if (a == null || (q.ty == 'multi' && !a.length)) return err(q.ty == 'text' ? 'Write a few words, or tap Skip.' : 'Choose at least one, or tap Skip.');
+      next();
+    };
+    card.querySelector('#sk').onclick = () => { delete A[q.id]; next(); };
+    card.querySelector('#bk').onclick = () => { save(); prev(); };
+  }
+}
+
+/* keyboard: 1-4 to answer */
+addEventListener('keydown', e => {
+  if (!card.querySelector('.qtext') || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  const b = card.querySelector(`.opt[data-k="${+e.key - 1}"]`); if (b) b.click();
+});
+
+document.querySelectorAll('.dock [data-go]').forEach(b => b.onclick = () => {
+  const g = b.dataset.go;
+  if (g == 'q') { qi = 0; Object.keys(introSeen).forEach(k => delete introSeen[k]); return show('intro'); }
+  if (g == 'care' && !(A.s0 > 0)) { A.s0 = 2; A.c1 = 1; A.c2 = 1; A.c3 = 1; }
+  show(g);
+});
+show('login');
+</script>
+</body>
+</html>
