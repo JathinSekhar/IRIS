@@ -123,7 +123,9 @@ export default function CheckIn() {
           <p className="text-xs text-slate-500">Hi {user?.first_name}. Skip anything you prefer not to answer.</p>
         </div>
         {!confirmSkip ? (
-          <TextLink onClick={() => setConfirmSkip(true)} className="text-slate-600">Skip for now</TextLink>
+          <TextLink onClick={() => setConfirmSkip(true)} className="shrink-0 whitespace-nowrap text-slate-600">
+            Skip for now
+          </TextLink>
         ) : (
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-slate-600 sm:inline">Skip the whole check-in?</span>
