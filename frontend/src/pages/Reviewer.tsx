@@ -107,7 +107,10 @@ function Detail({ c, qn }: { c: ReviewerCheckin; qn: Questionnaire }) {
             <p className="font-medium">
               Suicide risk screen (C-SSRS): <span className="capitalize">{safety.tier_label}</span>
             </p>
-            <p className="mt-0.5">{safety.escalate ? 'Needs prompt human follow-up.' : 'Self-harm thoughts endorsed. Crisis resources were shown to the user.'}</p>
+            <p className="mt-0.5">
+              {safety.escalate ? 'Needs prompt human follow-up.' : 'Self-harm thoughts endorsed. Crisis resources were shown to the user.'}{' '}
+              <span className="font-medium">Minimum urgency: {safety.urgency_floor}.</span>
+            </p>
           </div>
         </div>
       )}

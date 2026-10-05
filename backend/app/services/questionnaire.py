@@ -68,11 +68,11 @@ def _yn(qid: str, prompt: str, cond: Condition) -> Question:
 
 SECTIONS = [
     Section(id="about", title="Background", description="What brought you here and how long it has been going on."),
-    Section(id="mood", title="Mood", description="Depression screening (PHQ-9)."),
+    Section(id="mood", title="Mood", description="Depression screening: PHQ-9 items 1 to 8. Item 9 is asked in the Safety step."),
     Section(id="worry", title="Worry", description="Anxiety screening (GAD-7)."),
     Section(id="daily", title="Daily life", description="Sleep, functioning, habits and support."),
     Section(id="history", title="History", description="Previous care and health background."),
-    Section(id="safety", title="Safety", description="Thoughts of self-harm (PHQ-9 item 9, C-SSRS screener)."),
+    Section(id="safety", title="Safety", description="Self-harm safety assessment: PHQ-9 item 9 and the C-SSRS screener."),
 ]
 
 _PHQ = [

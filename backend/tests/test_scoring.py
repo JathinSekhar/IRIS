@@ -61,7 +61,7 @@ def test_functional_impairment_raises_to_medium():
 
 def test_s0_positive_flags_safety_tier_low():
     r = score({**fill(PHQ[:8], 0), "s0": 1, "c1": 0, "c2": 0, "c6": 0})
-    assert r["safety"] == {"flag": True, "tier": 1, "tier_label": "low", "escalate": False}
+    assert r["safety"] == {"flag": True, "tier": 1, "tier_label": "low", "escalate": False, "urgency_floor": "medium"}
     assert r["baseline_risk"] == "medium"
 
 
@@ -126,3 +126,34 @@ def test_clean_answers_drops_blank_text():
 def test_clean_answers_limits_text_length():
     with pytest.raises(ValueError):
         clean_answers({"a1": "x" * 2001})
+
+
+# --- safety assessment is its own unit --------------------------------------
+
+from app.services.safety import assess  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "answers,tier,floor",
+    [
+        ({}, 0, "none"),
+        ({"s0": 0}, 0, "none"),
+        ({"s0": 1}, 1, "medium"),
+        ({"s0": 1, "c1": 1}, 1, "medium"),
+        ({"s0": 2, "c2": 1, "c3": 1}, 2, "high"),
+        ({"s0": 1, "c6": 1, "c7": 0}, 2, "high"),
+        ({"s0": 3, "c2": 1, "c4": 1}, 3, "high"),
+        ({"s0": 3, "c2": 1, "c5": 1}, 3, "high"),
+        ({"s0": 1, "c6": 1, "c7": 1}, 3, "high"),
+    ],
+)
+def test_safety_tier_and_urgency_floor(answers, tier, floor):
+    r = assess(answers)
+    assert r["tier"] == tier and r["urgency_floor"] == floor
+    assert r["escalate"] is (tier >= 2)
+
+
+def test_unanswered_item_9_is_not_reported_as_complete():
+    r = score({**fill(PHQ[:8], 0), **fill(GAD, 0)})  # s0 skipped
+    assert r["safety"]["urgency_floor"] == "none"
+    assert r["phq9"]["complete"] is False and r["phq9"]["answered"] == 8

@@ -77,7 +77,13 @@ export interface ReviewerCheckin {
   scores: {
     phq9: Scale
     gad7: Scale
-    safety: { flag: boolean; tier: number; tier_label: string; escalate: boolean }
+    safety: {
+      flag: boolean
+      tier: number
+      tier_label: string
+      escalate: boolean
+      urgency_floor: 'none' | 'medium' | 'high'
+    }
     functioning: number | null
     baseline_risk: string
   }
