@@ -1,0 +1,13 @@
+# Cost of an automated urgency decision. Rows are the TRUE urgency, columns the PREDICTED urgency, in the order
+# given by labels.yaml (low, medium, high). A person reading the case resolves it, so review has its own flat cost.
+#
+# These numbers encode the core safety principle of IRIS: missing an urgent case is far worse than an unnecessary
+# escalation. They are a starting point to be agreed with a clinician and then frozen BEFORE final evaluation.
+matrix:
+  #            pred: low  medium  high
+  low:    [0.0, 0.5, 1.0]
+  medium: [3.0, 0.0, 0.5]
+  high:   [10.0, 4.0, 0.0]
+
+# Cost of sending a case to a human reviewer (reviewer time). Review is assumed to resolve the case correctly.
+review_cost: 1.0

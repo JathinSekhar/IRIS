@@ -1,0 +1,925 @@
+{
+ "meta": {
+  "generated": "2026-10-06 08:51 UTC",
+  "n_dev": 424,
+  "n_test": 76,
+  "manifest_sha256": "6d2df798d1c59d62134a6a8ee5015625c193f5ae291671dd5056d860cab0532a",
+  "data_md5": "be0addddd2bb64129d866ac41b625d04",
+  "cfg": {
+   "seed": 2026,
+   "n_splits": 5,
+   "n_repeats": 3,
+   "max_features": 50000,
+   "C": 1.0,
+   "max_chars": 20000
+  },
+  "top_terms": {
+   "low": [
+    "if you",
+    "your",
+    "you are",
+    "yourself",
+    "you were",
+    "you do",
+    "your life",
+    "kill himself",
+    "you will",
+    "if",
+    "that you",
+    "are"
+   ],
+   "medium": [
+    "mental",
+    "mental depression",
+    "my",
+    "me",
+    "thank you",
+    "thank",
+    "depression",
+    "myself",
+    "with",
+    "hate",
+    "therapy",
+    "me feel"
+   ],
+   "high": [
+    "my",
+    "hospital",
+    "was",
+    "kill myself",
+    "tried to",
+    "it was",
+    "on my",
+    "ive",
+    "tried",
+    "ive been",
+    "pills",
+    "myself"
+   ]
+  },
+  "python": "3.10.11",
+  "sklearn": "1.7.2",
+  "numpy": "2.2.6",
+  "pandas": "2.3.3"
+ },
+ "results": {
+  "conservative": {
+   "n_dev": 424,
+   "class_counts": {
+    "low": 92,
+    "medium": 229,
+    "high": 103
+   },
+   "mean_temperature": 0.2251073633588153,
+   "models": {
+    "majority": {
+     "high_recall": {
+      "recall": 0.0,
+      "caught": 0,
+      "total": 103,
+      "ci_low": 0.0,
+      "ci_high": 0.03595603210734395
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.0,
+       "recall": 0.0,
+       "f1": 0.0,
+       "support": 92
+      },
+      "medium": {
+       "precision": 0.5400943396226415,
+       "recall": 1.0,
+       "f1": 0.7013782542113323,
+       "support": 229
+      },
+      "high": {
+       "precision": 0.0,
+       "recall": 0.0,
+       "f1": 0.0,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.23379275140377742,
+     "quadratic_weighted_kappa": 0.0,
+     "confusion_matrix": [
+      [
+       0,
+       92,
+       0
+      ],
+      [
+       0,
+       229,
+       0
+      ],
+      [
+       0,
+       103,
+       0
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.080188679245283,
+     "name": "Majority class"
+    },
+    "random": {
+     "high_recall": {
+      "recall": 0.21359223300970873,
+      "caught": 22,
+      "total": 103,
+      "ci_low": 0.14549640074609002,
+      "ci_high": 0.3022842390047187
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.16091954022988506,
+       "recall": 0.15217391304347827,
+       "f1": 0.1564245810055866,
+       "support": 92
+      },
+      "medium": {
+       "precision": 0.55,
+       "recall": 0.5764192139737991,
+       "f1": 0.5628997867803838,
+       "support": 229
+      },
+      "high": {
+       "precision": 0.2268041237113402,
+       "recall": 0.21359223300970873,
+       "f1": 0.22,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.31310812259532345,
+     "quadratic_weighted_kappa": -0.08063511054612538,
+     "confusion_matrix": [
+      [
+       14,
+       49,
+       29
+      ],
+      [
+       51,
+       132,
+       46
+      ],
+      [
+       22,
+       59,
+       22
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.616745283018868,
+     "name": "Random (class frequencies)"
+    },
+    "m0_rules": {
+     "high_recall": {
+      "recall": 0.11650485436893204,
+      "caught": 12,
+      "total": 103,
+      "ci_low": 0.06791479217719583,
+      "ci_high": 0.19267284409931074
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.288,
+       "recall": 0.391304347826087,
+       "f1": 0.3317972350230415,
+       "support": 92
+      },
+      "medium": {
+       "precision": 0.5210727969348659,
+       "recall": 0.5938864628820961,
+       "f1": 0.5551020408163265,
+       "support": 229
+      },
+      "high": {
+       "precision": 0.3157894736842105,
+       "recall": 0.11650485436893204,
+       "f1": 0.1702127659574468,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.3523706805989382,
+     "quadratic_weighted_kappa": 0.15589502036355118,
+     "confusion_matrix": [
+      [
+       36,
+       52,
+       4
+      ],
+      [
+       71,
+       136,
+       22
+      ],
+      [
+       18,
+       73,
+       12
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.7122641509433962,
+     "name": "M0 rules on documents"
+    },
+    "m1": {
+     "high_recall": {
+      "recall": 0.22330097087378642,
+      "caught": 23,
+      "total": 103,
+      "ci_low": 0.15365655198685368,
+      "ci_high": 0.3128433881113853
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.5166666666666667,
+       "recall": 0.33695652173913043,
+       "f1": 0.40789473684210525,
+       "support": 92
+      },
+      "medium": {
+       "precision": 0.5878787878787879,
+       "recall": 0.8471615720524017,
+       "f1": 0.6940966010733453,
+       "support": 229
+      },
+      "high": {
+       "precision": 0.6764705882352942,
+       "recall": 0.22330097087378642,
+       "f1": 0.3357664233576642,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.47925258709103824,
+     "quadratic_weighted_kappa": 0.34217110179679644,
+     "confusion_matrix": [
+      [
+       31,
+       60,
+       1
+      ],
+      [
+       25,
+       194,
+       10
+      ],
+      [
+       4,
+       76,
+       23
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.0731132075471699,
+     "name": "M1 TF-IDF + logistic regression (calibrated)",
+     "ece_raw": 0.18670911047365898,
+     "ece_calibrated": 0.02054950918023221
+    }
+   },
+   "review_curve": [
+    {
+     "threshold": 0.34,
+     "review_rate": 0.0,
+     "high_recall": 0.2233,
+     "mean_cost": 1.0731
+    },
+    {
+     "threshold": 0.36,
+     "review_rate": 0.0,
+     "high_recall": 0.2233,
+     "mean_cost": 1.0731
+    },
+    {
+     "threshold": 0.38,
+     "review_rate": 0.0,
+     "high_recall": 0.2233,
+     "mean_cost": 1.0731
+    },
+    {
+     "threshold": 0.4,
+     "review_rate": 0.0024,
+     "high_recall": 0.2233,
+     "mean_cost": 1.0755
+    },
+    {
+     "threshold": 0.42,
+     "review_rate": 0.0212,
+     "high_recall": 0.233,
+     "mean_cost": 1.0767
+    },
+    {
+     "threshold": 0.44,
+     "review_rate": 0.0542,
+     "high_recall": 0.2524,
+     "mean_cost": 1.0531
+    },
+    {
+     "threshold": 0.46,
+     "review_rate": 0.0967,
+     "high_recall": 0.2718,
+     "mean_cost": 1.0401
+    },
+    {
+     "threshold": 0.48,
+     "review_rate": 0.1392,
+     "high_recall": 0.2816,
+     "mean_cost": 1.059
+    },
+    {
+     "threshold": 0.5,
+     "review_rate": 0.2075,
+     "high_recall": 0.3689,
+     "mean_cost": 1.0224
+    },
+    {
+     "threshold": 0.52,
+     "review_rate": 0.2642,
+     "high_recall": 0.3981,
+     "mean_cost": 1.0307
+    },
+    {
+     "threshold": 0.54,
+     "review_rate": 0.3514,
+     "high_recall": 0.4175,
+     "mean_cost": 1.0743
+    },
+    {
+     "threshold": 0.56,
+     "review_rate": 0.4222,
+     "high_recall": 0.4563,
+     "mean_cost": 1.0943
+    },
+    {
+     "threshold": 0.58,
+     "review_rate": 0.5283,
+     "high_recall": 0.5728,
+     "mean_cost": 1.0318
+    },
+    {
+     "threshold": 0.6,
+     "review_rate": 0.6132,
+     "high_recall": 0.699,
+     "mean_cost": 0.9776
+    },
+    {
+     "threshold": 0.62,
+     "review_rate": 0.6651,
+     "high_recall": 0.7573,
+     "mean_cost": 0.9611
+    },
+    {
+     "threshold": 0.64,
+     "review_rate": 0.7453,
+     "high_recall": 0.8155,
+     "mean_cost": 0.9646
+    },
+    {
+     "threshold": 0.66,
+     "review_rate": 0.7854,
+     "high_recall": 0.8447,
+     "mean_cost": 0.9729
+    },
+    {
+     "threshold": 0.68,
+     "review_rate": 0.8278,
+     "high_recall": 0.8544,
+     "mean_cost": 1.0035
+    },
+    {
+     "threshold": 0.7,
+     "review_rate": 0.8821,
+     "high_recall": 0.9029,
+     "mean_cost": 1.0094
+    },
+    {
+     "threshold": 0.72,
+     "review_rate": 0.9057,
+     "high_recall": 0.9223,
+     "mean_cost": 1.0118
+    },
+    {
+     "threshold": 0.74,
+     "review_rate": 0.9292,
+     "high_recall": 0.9417,
+     "mean_cost": 1.0083
+    },
+    {
+     "threshold": 0.76,
+     "review_rate": 0.9599,
+     "high_recall": 0.9612,
+     "mean_cost": 1.0118
+    },
+    {
+     "threshold": 0.78,
+     "review_rate": 0.9693,
+     "high_recall": 0.9612,
+     "mean_cost": 1.0212
+    },
+    {
+     "threshold": 0.8,
+     "review_rate": 0.9858,
+     "high_recall": 0.9903,
+     "mean_cost": 0.9953
+    },
+    {
+     "threshold": 0.82,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.84,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.86,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.88,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.9,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.92,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.94,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.96,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.98,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 1.0,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    }
+   ],
+   "review_at_target": {
+    "threshold": 0.76,
+    "review_rate": 0.9599,
+    "high_recall": 0.9612,
+    "mean_cost": 1.0118
+   }
+  },
+  "lenient": {
+   "n_dev": 424,
+   "class_counts": {
+    "low": 176,
+    "medium": 145,
+    "high": 103
+   },
+   "mean_temperature": 0.24415166662864857,
+   "models": {
+    "majority": {
+     "high_recall": {
+      "recall": 0.0,
+      "caught": 0,
+      "total": 103,
+      "ci_low": 0.0,
+      "ci_high": 0.03595603210734395
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.41509433962264153,
+       "recall": 1.0,
+       "f1": 0.5866666666666667,
+       "support": 176
+      },
+      "medium": {
+       "precision": 0.0,
+       "recall": 0.0,
+       "f1": 0.0,
+       "support": 145
+      },
+      "high": {
+       "precision": 0.0,
+       "recall": 0.0,
+       "f1": 0.0,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.19555555555555557,
+     "quadratic_weighted_kappa": 0.0,
+     "confusion_matrix": [
+      [
+       176,
+       0,
+       0
+      ],
+      [
+       145,
+       0,
+       0
+      ],
+      [
+       103,
+       0,
+       0
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 3.455188679245283,
+     "name": "Majority class"
+    },
+    "random": {
+     "high_recall": {
+      "recall": 0.21359223300970873,
+      "caught": 22,
+      "total": 103,
+      "ci_low": 0.14549640074609002,
+      "ci_high": 0.3022842390047187
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.35119047619047616,
+       "recall": 0.3352272727272727,
+       "f1": 0.3430232558139535,
+       "support": 176
+      },
+      "medium": {
+       "precision": 0.31446540880503143,
+       "recall": 0.3448275862068966,
+       "f1": 0.32894736842105265,
+       "support": 145
+      },
+      "high": {
+       "precision": 0.2268041237113402,
+       "recall": 0.21359223300970873,
+       "f1": 0.22,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.29732354141166867,
+     "quadratic_weighted_kappa": -0.0778519224658405,
+     "confusion_matrix": [
+      [
+       59,
+       76,
+       41
+      ],
+      [
+       61,
+       50,
+       34
+      ],
+      [
+       48,
+       33,
+       22
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 2.1014150943396226,
+     "name": "Random (class frequencies)"
+    },
+    "m0_rules": {
+     "high_recall": {
+      "recall": 0.11650485436893204,
+      "caught": 12,
+      "total": 103,
+      "ci_low": 0.06791479217719583,
+      "ci_high": 0.19267284409931074
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.56,
+       "recall": 0.3977272727272727,
+       "f1": 0.46511627906976744,
+       "support": 176
+      },
+      "medium": {
+       "precision": 0.3524904214559387,
+       "recall": 0.6344827586206897,
+       "f1": 0.45320197044334976,
+       "support": 145
+      },
+      "high": {
+       "precision": 0.3157894736842105,
+       "recall": 0.11650485436893204,
+       "f1": 0.1702127659574468,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.36284367182352134,
+     "quadratic_weighted_kappa": 0.1894039128593179,
+     "confusion_matrix": [
+      [
+       70,
+       96,
+       10
+      ],
+      [
+       37,
+       92,
+       16
+      ],
+      [
+       18,
+       73,
+       12
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.5306603773584906,
+     "name": "M0 rules on documents"
+    },
+    "m1": {
+     "high_recall": {
+      "recall": 0.3106796116504854,
+      "caught": 32,
+      "total": 103,
+      "ci_low": 0.2294720359188555,
+      "ci_high": 0.40550160730625534
+     },
+     "per_class": {
+      "low": {
+       "precision": 0.625,
+       "recall": 0.7954545454545454,
+       "f1": 0.7,
+       "support": 176
+      },
+      "medium": {
+       "precision": 0.5069444444444444,
+       "recall": 0.503448275862069,
+       "f1": 0.5051903114186851,
+       "support": 145
+      },
+      "high": {
+       "precision": 0.5714285714285714,
+       "recall": 0.3106796116504854,
+       "f1": 0.4025157232704403,
+       "support": 103
+      }
+     },
+     "macro_f1": 0.5359020115630417,
+     "quadratic_weighted_kappa": 0.4273182485599186,
+     "confusion_matrix": [
+      [
+       140,
+       31,
+       5
+      ],
+      [
+       53,
+       73,
+       19
+      ],
+      [
+       31,
+       40,
+       32
+      ]
+     ],
+     "n": 424,
+     "mean_cost": 1.554245283018868,
+     "name": "M1 TF-IDF + logistic regression (calibrated)",
+     "ece_raw": 0.1855247543958986,
+     "ece_calibrated": 0.0545819468230477
+    }
+   },
+   "review_curve": [
+    {
+     "threshold": 0.34,
+     "review_rate": 0.0,
+     "high_recall": 0.3107,
+     "mean_cost": 1.5542
+    },
+    {
+     "threshold": 0.36,
+     "review_rate": 0.0047,
+     "high_recall": 0.3204,
+     "mean_cost": 1.5342
+    },
+    {
+     "threshold": 0.38,
+     "review_rate": 0.0212,
+     "high_recall": 0.3495,
+     "mean_cost": 1.4965
+    },
+    {
+     "threshold": 0.4,
+     "review_rate": 0.0778,
+     "high_recall": 0.3883,
+     "mean_cost": 1.4292
+    },
+    {
+     "threshold": 0.42,
+     "review_rate": 0.1297,
+     "high_recall": 0.4369,
+     "mean_cost": 1.4057
+    },
+    {
+     "threshold": 0.44,
+     "review_rate": 0.1698,
+     "high_recall": 0.4951,
+     "mean_cost": 1.3502
+    },
+    {
+     "threshold": 0.46,
+     "review_rate": 0.2382,
+     "high_recall": 0.5437,
+     "mean_cost": 1.3184
+    },
+    {
+     "threshold": 0.48,
+     "review_rate": 0.2925,
+     "high_recall": 0.6117,
+     "mean_cost": 1.2441
+    },
+    {
+     "threshold": 0.5,
+     "review_rate": 0.3491,
+     "high_recall": 0.6408,
+     "mean_cost": 1.2241
+    },
+    {
+     "threshold": 0.52,
+     "review_rate": 0.4009,
+     "high_recall": 0.6602,
+     "mean_cost": 1.2453
+    },
+    {
+     "threshold": 0.54,
+     "review_rate": 0.4481,
+     "high_recall": 0.7087,
+     "mean_cost": 1.1627
+    },
+    {
+     "threshold": 0.56,
+     "review_rate": 0.5236,
+     "high_recall": 0.7379,
+     "mean_cost": 1.1627
+    },
+    {
+     "threshold": 0.58,
+     "review_rate": 0.5825,
+     "high_recall": 0.767,
+     "mean_cost": 1.1486
+    },
+    {
+     "threshold": 0.6,
+     "review_rate": 0.625,
+     "high_recall": 0.8058,
+     "mean_cost": 1.1297
+    },
+    {
+     "threshold": 0.62,
+     "review_rate": 0.6627,
+     "high_recall": 0.8544,
+     "mean_cost": 1.0979
+    },
+    {
+     "threshold": 0.64,
+     "review_rate": 0.717,
+     "high_recall": 0.9029,
+     "mean_cost": 1.0472
+    },
+    {
+     "threshold": 0.66,
+     "review_rate": 0.7689,
+     "high_recall": 0.9223,
+     "mean_cost": 1.0283
+    },
+    {
+     "threshold": 0.68,
+     "review_rate": 0.8137,
+     "high_recall": 0.9612,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.7,
+     "review_rate": 0.842,
+     "high_recall": 0.9709,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.72,
+     "review_rate": 0.875,
+     "high_recall": 0.9806,
+     "mean_cost": 0.9858
+    },
+    {
+     "threshold": 0.74,
+     "review_rate": 0.8986,
+     "high_recall": 0.9806,
+     "mean_cost": 1.0024
+    },
+    {
+     "threshold": 0.76,
+     "review_rate": 0.9245,
+     "high_recall": 0.9806,
+     "mean_cost": 0.9929
+    },
+    {
+     "threshold": 0.78,
+     "review_rate": 0.9434,
+     "high_recall": 0.9903,
+     "mean_cost": 0.967
+    },
+    {
+     "threshold": 0.8,
+     "review_rate": 0.9575,
+     "high_recall": 1.0,
+     "mean_cost": 0.9575
+    },
+    {
+     "threshold": 0.82,
+     "review_rate": 0.9717,
+     "high_recall": 1.0,
+     "mean_cost": 0.9717
+    },
+    {
+     "threshold": 0.84,
+     "review_rate": 0.9906,
+     "high_recall": 1.0,
+     "mean_cost": 0.9906
+    },
+    {
+     "threshold": 0.86,
+     "review_rate": 0.9953,
+     "high_recall": 1.0,
+     "mean_cost": 0.9953
+    },
+    {
+     "threshold": 0.88,
+     "review_rate": 0.9976,
+     "high_recall": 1.0,
+     "mean_cost": 0.9976
+    },
+    {
+     "threshold": 0.9,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.92,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.94,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.96,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 0.98,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    },
+    {
+     "threshold": 1.0,
+     "review_rate": 1.0,
+     "high_recall": 1.0,
+     "mean_cost": 1.0
+    }
+   ],
+   "review_at_target": {
+    "threshold": 0.68,
+    "review_rate": 0.8137,
+    "high_recall": 0.9612,
+    "mean_cost": 1.0
+   }
+  }
+ }
+}

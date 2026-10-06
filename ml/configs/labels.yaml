@@ -1,0 +1,5 @@
+# Label sets. ORDER MATTERS for urgency: the position is its numeric value (low=0, medium=1, high=2).
+urgency: [low, medium, high]
+intent: [emotional_support, stress, crisis, other]
+subject: [self, third_party, unclear]
+splits: [train, val, test]

@@ -1,0 +1,14 @@
+# Mapping external dataset labels to IRIS urgency.
+#
+# CLINICAL HYPOTHESIS, NOT FACT. These mappings have not been reviewed by a clinician. Every result built on them is
+# reported under BOTH variants so the effect of the assumption is visible. The only genuinely ambiguous class is
+# "Indicator" (risk indicators without explicit ideation).
+reddit_cssrs:
+  # Increasing C-SSRS severity as labelled by four psychiatrists (Gaur et al., 2019).
+  native_order: [Supportive, Indicator, Ideation, Behavior, Attempt]
+  urgency:
+    # Primary variant. When torn, choose the higher urgency (the cost matrix says a miss is far worse than a false alarm).
+    conservative: {Supportive: low, Indicator: medium, Ideation: medium, Behavior: high, Attempt: high}
+    # Sensitivity variant: treats Indicator as everyday support.
+    lenient: {Supportive: low, Indicator: low, Ideation: medium, Behavior: high, Attempt: high}
+  primary_variant: conservative

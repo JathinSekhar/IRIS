@@ -8,3 +8,21 @@ dist/
 *.db-journal
 .env
 .DS_Store
+
+# ML workspace
+ml/.venv/
+ml/data/raw/
+ml/data/interim/
+ml/data/processed/
+ml/artifacts/
+ml/mlruns/
+*.ckpt
+*.safetensors
+*.pt
+
+# Third-party text and annotations stay out of git (only manifests, hashes and templates are tracked)
+ml/data/gold/*.csv
+!ml/data/gold/annotation_template.csv
+ml/data/gold/batches/
+ml/data/gold/annotations/
+ml/artifacts/
