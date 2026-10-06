@@ -1,20 +1,84 @@
 import os
-from datetime import date
+import uuid
+from datetime import date, datetime, timedelta, timezone
 
-os.environ["IRIS_DATABASE_URL"] = "sqlite://"  # in-memory, set before the app imports settings
+os.environ.setdefault("IRIS_DATABASE_URL", "sqlite://")  # never touch a real database from tests
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import db as app_db
+from app.auth_service import AuthError, Claims, Session, SignUpResult, get_auth_service
 from app.config import settings
 from app.db import Base, get_db
 from app.main import app
-from app.models import User
-from app.security import hash_password
+from app.models import AuditLog, CheckIn, User
+
+TEST_SECRET = "test-signing-secret-at-least-32-bytes-long!!"
+
+
+class FakeAuth:
+    """In-memory stand-in for Supabase Auth with the same observable behaviour."""
+
+    def __init__(self):
+        self.users: dict[str, dict] = {}
+        self.refresh_tokens: dict[str, str] = {}
+        self.confirm_required = False
+        self.recoveries: list[str] = []
+
+    def _tokens(self, user_id: str, email: str, meta: dict, ttl: int = 3600) -> Session:
+        now = datetime.now(timezone.utc)
+        payload = {"sub": user_id, "email": email, "user_metadata": meta, "aud": "authenticated",
+                   "iat": now, "exp": now + timedelta(seconds=ttl)}
+        refresh = uuid.uuid4().hex
+        self.refresh_tokens[refresh] = email
+        return Session(jwt.encode(payload, TEST_SECRET, algorithm="HS256"), refresh, ttl)
+
+    def sign_up(self, email, password, metadata, redirect_to):
+        if email in self.users and not self.confirm_required:
+            raise AuthError(409, "An account with this email already exists.")
+        user = self.users.setdefault(email, {"id": str(uuid.uuid4()), "password": password, "meta": metadata,
+                                             "confirmed": not self.confirm_required})
+        session = None if self.confirm_required else self._tokens(user["id"], email, metadata)
+        return SignUpResult(user["id"], session)
+
+    def confirm(self, email):
+        self.users[email]["confirmed"] = True
+
+    def sign_in(self, email, password):
+        u = self.users.get(email)
+        if not u or u["password"] != password:
+            raise AuthError(401, "Incorrect email or password.")
+        if not u["confirmed"]:
+            raise AuthError(403, "Please confirm your email first. Check your inbox for the link.")
+        return self._tokens(u["id"], email, u["meta"])
+
+    def refresh(self, refresh_token):
+        email = self.refresh_tokens.pop(refresh_token, None)
+        if email is None:
+            raise AuthError(401, "Your session has expired. Please sign in again.")
+        u = self.users[email]
+        return self._tokens(u["id"], email, u["meta"])
+
+    def sign_out(self, access_token):
+        pass
+
+    def recover(self, email, redirect_to):
+        self.recoveries.append(email)
+
+    def update_password(self, access_token, new_password):
+        claims = self.verify(access_token)
+        self.users[claims.email]["password"] = new_password
+
+    def verify(self, access_token):
+        try:
+            p = jwt.decode(access_token, TEST_SECRET, algorithms=["HS256"], audience="authenticated")
+        except jwt.PyJWTError:
+            raise AuthError(401, "Not signed in") from None
+        return Claims(p["sub"], p["email"], p.get("user_metadata") or {})
 
 
 @pytest.fixture()
@@ -25,7 +89,12 @@ def session_factory():
 
 
 @pytest.fixture()
-def client(session_factory):
+def fake():
+    return FakeAuth()
+
+
+@pytest.fixture()
+def client(session_factory, fake):
     def _get_db():
         s = session_factory()
         try:
@@ -34,6 +103,7 @@ def client(session_factory):
             s.close()
 
     app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_auth_service] = lambda: fake
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -55,13 +125,37 @@ def accept_consent(client):
     return client.post("/api/consent", json={"version": settings.consent_version})
 
 
-def test_register_sets_httponly_cookie_and_normalises_email(client):
+def years_ago(n: int) -> str:
+    return date.today().replace(year=date.today().year - n).isoformat()
+
+
+# --- registration ------------------------------------------------------------------------------------------------
+
+def test_register_sets_httponly_cookies_and_creates_profile(client):
     r = register(client)
     assert r.status_code == 201
-    assert r.json()["email"] == "priya@example.com"
-    assert r.json()["first_name"] == "Priya"
-    assert "httponly" in r.headers["set-cookie"].lower()
+    body = r.json()
+    assert body["confirm_email"] is False
+    user = body["user"]
+    assert user["email"] == "priya@example.com" and user["first_name"] == "Priya"
+    uuid.UUID(user["id"])  # a real UUID shared with the auth user
+    cookies = r.headers.get_list("set-cookie")
+    assert any(settings.access_cookie in c and "httponly" in c.lower() for c in cookies)
+    assert any(settings.refresh_cookie in c and "httponly" in c.lower() and "path=/api/auth" in c.lower() for c in cookies)
     assert "password" not in r.text
+
+
+def test_register_with_email_confirmation_creates_no_session_until_confirmed(client, fake):
+    fake.confirm_required = True
+    r = register(client)
+    assert r.status_code == 201 and r.json() == {"confirm_email": True, "user": None}
+    assert client.get("/api/auth/me").status_code == 401
+    # sign-in is refused until the email is confirmed
+    bad = client.post("/api/auth/login", json={"email": "priya@example.com", "password": ADULT["password"]})
+    assert bad.status_code == 403
+    fake.confirm("priya@example.com")
+    ok = client.post("/api/auth/login", json={"email": "priya@example.com", "password": ADULT["password"]})
+    assert ok.status_code == 200 and ok.json()["first_name"] == "Priya"  # profile built on first sign-in
 
 
 def test_duplicate_email_conflicts(client):
@@ -69,32 +163,102 @@ def test_duplicate_email_conflicts(client):
     assert register(client, email="priya@example.com").status_code == 409
 
 
-def test_weak_password_rejected(client):
+def test_short_password_rejected(client):
     assert register(client, password="short").status_code == 422
 
 
 def test_under_13_rejected(client):
-    dob = date.today().replace(year=date.today().year - 10).isoformat()
-    assert register(client, date_of_birth=dob).status_code == 422
+    assert register(client, date_of_birth=years_ago(10)).status_code == 422
 
 
 def test_minor_requires_guardian(client):
-    dob = date.today().replace(year=date.today().year - 16).isoformat()
+    dob = years_ago(16)
     assert register(client, date_of_birth=dob).status_code == 422
     r = register(client, date_of_birth=dob, guardian_name="Asha", guardian_email="asha@example.com")
     assert r.status_code == 201
-    assert r.json()["is_minor"] is True and r.json()["guardian_consent_status"] == "pending"
+    user = r.json()["user"]
+    assert user["is_minor"] is True and user["guardian_consent_status"] == "pending"
 
+
+# --- sessions ----------------------------------------------------------------------------------------------------
 
 def test_login_logout_and_me(client):
     register(client)
     client.post("/api/auth/logout")
     assert client.get("/api/auth/me").status_code == 401
-    assert client.post("/api/auth/login", json={"email": "priya@example.com", "password": "nope-nope-nope"}).status_code == 401
-    assert client.post("/api/auth/login", json={"email": "ghost@example.com", "password": "x"}).status_code == 401
-    assert client.post("/api/auth/login", json={"email": "PRIYA@example.com", "password": ADULT["password"]}).status_code == 200
+    wrong = client.post("/api/auth/login", json={"email": "priya@example.com", "password": "nope-nope-nope"})
+    ghost = client.post("/api/auth/login", json={"email": "ghost@example.com", "password": "x"})
+    assert wrong.status_code == ghost.status_code == 401 and wrong.json() == ghost.json()  # no user enumeration
+    ok = client.post("/api/auth/login", json={"email": "PRIYA@example.com", "password": ADULT["password"]})
+    assert ok.status_code == 200
     assert client.get("/api/auth/me").json()["consent_accepted"] is False
 
+
+def test_forged_or_garbage_token_is_rejected(client):
+    client.cookies.set(settings.access_cookie, "not-a-token", path="/")
+    assert client.get("/api/auth/me").status_code == 401
+    forged = jwt.encode({"sub": str(uuid.uuid4()), "email": "x@example.com", "aud": "authenticated",
+                         "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, "wrong-secret-wrong-secret-wrong-secret!!",
+                        algorithm="HS256")
+    client.cookies.set(settings.access_cookie, forged, path="/")
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_refresh_restores_an_expired_session(client):
+    register(client)
+    for c in client.cookies.jar:  # simulate the access token expiring: spoil the existing cookie in place
+        if c.name == settings.access_cookie:
+            c.value = "expired-or-invalid"
+    assert client.get("/api/auth/me").status_code == 401
+    assert client.post("/api/auth/refresh").status_code == 204
+    assert client.get("/api/auth/me").status_code == 200
+
+
+def test_refresh_without_cookie_is_unauthorised(client):
+    assert client.post("/api/auth/refresh").status_code == 401
+
+
+def test_forgot_password_never_reveals_whether_an_account_exists(client, fake):
+    register(client)
+    a = client.post("/api/auth/forgot-password", json={"email": "priya@example.com"})
+    b = client.post("/api/auth/forgot-password", json={"email": "nobody@example.com"})
+    assert a.status_code == b.status_code == 204
+
+
+def test_reset_password_changes_the_password(client, fake):
+    r = register(client)
+    token = client.cookies.get(settings.access_cookie)
+    assert token
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/reset-password", json={"access_token": token, "password": "a-brand-new-pass-1"}).status_code == 204
+    old = client.post("/api/auth/login", json={"email": "priya@example.com", "password": ADULT["password"]})
+    new = client.post("/api/auth/login", json={"email": "priya@example.com", "password": "a-brand-new-pass-1"})
+    assert old.status_code == 401 and new.status_code == 200
+    assert client.post("/api/auth/reset-password", json={"access_token": "x" * 20, "password": "a-brand-new-pass-1"}).status_code == 401
+
+
+# --- profile metadata is never trusted ---------------------------------------------------------------------------
+
+def test_metadata_cannot_grant_reviewer_role(client, fake):
+    register(client, **{})
+    client.post("/api/auth/logout")
+    # someone calls Supabase sign-up directly with the public key and smuggles in a role
+    fake.sign_up("sneaky@example.com", "pw-pw-pw-pw-1", {"full_name": "S", "date_of_birth": "1999-01-01", "role": "reviewer"}, "")
+    r = client.post("/api/auth/login", json={"email": "sneaky@example.com", "password": "pw-pw-pw-pw-1"})
+    assert r.status_code == 200 and r.json()["role"] == "user"
+    assert client.get("/api/reviewer/checkins").status_code == 403
+
+
+def test_direct_signup_with_invalid_profile_is_refused(client, fake):
+    # bypassing our sign-up form: too young, and a minor with no guardian
+    fake.sign_up("kid@example.com", "pw-pw-pw-pw-1", {"full_name": "Kid", "date_of_birth": years_ago(9)}, "")
+    fake.sign_up("teen@example.com", "pw-pw-pw-pw-1", {"full_name": "Teen", "date_of_birth": years_ago(15)}, "")
+    fake.sign_up("blank@example.com", "pw-pw-pw-pw-1", {}, "")
+    for email in ("kid@example.com", "teen@example.com", "blank@example.com"):
+        assert client.post("/api/auth/login", json={"email": email, "password": "pw-pw-pw-pw-1"}).status_code == 403
+
+
+# --- consent and check-in ----------------------------------------------------------------------------------------
 
 def test_checkin_requires_auth_and_consent(client):
     assert client.get("/api/checkin/questionnaire").status_code == 401
@@ -151,18 +315,13 @@ def test_skip_snoozes_checkin_prompt(client):
 
 
 def test_completed_checkin_stops_prompting_until_due(client, session_factory):
-    from datetime import datetime, timedelta, timezone
-
-    from app.models import CheckIn
-
     register(client)
     accept_consent(client)
     client.post("/api/checkin", json={"answers": {"m1": 0}})
     st = client.get("/api/auth/me").json()["checkin"]
     assert st["state"] == "ok" and st["prompt"] is False
 
-    # age the check-in beyond the validity window -> due again and prompting
-    with session_factory() as s:
+    with session_factory() as s:  # age the check-in beyond the validity window
         row = s.query(CheckIn).one()
         row.created_at = datetime.now(timezone.utc) - timedelta(days=settings.checkin_valid_days + 1)
         s.commit()
@@ -170,22 +329,81 @@ def test_completed_checkin_stops_prompting_until_due(client, session_factory):
     assert st["state"] == "due" and st["prompt"] is True
 
 
-def test_reviewer_endpoints_are_role_protected(client, session_factory):
+# --- reviewer access and audit trail -----------------------------------------------------------------------------
+
+def test_reviewer_endpoints_are_role_protected_and_audited(client, session_factory):
     register(client)
     accept_consent(client)
     client.post("/api/checkin", json={"answers": {"s0": 3, "c1": 1, "c2": 1, "c4": 1, "a1": "I cannot cope"}})
     assert client.get("/api/reviewer/checkins").status_code == 403
 
-    with session_factory() as s:
-        s.add(User(email="rev@example.com", password_hash=hash_password("reviewer-pass-1"), role="reviewer",
-                   full_name="Rev", date_of_birth=date(1990, 1, 1)))
-        s.commit()
+    # a second person becomes a reviewer (role is set only by the backend, e.g. `python -m app.seed promote`)
     client.post("/api/auth/logout")
-    assert client.post("/api/auth/login", json={"email": "rev@example.com", "password": "reviewer-pass-1"}).status_code == 200
-    rows = client.get("/api/reviewer/checkins").json()
-    assert len(rows) == 1
-    assert rows[0]["escalated"] is True and rows[0]["baseline_risk"] == "high"
-    assert rows[0]["scores"]["safety"]["tier"] == 3
-    assert rows[0]["free_text"] == "I cannot cope"
-    assert client.get(f"/api/reviewer/checkins/{rows[0]['id']}").status_code == 200
-    assert client.get("/api/reviewer/checkins/9999").status_code == 404
+    register(client, email="rev@example.com", full_name="Rev One")
+    with session_factory() as s:
+        rev = s.scalar(select(User).where(User.email == "rev@example.com"))
+        rev.role = "reviewer"
+        s.commit()
+        reviewer_id = rev.id
+
+    queue = client.get("/api/reviewer/checkins").json()
+    assert len(queue) == 1
+    # the queue is a triage view: no clinical content, contact details or scores
+    assert set(queue[0]) == {"id", "user_name", "created_at", "baseline_risk", "safety_flag", "escalated"}
+    assert queue[0]["escalated"] is True and queue[0]["baseline_risk"] == "high"
+
+    detail = client.get(f"/api/reviewer/checkins/{queue[0]['id']}").json()
+    assert detail["scores"]["safety"]["tier"] == 3 and detail["scores"]["safety"]["urgency_floor"] == "high"
+    assert detail["free_text"] == "I cannot cope" and detail["answers"]["c4"] == 1
+    uuid.UUID(detail["user_id"])
+    assert client.get("/api/reviewer/checkins/9999").status_code == 404  # unknown ids are not logged as views
+
+    with session_factory() as s:
+        rows = list(s.scalars(select(AuditLog).order_by(AuditLog.id)))
+    assert [(a.action, a.target_id) for a in rows] == [
+        ("list_queue", "1 rows"),
+        ("view_checkin", str(queue[0]["id"])),  # which record was opened, by whom
+    ]
+    assert all(a.actor_id == reviewer_id for a in rows)
+
+
+def test_every_opening_of_a_record_is_audited_separately(client, session_factory):
+    for email in ("a@example.com", "b@example.com"):
+        register(client, email=email)
+        accept_consent(client)
+        client.post("/api/checkin", json={"answers": {"m1": 1}})
+        client.post("/api/auth/logout")
+    register(client, email="rev2@example.com")
+    with session_factory() as s:
+        rev = s.scalar(select(User).where(User.email == "rev2@example.com"))
+        rev.role = "reviewer"
+        s.commit()
+    ids = [r["id"] for r in client.get("/api/reviewer/checkins").json()]
+    for cid in ids + ids[:1]:  # open both, then the first one again
+        assert client.get(f"/api/reviewer/checkins/{cid}").status_code == 200
+    with session_factory() as s:
+        viewed = [a.target_id for a in s.scalars(select(AuditLog).where(AuditLog.action == "view_checkin").order_by(AuditLog.id))]
+    assert viewed == [str(i) for i in ids] + [str(ids[0])]
+
+
+def test_missing_supabase_keys_give_a_clear_error_not_a_crash(session_factory, monkeypatch):
+    from app import auth_service
+
+    monkeypatch.setattr(settings, "supabase_anon_key", "")
+    monkeypatch.setattr(auth_service, "_service", None)
+
+    def _get_db():
+        s = session_factory()
+        try:
+            yield s
+        finally:
+            s.close()
+
+    app.dependency_overrides[get_db] = _get_db  # real get_auth_service on purpose
+    try:
+        with TestClient(app) as c:
+            r = c.post("/api/auth/login", json={"email": "a@example.com", "password": "whatever-1"})
+            assert r.status_code == 503 and "not configured" in r.json()["detail"]
+            assert c.get("/api/health").status_code == 200
+    finally:
+        app.dependency_overrides.clear()

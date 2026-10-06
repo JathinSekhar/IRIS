@@ -1,9 +1,9 @@
 import { AlertTriangle, ShieldAlert } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Card, Spinner, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import { BAND_LABEL } from '../lib/questionnaire'
-import type { Answer, Question, Questionnaire, ReviewerCheckin } from '../lib/types'
+import type { Answer, Question, Questionnaire, ReviewerCheckin, ReviewerCheckinSummary } from '../lib/types'
 
 const RISK_STYLE: Record<string, string> = {
   high: 'bg-red-50 text-red-800 ring-red-200',
@@ -32,18 +32,41 @@ function answerText(q: Question, a: Answer | undefined): string {
 }
 
 export default function Reviewer() {
-  const [rows, setRows] = useState<ReviewerCheckin[] | null>(null)
+  const [rows, setRows] = useState<ReviewerCheckinSummary[] | null>(null)
   const [qn, setQn] = useState<Questionnaire | null>(null)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<number | null>(null)
+  const [detail, setDetail] = useState<ReviewerCheckin | null>(null)
+  const [detailError, setDetailError] = useState('')
+  const [opening, setOpening] = useState(false)
+  const requested = useRef(false)
+  const openSeq = useRef(0)
 
   useEffect(() => {
-    Promise.all([api.reviewerCheckins(), api.questionnaire()])
-      .then(([r, q]) => { setRows(r); setQn(q); setSelected(r[0]?.id ?? null) })
+    // Loading the queue is itself an audited action: do it exactly once, even when React re-runs effects in development.
+    if (requested.current) return
+    requested.current = true
+    Promise.all([api.reviewerQueue(), api.questionnaire()])
+      .then(([r, q]) => { setRows(r); setQn(q) })
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load check-ins.'))
   }, [])
 
-  const current = useMemo(() => rows?.find((r) => r.id === selected) ?? null, [rows, selected])
+  /** Opening a record is a deliberate click. The server writes an audit entry for each one. */
+  async function open(id: number) {
+    const seq = ++openSeq.current
+    setSelected(id)
+    setDetail(null)
+    setDetailError('')
+    setOpening(true)
+    try {
+      const d = await api.reviewerCheckin(id)
+      if (seq === openSeq.current) setDetail(d)
+    } catch (e) {
+      if (seq === openSeq.current) setDetailError(e instanceof ApiError ? e.message : 'Could not open this check-in.')
+    } finally {
+      if (seq === openSeq.current) setOpening(false)
+    }
+  }
 
   if (error) return <Alert>{error}</Alert>
   if (!rows || !qn) return <Spinner label="Loading check-ins" />
@@ -51,17 +74,19 @@ export default function Reviewer() {
   return (
     <div>
       <h1 className="font-display text-3xl font-medium text-slate-900">Review queue</h1>
-      <p className="mt-1.5 text-sm text-slate-600">Check-ins sorted by urgency. Escalated cases appear first.</p>
+      <p className="mt-1.5 text-sm text-slate-600">
+        Check-ins sorted by urgency. Escalated cases appear first. Opening a record is logged.
+      </p>
 
       {rows.length === 0 ? (
         <Card className="mt-8 p-10 text-center text-slate-600">No completed check-ins yet.</Card>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <Card className="overflow-hidden">
+          <Card className="self-start overflow-hidden">
             <ul className="divide-y divide-slate-100" aria-label="Check-ins">
               {rows.map((r) => (
                 <li key={r.id}>
-                  <button onClick={() => setSelected(r.id)} aria-current={r.id === selected}
+                  <button onClick={() => void open(r.id)} aria-current={r.id === selected}
                     className={cx('flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50', r.id === selected && 'bg-brand-50/70')}>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
@@ -79,7 +104,17 @@ export default function Reviewer() {
             </ul>
           </Card>
 
-          {current && <Detail c={current} qn={qn} />}
+          {detail ? (
+            <Detail c={detail} qn={qn} />
+          ) : detailError ? (
+            <Alert>{detailError}</Alert>
+          ) : opening ? (
+            <Spinner label="Opening check-in" />
+          ) : (
+            <Card className="grid min-h-48 place-items-center p-10 text-center text-sm text-slate-500">
+              Select a check-in to review it.
+            </Card>
+          )}
         </div>
       )}
     </div>

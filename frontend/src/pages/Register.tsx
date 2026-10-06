@@ -1,3 +1,4 @@
+import { MailCheck } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { homeFor, useAuth } from '../auth/AuthContext'
@@ -28,6 +29,7 @@ export default function Register() {
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sentTo, setSentTo] = useState('')
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
@@ -61,13 +63,35 @@ export default function Register() {
     if (minor) { body.guardian_name = f.guardian_name.trim(); body.guardian_email = f.guardian_email.trim() }
     setBusy(true)
     try {
-      const u = await register(body)
-      navigate(homeFor(u), { replace: true })
+      const result = await register(body)
+      if (result.user) navigate(homeFor(result.user), { replace: true })
+      else setSentTo(body.email) // the project requires email confirmation before the first sign-in
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Could not create your account.')
     } finally {
       setBusy(false)
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-full bg-brand-100 text-brand-800">
+          <MailCheck className="size-7" aria-hidden />
+        </span>
+        <h2 className="mt-6 font-display text-3xl font-medium text-slate-900">Check your email</h2>
+        <p className="mt-3 text-slate-600">
+          We sent a confirmation link to <strong className="font-medium text-slate-900">{sentTo}</strong>. Open it to
+          activate your account, then sign in.
+        </p>
+        <p className="mt-6 text-sm text-slate-500">
+          Nothing there? Check your spam folder, or wait a few minutes and try again.
+        </p>
+        <Link to="/login" className="mt-8 inline-flex h-11 items-center rounded-lg bg-brand-800 px-6 text-sm font-medium text-white hover:bg-brand-900">
+          Go to sign in
+        </Link>
+      </div>
+    )
   }
 
   return (

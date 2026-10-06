@@ -83,36 +83,58 @@ Design rules:
 
 ## Data model
 
-`users` (role: user | reviewer; date of birth; guardian fields for minors) -> `consents` (versioned) ->
-`checkins` (answers JSON, scores JSON, `baseline_risk`, `safety_flag`, `escalated`, `free_text`, timestamps).
+Hosted on **Supabase Postgres**; schema managed by **Alembic** (`backend/migrations`).
+
+`auth.users` (Supabase Auth, owns credentials) 1:1 `profiles` (same UUID; role user | reviewer; date of birth;
+guardian fields for minors) -> `consents` (versioned) -> `checkins` (answers JSONB, scores JSONB, `baseline_risk`,
+`safety_flag`, `escalated`, `free_text`, timestamps). `audit_log` records every reviewer read, with no foreign keys so
+entries outlive accounts. Deleting an auth user cascades to their profile, consents and check-ins.
 Check-ins are valid for 14 days (PHQ-9 and GAD-7 measure the previous two weeks), then the user is prompted again.
 
 ## API
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| POST | `/api/auth/register`, `/login`, `/logout` | - | Sets or clears the httpOnly session cookie |
+| POST | `/api/auth/register`, `/login`, `/refresh`, `/logout` | - | Proxy Supabase Auth; set or clear httpOnly cookies |
+| POST | `/api/auth/forgot-password`, `/reset-password` | - | Always 204 for forgot (no account discovery) |
 | GET | `/api/auth/me` | user | Includes server-computed `consent_accepted` and `checkin.prompt` |
 | POST | `/api/consent` | user | Versioned; stale versions rejected (409) |
 | GET | `/api/checkin/questionnaire` | user | Questions, branching rules, options |
 | POST | `/api/checkin` | user + consent | Validates, drops answers of inactive branches, scores, stores |
-| GET | `/api/reviewer/checkins[/{id}]` | reviewer | Sorted: escalated, high, medium, low, unknown |
+| GET | `/api/reviewer/checkins` | reviewer | Queue summaries only (name, time, risk, flags), sorted escalated, high, medium, low, unknown. Logged as `list_queue` |
+| GET | `/api/reviewer/checkins/{id}` | reviewer | Full clinical record. Every call is logged as `view_checkin` with the record id |
 
 The questionnaire definition lives only in `backend/app/services/questionnaire.py`. The frontend renders whatever it
 serves, and the server re-validates every submission, so the two cannot drift.
 
 ## Security and privacy decisions
 
-- Passwords hashed with bcrypt; login does a dummy hash check for unknown emails to avoid user enumeration by timing.
-- Session JWT in an `httpOnly`, `SameSite=Lax` cookie (not `localStorage`, so XSS cannot read it). Production needs
-  `IRIS_COOKIE_SECURE=true` and a strong `IRIS_SECRET_KEY`.
+- **Passwords never touch our code or database.** Supabase Auth handles sign-up, email confirmation, sign-in, reset
+  and rate limiting. Our backend verifies access tokens locally against the project's public signing keys (ES256
+  JWKS), so there is no shared secret to leak.
+- **Tokens live in `httpOnly`, `SameSite=Lax` cookies** (not `localStorage`), so page scripts cannot read them. The
+  short-lived access token (1 hour) is renewed silently with the refresh token, which is scoped to `/api/auth`.
+  Production needs `IRIS_COOKIE_SECURE=true`.
+- **Supabase's public API cannot reach the data.** Every table has Row Level Security enabled with no policies and all
+  privileges revoked from the `anon` and `authenticated` roles (and from future tables by default). Only the backend
+  connects, as `postgres`, which bypasses RLS. The browser never queries the database directly.
+- **Profile data in sign-up metadata is never trusted.** The anon key is public, so anyone can call Supabase sign-up
+  directly. The profile is therefore created on first sign-in from re-validated metadata (age limits, guardian rules),
+  and the `reviewer` role is never read from metadata. It exists only in `profiles.role`, writable only by the backend.
+- **Reviewer access is audited per record** (`audit_log`). The queue endpoint returns summaries only, with no answers, free
+  text, scores or contact details. Full records are fetched one at a time, on a deliberate click, and each fetch writes an
+  entry naming the reviewer, the check-in and the time. The page never opens a record automatically, so every `view_checkin`
+  entry means a person chose to open it.
 - Check-in answers are deliberately **not persisted in the browser**; the page warns before unloading mid-check-in.
 - Role checks are enforced server-side (`require_reviewer`), not only in the UI.
+- Only the public anon key is ever configured. The `service_role` key, which bypasses all protections, is not used.
 
 ## Before this is used with real people
 
 1. Have a qualified clinician (for example the college counsellor) review question wording, thresholds, and the
    escalation procedure, and record their sign-off in the capstone report.
 2. Define who monitors the reviewer queue and how fast, since escalation is only as good as the response.
-3. Complete guardian-consent verification for minors, add rate limiting, and run on HTTPS.
+3. Complete guardian-consent verification for minors (needs an email service of our own, since Supabase Auth only
+   emails the person signing up), configure custom SMTP for Supabase Auth emails, and run on HTTPS.
+   Also confirm data-residency and retention terms for health-related data under India's DPDP Act.
 4. Get ethics or institutional review approval as your institution requires.

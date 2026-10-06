@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, ApiError } from '../lib/api'
-import type { RegisterPayload, User } from '../lib/types'
+import type { RegisterPayload, RegisterResult, User } from '../lib/types'
 
 interface AuthState {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<User>
-  register: (data: RegisterPayload) => Promise<User>
+  register: (data: RegisterPayload) => Promise<RegisterResult>
   logout: () => Promise<void>
   refresh: () => Promise<User | null>
   setUser: (u: User | null) => void
@@ -46,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return u
       },
       register: async (data) => {
-        const u = await api.register(data)
-        setUser(u)
-        return u
+        const result = await api.register(data)
+        if (result.user) setUser(result.user)
+        return result
       },
       logout: async () => {
         await api.logout()

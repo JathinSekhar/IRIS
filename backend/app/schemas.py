@@ -33,6 +33,40 @@ class RegisterIn(BaseModel):
         return v.lower()
 
 
+class ProfileMeta(BaseModel):
+    """Profile fields carried in Supabase `user_metadata`. Re-validated on the server, because the anon key is
+    public and anyone can call Supabase sign-up directly with arbitrary metadata."""
+
+    full_name: str = Field(min_length=1, max_length=120)
+    date_of_birth: date
+    gender: str | None = Field(default=None, max_length=32)
+    occupation: str | None = Field(default=None, max_length=32)
+    language: str = Field(default="en", max_length=16)
+    phone: str | None = Field(default=None, max_length=32)
+    emergency_contact: str | None = Field(default=None, max_length=200)
+    guardian_name: str | None = Field(default=None, max_length=120)
+    guardian_email: str | None = Field(default=None, max_length=254)
+
+
+class RegisterOut(BaseModel):
+    confirm_email: bool          # True when the project requires email confirmation before sign-in
+    user: "UserOut | None" = None
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def _lower(cls, v: str) -> str:
+        return v.lower()
+
+
+class ResetIn(BaseModel):
+    access_token: str = Field(min_length=10, max_length=4096)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
@@ -52,7 +86,7 @@ class CheckinStatus(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: int
+    id: str
     email: str
     full_name: str
     first_name: str
@@ -81,9 +115,19 @@ class CheckinOut(BaseModel):
     created_at: datetime
 
 
+class ReviewerCheckinSummary(BaseModel):
+    """One row of the review queue: enough to triage, nothing more."""
+    id: int
+    user_name: str
+    created_at: datetime
+    baseline_risk: str
+    safety_flag: bool
+    escalated: bool
+
+
 class ReviewerCheckinOut(BaseModel):
     id: int
-    user_id: int
+    user_id: str
     user_name: str
     user_email: str
     created_at: datetime
@@ -97,3 +141,6 @@ class ReviewerCheckinOut(BaseModel):
     is_minor: bool
     emergency_contact: str | None
     date_of_birth: date
+
+
+RegisterOut.model_rebuild()

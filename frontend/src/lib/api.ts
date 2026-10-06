@@ -3,7 +3,9 @@ import type {
   CheckinResult,
   Questionnaire,
   RegisterPayload,
+  RegisterResult,
   ReviewerCheckin,
+  ReviewerCheckinSummary,
   User,
 } from './types'
 
@@ -41,7 +43,30 @@ function messageFrom(body: unknown, status: number): string {
   return 'Something went wrong. Please try again.'
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Endpoints where a 401 means "wrong credentials / bad link", not "your session expired". */
+const NO_REFRESH = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+]
+
+let refreshing: Promise<boolean> | null = null
+
+/** Ask the server to swap the refresh cookie for a new session. Concurrent callers share one request. */
+function refreshSession(): Promise<boolean> {
+  refreshing ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null
+    })
+  return refreshing
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   let res: Response
   try {
     res = await fetch(path, {
@@ -51,6 +76,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     })
   } catch {
     throw new ApiError(0, "Can't reach the server. Check your connection and try again.")
+  }
+  // The short-lived access token expired: renew it once, silently, and repeat the request.
+  if (res.status === 401 && !retried && !NO_REFRESH.includes(path) && (await refreshSession())) {
+    return request<T>(path, init, true)
   }
   if (res.status === 204) return undefined as T
   const body = await res.json().catch(() => null)
@@ -64,11 +93,15 @@ const post = <T>(path: string, data?: unknown) =>
 export const api = {
   me: () => request<User>('/api/auth/me'),
   login: (email: string, password: string) => post<User>('/api/auth/login', { email, password }),
-  register: (data: RegisterPayload) => post<User>('/api/auth/register', data),
+  register: (data: RegisterPayload) => post<RegisterResult>('/api/auth/register', data),
   logout: () => post<void>('/api/auth/logout'),
+  forgotPassword: (email: string) => post<void>('/api/auth/forgot-password', { email }),
+  resetPassword: (access_token: string, password: string) =>
+    post<void>('/api/auth/reset-password', { access_token, password }),
   acceptConsent: (version: string) => post<User>('/api/consent', { version }),
   questionnaire: () => request<Questionnaire>('/api/checkin/questionnaire'),
   submitCheckin: (answers: Answers) => post<CheckinResult>('/api/checkin', { answers }),
   skipCheckin: () => post<CheckinResult>('/api/checkin', { skipped: true }),
-  reviewerCheckins: () => request<ReviewerCheckin[]>('/api/reviewer/checkins'),
+  reviewerQueue: () => request<ReviewerCheckinSummary[]>('/api/reviewer/checkins'),
+  reviewerCheckin: (id: number) => request<ReviewerCheckin>(`/api/reviewer/checkins/${id}`),
 }

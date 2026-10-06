@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { homeFor, useAuth } from '../auth/AuthContext'
 import { Alert, Button, Field, Input } from '../components/ui'
 import { ApiError } from '../lib/api'
@@ -8,6 +8,9 @@ import { ApiError } from '../lib/api'
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const confirmed = params.get('confirmed') === '1'
+  const reset = params.get('reset') === '1'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
@@ -36,6 +39,8 @@ export default function Login() {
       <p className="mt-2 text-sm text-slate-600">Sign in to continue to IRIS.</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-8 space-y-5">
+        {confirmed && !error && <Alert tone="info">Your email is confirmed. Sign in to continue.</Alert>}
+        {reset && !error && <Alert tone="info">Your password has been changed. Sign in with the new one.</Alert>}
         {error && <Alert>{error}</Alert>}
         <Field label="Email">
           {(id) => (
@@ -56,6 +61,11 @@ export default function Login() {
             </div>
           )}
         </Field>
+        <div className="text-right">
+          <Link to="/forgot-password" className="text-sm font-medium text-brand-700 underline-offset-4 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <Button type="submit" block loading={busy}>Sign in</Button>
       </form>
 

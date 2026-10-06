@@ -1,84 +1,115 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from ..auth_service import AuthError, AuthService, Session as AuthSession, get_auth_service
 from ..config import settings
 from ..db import get_db
-from ..deps import age_on, get_current_user, user_out
+from ..deps import age_on, get_current_user, get_or_create_user, user_out
 from ..models import Consent, User
-from ..schemas import ConsentIn, LoginIn, RegisterIn, UserOut
-from ..security import create_access_token, hash_password, verify_password
+from ..schemas import ConsentIn, ForgotIn, LoginIn, RegisterIn, RegisterOut, ResetIn, UserOut
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
-# Constant-time-ish login: verify against a dummy hash when the user is unknown.
-_DUMMY_HASH = hash_password("dummy-password-for-timing")
+REFRESH_PATH = "/api/auth"
 
 
-def _set_session(response: Response, user_id: int) -> None:
+def _set_cookies(response: Response, session: AuthSession) -> None:
+    common = {"httponly": True, "secure": settings.cookie_secure, "samesite": "lax"}
+    response.set_cookie(settings.access_cookie, session.access_token, max_age=session.expires_in, path="/", **common)
     response.set_cookie(
-        settings.cookie_name,
-        create_access_token(user_id),
-        max_age=settings.access_token_minutes * 60,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        path="/",
+        settings.refresh_cookie, session.refresh_token, max_age=settings.refresh_cookie_days * 86400,
+        path=REFRESH_PATH, **common,
     )
 
 
-@router.post("/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterIn, response: Response, db: Session = Depends(get_db)) -> UserOut:
+def _clear_cookies(response: Response) -> None:
+    response.delete_cookie(settings.access_cookie, path="/")
+    response.delete_cookie(settings.refresh_cookie, path=REFRESH_PATH)
+
+
+def _http(e: AuthError) -> HTTPException:
+    return HTTPException(e.status_code, e.message)
+
+
+@router.post("/auth/register", response_model=RegisterOut, status_code=status.HTTP_201_CREATED)
+def register(
+    body: RegisterIn, response: Response, db: Session = Depends(get_db), auth: AuthService = Depends(get_auth_service)
+) -> RegisterOut:
     age = age_on(body.date_of_birth)
     if age < 13 or age > 100:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Enter a valid date of birth. You must be at least 13.")
-    minor = age < 18
-    if minor and not (body.guardian_name and body.guardian_email):
+    if age < 18 and not (body.guardian_name and body.guardian_email):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A parent or guardian's name and email are required.")
 
-    user = User(
-        email=body.email,
-        password_hash=hash_password(body.password),
-        full_name=body.full_name,
-        date_of_birth=body.date_of_birth,
-        gender=body.gender,
-        occupation=body.occupation,
-        language=body.language,
-        phone=body.phone,
-        emergency_contact=body.emergency_contact,
-        guardian_name=body.guardian_name if minor else None,
-        guardian_email=body.guardian_email if minor else None,
-        guardian_consent_status="pending" if minor else None,
-    )
-    db.add(user)
+    metadata = body.model_dump(mode="json", exclude={"email", "password"}, exclude_none=True)
     try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists.")
-    _set_session(response, user.id)
-    return user_out(db, user)
+        result = auth.sign_up(body.email, body.password, metadata, f"{settings.site_url}/login?confirmed=1")
+    except AuthError as e:
+        raise _http(e) from None
+
+    if result.session is None:  # email confirmation required: the profile is created at first sign-in
+        return RegisterOut(confirm_email=True)
+    _set_cookies(response, result.session)
+    claims = auth.verify(result.session.access_token)
+    return RegisterOut(confirm_email=False, user=user_out(db, get_or_create_user(db, claims)))
 
 
 @router.post("/auth/login", response_model=UserOut)
-def login(body: LoginIn, response: Response, db: Session = Depends(get_db)) -> UserOut:
-    user = db.scalar(select(User).where(User.email == body.email))
-    ok = verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
-    if not user or not ok:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
-    _set_session(response, user.id)
+def login(
+    body: LoginIn, response: Response, db: Session = Depends(get_db), auth: AuthService = Depends(get_auth_service)
+) -> UserOut:
+    try:
+        session = auth.sign_in(body.email, body.password)
+        claims = auth.verify(session.access_token)
+    except AuthError as e:
+        raise _http(e) from None
+    user = get_or_create_user(db, claims)
+    _set_cookies(response, session)
     return user_out(db, user)
 
 
+@router.post("/auth/refresh", status_code=status.HTTP_204_NO_CONTENT)
+def refresh(request: Request, response: Response, auth: AuthService = Depends(get_auth_service)) -> None:
+    token = request.cookies.get(settings.refresh_cookie)
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    try:
+        session = auth.refresh(token)
+    except AuthError as e:
+        _clear_cookies(response)
+        raise _http(e) from None
+    _set_cookies(response, session)
+
+
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response) -> None:
-    response.delete_cookie(settings.cookie_name, path="/")
+def logout(request: Request, response: Response, auth: AuthService = Depends(get_auth_service)) -> None:
+    token = request.cookies.get(settings.access_cookie)
+    if token:
+        auth.sign_out(token)  # revokes the refresh token at Supabase; best effort
+    _clear_cookies(response)
 
 
 @router.get("/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> UserOut:
     return user_out(db, user)
+
+
+@router.post("/auth/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password(body: ForgotIn, auth: AuthService = Depends(get_auth_service)) -> None:
+    """Always answers 204 so the endpoint cannot be used to discover which emails have accounts."""
+    try:
+        auth.recover(body.email, f"{settings.site_url}/reset-password")
+    except AuthError as e:
+        if e.status_code == 429:
+            raise _http(e) from None
+
+
+@router.post("/auth/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(body: ResetIn, auth: AuthService = Depends(get_auth_service)) -> None:
+    try:
+        auth.update_password(body.access_token, body.password)
+    except AuthError as e:
+        raise _http(e) from None
 
 
 @router.post("/consent", response_model=UserOut)

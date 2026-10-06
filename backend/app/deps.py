@@ -1,14 +1,16 @@
+import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .auth_service import AuthError, AuthService, Claims, get_auth_service
 from .config import settings
 from .db import get_db
 from .models import CheckIn, Consent, User
-from .schemas import CheckinStatus, UserOut
-from .security import decode_access_token
+from .schemas import CheckinStatus, ProfileMeta, UserOut
 
 
 def age_on(dob: date, today: date | None = None) -> int:
@@ -16,13 +18,57 @@ def age_on(dob: date, today: date | None = None) -> int:
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    token = request.cookies.get(settings.cookie_name)
-    user_id = decode_access_token(token) if token else None
-    user = db.get(User, user_id) if user_id else None
-    if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+def _create_profile(db: Session, claims: Claims) -> User:
+    """First authenticated request after sign-up: build the profile from the metadata stored with the auth user.
+
+    Doing this lazily (instead of right after sign-up) means there is never an auth account without a profile, even
+    if the database was unavailable during sign-up, and it works unchanged when email confirmation is required.
+    The metadata is re-validated because Supabase sign-up is callable directly with the public anon key.
+    """
+    try:
+        meta = ProfileMeta.model_validate(claims.user_metadata)
+    except ValidationError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your profile is incomplete. Please contact support.") from None
+    age = age_on(meta.date_of_birth)
+    minor = age < 18
+    if age < 13 or age > 100 or (minor and not (meta.guardian_name and meta.guardian_email)):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your profile is incomplete. Please contact support.")
+    user = User(
+        id=uuid.UUID(claims.sub),
+        email=claims.email.lower(),
+        role="user",  # never taken from user-editable metadata
+        full_name=meta.full_name.strip(),
+        date_of_birth=meta.date_of_birth,
+        gender=meta.gender,
+        occupation=meta.occupation,
+        language=meta.language,
+        phone=meta.phone,
+        emergency_contact=meta.emergency_contact,
+        guardian_name=meta.guardian_name if minor else None,
+        guardian_email=meta.guardian_email if minor else None,
+        guardian_consent_status="pending" if minor else None,
+    )
+    db.add(user)
+    db.commit()
     return user
+
+
+def get_or_create_user(db: Session, claims: Claims) -> User:
+    user = db.get(User, uuid.UUID(claims.sub))
+    return user if user is not None else _create_profile(db, claims)
+
+
+def get_current_user(
+    request: Request, db: Session = Depends(get_db), auth: AuthService = Depends(get_auth_service)
+) -> User:
+    token = request.cookies.get(settings.access_cookie)
+    if not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    try:
+        claims = auth.verify(token)
+    except AuthError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in") from None
+    return get_or_create_user(db, claims)
 
 
 def require_reviewer(user: User = Depends(get_current_user)) -> User:
@@ -65,7 +111,7 @@ def user_out(db: Session, user: User) -> UserOut:
         select(Consent.id).where(Consent.user_id == user.id, Consent.version == settings.consent_version).limit(1)
     )
     return UserOut(
-        id=user.id,
+        id=str(user.id),
         email=user.email,
         full_name=user.full_name,
         first_name=user.full_name.split()[0],

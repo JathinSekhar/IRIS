@@ -39,7 +39,7 @@ export interface CheckinStatus {
   prompt: boolean
 }
 export interface User {
-  id: number
+  id: string
   email: string
   full_name: string
   first_name: string
@@ -64,9 +64,18 @@ export interface Scale {
   answered: number
   complete: boolean
 }
+export interface ReviewerCheckinSummary {
+  id: number
+  user_name: string
+  created_at: string
+  baseline_risk: 'unknown' | 'low' | 'medium' | 'high'
+  safety_flag: boolean
+  escalated: boolean
+}
+
 export interface ReviewerCheckin {
   id: number
-  user_id: number
+  user_id: string
   user_name: string
   user_email: string
   created_at: string
@@ -92,6 +101,11 @@ export interface ReviewerCheckin {
   is_minor: boolean
   emergency_contact: string | null
   date_of_birth: string
+}
+
+export interface RegisterResult {
+  confirm_email: boolean
+  user: User | null
 }
 
 export interface RegisterPayload {

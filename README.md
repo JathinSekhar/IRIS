@@ -6,24 +6,35 @@ This repository currently contains **Module 1: onboarding and clinical baseline*
 check-in, scoring, reviewer queue). The conversation pipeline (intent, urgency, confidence, cost-sensitive routing)
 is the next module and will consume the baseline produced here. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-| Layer    | Stack                                                                 |
-| -------- | --------------------------------------------------------------------- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, React Router              |
-| Backend  | FastAPI, SQLAlchemy 2, Pydantic 2, SQLite (swap via `IRIS_DATABASE_URL`) |
-| Auth     | bcrypt password hashing, JWT in an `httpOnly` `SameSite=Lax` cookie   |
-| Tests    | pytest (50 tests: scoring, validation, API, role access)              |
+| Layer    | Stack                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, React Router                                    |
+| Backend  | FastAPI, SQLAlchemy 2, Alembic migrations, Pydantic 2                                       |
+| Database | Supabase Postgres (Mumbai), Row Level Security on every table                               |
+| Auth     | Supabase Auth (email confirmation, password reset); tokens kept in `httpOnly` cookies       |
+| Tests    | pytest, 68 tests (scoring, safety tiers, validation, auth flows, role access, audit log)    |
+
+## Set up Supabase (once)
+
+1. Create a project (choose the region closest to your users) and note the **database password**.
+2. **Authentication, URL Configuration:** set **Site URL** to `http://localhost:5173` and add
+   `http://localhost:5173/**` to **Redirect URLs** (required for confirmation and reset links).
+3. **Authentication, Providers, Email:** while developing, either turn **Confirm email** off, or configure a custom
+   SMTP provider. Supabase's built-in email service is heavily rate-limited and sends only to project team members.
+4. Copy `backend/.env.example` to `backend/.env` and fill in the connection string, project URL and the **anon /
+   publishable** key (Project Settings, API). Do **not** use the `service_role` key anywhere in this project.
 
 ## Run it locally
 
 Requires Python 3.10+ and Node 20+.
 
 ```bash
-# 1. Backend  (http://127.0.0.1:8000, docs at /docs)
+# 1. Backend  (http://127.0.0.1:8000, API docs at /docs)
 cd backend
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-python -m app.seed reviewer@example.com "choose-a-strong-password"   # creates a reviewer account
+alembic upgrade head              # creates the tables, RLS rules and audit log in Supabase
 uvicorn app.main:app --reload
 
 # 2. Frontend (http://localhost:5173, proxies /api to the backend)
@@ -32,35 +43,36 @@ npm install
 npm run dev
 ```
 
-Sign up as a normal user to go through consent and the check-in. Sign in with the reviewer account to see the
-review queue at `/reviewer`.
+**Make a reviewer:** sign up and sign in once with the reviewer's email, then run
+`python -m app.seed promote reviewer@example.com`. The role is stored only in our database, never in user-editable
+metadata, so nobody can grant it to themselves.
 
 ```bash
-cd backend && pytest          # backend tests
+cd backend && pytest          # backend tests (no network or database needed)
 cd frontend && npm run build  # type-check and production build
 ```
-
-Configuration is via `IRIS_*` environment variables or `backend/.env` (see `backend/.env.example`).
-**Set `IRIS_SECRET_KEY` and `IRIS_COOKIE_SECURE=true` for anything other than local development.**
 
 ## Project layout
 
 ```
 backend/app/
+  auth_service.py             Supabase Auth client behind a small interface (faked in tests)
   services/questionnaire.py   clinical intake definition + answer validation (single source of truth)
-  services/scoring.py         PHQ-9, GAD-7, C-SSRS tier, baseline risk (pure functions, unit-tested)
-  routers/                    auth, check-in, reviewer
-  models.py  schemas.py  security.py  deps.py
-backend/tests/                scoring + API tests
+  services/scoring.py         PHQ-9, GAD-7 and baseline risk (pure functions, unit-tested)
+  services/safety.py          self-harm assessment: C-SSRS tiers and the urgency floor
+  routers/                    auth, check-in, reviewer (with audit log)
+  models.py  schemas.py  deps.py
+backend/migrations/           Alembic: schema, foreign key to auth.users, RLS, privileges
+backend/tests/
 frontend/src/
-  pages/                      Login, Register, Consent, CheckIn, Support, Home, Reviewer
-  lib/                        typed API client, questionnaire helpers
+  pages/                      Login, Register, ForgotPassword, ResetPassword, Consent, CheckIn, Support, Home, Reviewer
+  lib/                        typed API client (silent session refresh), questionnaire helpers
 ```
 
 ## Known limitations (deliberate, for this milestone)
 
-- **Guardian consent for under-18s is recorded as `pending` but not yet verified** by an emailed link.
-- No login rate limiting or account lockout yet. Add before any public deployment.
-- No email delivery (password reset, guardian consent). The reviewer account is created with the seed command.
+- **Guardian consent for under-18s is recorded as `pending` but not verified.** Supabase Auth only emails the person
+  signing up, so emailing a guardian needs a separate email service (SMTP or similar).
+- No account lockout beyond Supabase's built-in rate limits.
 - Reviewer actions (acknowledge, notes, outcome) and the chat/triage pipeline are not built yet.
 - The questionnaire is English only. Question text has not yet been reviewed by a clinician (see architecture doc).

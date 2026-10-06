@@ -5,6 +5,8 @@ import { AppLayout, AuthLayout } from './layouts/Layouts'
 
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Consent = lazy(() => import('./pages/Consent'))
 const CheckIn = lazy(() => import('./pages/CheckIn'))
 const Support = lazy(() => import('./pages/Support'))
@@ -18,6 +20,8 @@ export default function App() {
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />

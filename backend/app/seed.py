@@ -1,38 +1,30 @@
-"""Create a reviewer account for local development.
+"""Promote an existing account to reviewer.
 
-    python -m app.seed reviewer@example.com "a-strong-password"
+Reviewers are ordinary Supabase Auth accounts with `role = 'reviewer'` in the profiles table. The role is stored only
+in our database (never in user-editable metadata), so a user cannot grant it to themselves.
+
+    1. Sign up in the app with the reviewer's email, confirm the email, and sign in once.
+    2. python -m app.seed promote reviewer@example.com
 """
 import sys
-from datetime import date
 
 from sqlalchemy import select
 
-from .db import Base, SessionLocal, engine
+from .db import SessionLocal
 from .models import User
-from .security import hash_password
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
-        sys.exit("usage: python -m app.seed <email> <password>")
-    email, password = sys.argv[1].lower(), sys.argv[2]
-    if len(password) < 8:
-        sys.exit("password must be at least 8 characters")
-    Base.metadata.create_all(bind=engine)
+    if len(sys.argv) != 3 or sys.argv[1] not in ("promote", "demote"):
+        sys.exit("usage: python -m app.seed promote|demote <email>")
+    action, email = sys.argv[1], sys.argv[2].lower()
     with SessionLocal() as db:
-        if db.scalar(select(User).where(User.email == email)):
-            sys.exit(f"{email} already exists")
-        db.add(
-            User(
-                email=email,
-                password_hash=hash_password(password),
-                role="reviewer",
-                full_name="Care Reviewer",
-                date_of_birth=date(1990, 1, 1),
-            )
-        )
+        user = db.scalar(select(User).where(User.email == email))
+        if user is None:
+            sys.exit(f"No profile for {email}. Sign up and sign in once in the app first.")
+        user.role = "reviewer" if action == "promote" else "user"
         db.commit()
-    print(f"Reviewer created: {email}")
+    print(f"{email} is now a {'reviewer' if action == 'promote' else 'user'}.")
 
 
 if __name__ == "__main__":
