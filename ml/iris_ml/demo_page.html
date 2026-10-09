@@ -3,28 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IRIS triage demo</title>
+<title>IRIS decision lab</title>
 <style>
-  :root{--bg:#f6f8f9;--card:#fff;--ink:#1e293b;--mute:#64748b;--line:#e2e8f0;--brand:#1e4d4f;--brand2:#2f948d;
+  :root{--bg:#f6f8f9;--card:#fff;--ink:#1e293b;--mute:#64748b;--line:#e2e8f0;--brand:#1d4b49;--brand50:#effaf7;--brand200:#a9ddd0;
         --low:#0f766e;--lowbg:#d5f1ec;--med:#92400e;--medbg:#fef3c7;--high:#991b1b;--highbg:#fee2e2;--ok:#166534;--okbg:#dcfce7}
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Inter,sans-serif}
-  header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:12px}
-  header b{font-size:18px;letter-spacing:.3px} header span{opacity:.8;font-size:13px}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Inter,sans-serif}
+  header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  header b{font-size:18px} header span{opacity:.85;font-size:13px}
   .warn{background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;padding:8px 20px;font-size:13px}
-  main{max-width:1180px;margin:0 auto;padding:18px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:18px}
-  @media(max-width:900px){main{grid-template-columns:1fr}}
+  main{max-width:1200px;margin:0 auto;padding:18px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:18px}
+  @media(max-width:920px){main{grid-template-columns:1fr}}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
   h2{margin:0 0 4px;font-size:16px} p.sub{margin:0 0 12px;color:var(--mute);font-size:13px}
-  #log{min-height:260px;max-height:520px;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:4px 2px 8px}
-  .you{align-self:flex-end;background:var(--brand);color:#fff;border-radius:14px 14px 2px 14px;padding:9px 13px;max-width:88%}
-  .sys{align-self:flex-start;background:#f1f5f9;border:1px solid var(--line);border-radius:14px 14px 14px 2px;padding:10px 12px;max-width:96%}
+  #log{min-height:240px;max-height:560px;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:4px 2px 8px}
+  .you{align-self:flex-end;background:#f1f5f9;border-radius:18px;padding:8px 14px;max-width:88%}
+  .sys{align-self:stretch;border-top:1px solid var(--line);padding-top:10px}
   .badge{display:inline-block;border-radius:999px;padding:2px 11px;font-weight:600;font-size:13px}
   .b-low{background:var(--lowbg);color:var(--low)} .b-medium{background:var(--medbg);color:var(--med)} .b-high{background:var(--highbg);color:var(--high)}
-  .row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0}
+  .b-wf{background:var(--brand50);color:var(--brand);border:1px solid var(--brand200)}
+  .row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:3px 0}
   .k{color:var(--mute);font-size:12px} ul.why{margin:6px 0 0 18px;padding:0;color:#334155;font-size:13px}
-  .bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:#e2e8f0;margin:6px 0 2px;min-width:180px}
-  .bar i{display:block;height:100%} .bar .l{background:#2f948d} .bar .m{background:#f59e0b} .bar .h{background:#dc2626}
-  form{display:flex;gap:8px;margin-top:6px} textarea{flex:1;min-height:46px;max-height:140px;resize:vertical;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
+  .reply{margin:8px 0;padding:10px 12px;background:#f8fafc;border-radius:12px;font-size:14px;color:#334155}
+  .reply p{margin:0 0 6px} .reply p:last-child{margin:0} .reply strong{color:var(--ink)}
+  .help{margin-top:8px;background:var(--brand50);border:1px solid var(--brand200);border-radius:10px;padding:8px 10px;font-size:13px}
+  .help div{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+  .note{font-size:12.5px;color:#7c2d12;background:#fff7ed;border-radius:8px;padding:6px 9px;margin-top:6px}
+  form{display:flex;gap:8px;margin-top:6px} textarea{flex:1;min-height:46px;max-height:140px;resize:vertical;padding:10px 12px;border:1px solid #cbd5e1;border-radius:12px;font:inherit}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid #cbd5e1;background:#fff;padding:7px 12px}
   button.primary{background:var(--brand);color:#fff;border-color:var(--brand)} button:hover{filter:brightness(.97)}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px} .chips button{font-size:12.5px;padding:4px 10px;border-radius:999px;color:#334155}
@@ -33,83 +37,79 @@
   .right{background:var(--okbg);color:var(--ok)} .wrong{background:var(--highbg);color:var(--high)}
   select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid #cbd5e1;background:#fff}
   table{border-collapse:collapse;width:100%;font-size:13px} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--mute);font-weight:600;position:sticky;top:0;background:#fff} td.t{max-width:340px}
-  .pass{color:var(--ok);font-weight:700} .fail{color:var(--high);font-weight:700}
-  #tablewrap{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  th{color:var(--mute);font-weight:600;position:sticky;top:0;background:#fff} td.t{max-width:300px}
+  .s-covered{color:var(--ok);font-weight:700} .s-known_gap{color:var(--high);font-weight:700} .s-clinician_decision_needed{color:var(--med);font-weight:700}
+  #tablewrap{max-height:540px;overflow:auto;border:1px solid var(--line);border-radius:10px}
   .stats{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}.stat{background:#f1f5f9;border-radius:10px;padding:8px 12px}.stat b{display:block;font-size:20px}
 </style>
 </head>
 <body>
-<header><b>IRIS</b><span>triage demo: type a sentence, see what the system decides</span></header>
-<div class="warn"><b>Development demo.</b> Not clinically validated, not a diagnosis, and not for use with real people. The urgency labels shown here are never shown to users in the product.
- If you or someone you know is in danger, call 112 or Tele-MANAS 14416.</div>
+<header><b>IRIS decision lab</b><span>type a sentence and see exactly what the chat would do</span></header>
+<div class="warn"><b>Development tool.</b> Same code as the chat: safety rules, the check-in floor and mandatory human review. <b>No AI model is used.</b> The wording is an AI-assisted draft awaiting clinical review.
+ Not for real people. If you or someone you know is in danger, call 112 or Tele-MANAS 14416.</div>
 <main>
   <section class="card">
-    <h2>Chat test</h2>
-    <p class="sub">Type any sentence. Then tell the demo what the answer should have been, and it will mark the decision right or wrong.</p>
-    <div class="row"><span class="k">Pretend this person's check-in said:</span>
-      <select id="floor"><option value="none">nothing concerning (no floor)</option><option value="medium">some risk (floor: medium)</option><option value="high">serious risk (floor: high)</option></select></div>
+    <h2>Try a message</h2>
+    <p class="sub">The reply shown is exactly what the person would read. A person reads every message, whatever the decision.</p>
+    <div class="row"><span class="k">This person's check-in said:</span>
+      <select id="floor"><option value="none">nothing concerning</option><option value="medium">some risk (floor: medium)</option><option value="high">serious risk (floor: high)</option></select></div>
     <div class="chips" id="chips"></div>
     <div id="log" aria-live="polite"></div>
-    <form id="form"><textarea id="msg" placeholder="Type a message, for example: This exam is killing me" aria-label="Message"></textarea>
+    <form id="form"><textarea id="msg" placeholder="Type a message, for example: yah i am feeling better" aria-label="Message"></textarea>
       <button class="primary" type="submit">Send</button></form>
   </section>
   <section class="card">
-    <h2>Automatic test</h2>
-    <p class="sub">Runs every sentence in the challenge set through the system and checks the decision against what it should be. The challenge set is written by the code author: it is a regression check, not clinical ground truth.</p>
-    <div class="row"><button class="primary" id="run">Run all challenge sentences</button>
-      <label class="k"><input type="checkbox" id="onlyfail"> show failures only</label></div>
+    <h2>Scenario check</h2>
+    <p class="sub">The review package's safety-critical scenarios, run through the system now. "Known gap" means it does not yet do what is desired; "clinician decides" means a judgement call is recorded for a counsellor.</p>
+    <div class="row"><button class="primary" id="run">Run all scenarios</button><label class="k"><input type="checkbox" id="onlyflag"> hide the ones that behave as desired</label></div>
     <div id="summary"></div>
-    <div id="tablewrap" hidden><table><thead><tr><th>Sentence</th><th>Should be</th><th>System decided</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div id="tablewrap" hidden><table><thead><tr><th>Sentence (fictional)</th><th>Desired</th><th>System does</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div>
   </section>
 </main>
 <script>
 const $ = s => document.querySelector(s);
-const NAMES = {low:"Low", medium_plus:"Medium or higher", high:"High"};
-const SAMPLES = ["This exam is killing me","I'm so stressed about my finals","How do I book a counsellor?","I miss my family and feel lonely",
-  "Sometimes I wish I could just disappear","I'll kill myself if I fail this exam","I'm going to kill myself tonight","I've said my goodbyes and tonight I'm finally done with everything",
-  "My friend says she wants to die","I am not suicidal, just very tired","ok"];
-const rank = {low:0, medium:1, high:2};
-const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const badge = u => `<span class="badge b-${u}">${u.toUpperCase()}</span>`;
-const routeName = r => ({human_reviewer:"human reviewer", counsellor:"counsellor / support channel", normal_support:"ordinary support"}[r]||r);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const WF = {ordinary_support:"Ordinary support", positive_reply:"Warm reply (good news)", support_with_helplines:"Support + helplines", urgent_response:"Urgent response"};
+const STATUS = {covered:"as desired", known_gap:"known gap", clinician_decision_needed:"clinician decides"};
+const SAMPLES = ["yah i am feeling better","I had a great day with my friends","I have exams next week and I am struggling to study","I feel lonely and I can't sleep",
+  "I can't take it anymore","Nobody would notice if I was gone","I want to die","I have been thinking about ending my life","I am going to kill myself tonight",
+  "My friend said he wants to kill himself","I passed my exam but I feel worthless","This exam is killing me","I'm not suicidal, just stressed"];
 
-function judge(expect, d){
-  if(expect==="low") return d.urgency==="low";
-  if(expect==="medium_plus") return rank[d.urgency]>=1;
-  return d.urgency==="high" && d.needs_human;
-}
+function badge(p){ return `<span class="badge b-${p}">${p.toUpperCase()}</span>`; }
 function card(d){
-  const p = d.probabilities, bar = p ? `<div class="bar" title="model: low / medium / high"><i class="l" style="width:${p[0]*100}%"></i><i class="m" style="width:${p[1]*100}%"></i><i class="h" style="width:${p[2]*100}%"></i></div>
-    <div class="k">model alone: low ${(p[0]*100).toFixed(0)}% · medium ${(p[1]*100).toFixed(0)}% · high ${(p[2]*100).toFixed(0)}% (says ${d.model_urgency}, confidence ${(d.confidence*100).toFixed(0)}%)</div>` : "";
+  const r = d.reply, bits = [];
+  bits.push(`<p><strong>${esc(r.intro)}</strong></p>`);
+  if(r.listening) bits.push(`<p>${esc(r.listening)}</p>`);
+  if(r.self_help.length) bits.push(`<p><strong>${esc(r.self_help[0].title)}.</strong> ${esc(r.self_help[0].how)}${r.self_help.length>1?` <span class="k">(+${r.self_help.length-1} more ideas behind "More ideas")</span>`:""}</p>`);
+  if(d.layout!=="tips" && r.reach_out.length) bits.push("<p>"+r.reach_out.map(esc).join("<br>")+"</p>");
+  const help = r.helplines.length ? `<div class="help"><b>${esc(r.crisis_lead)}</b>${r.helplines.map(h=>`<div><span>${esc(h.name)} <span class="k">${esc(h.detail)}</span></span><b>${esc(h.number)}</b></div>`).join("")}</div>` : "";
   const flags = [d.third_person?"about someone else":"", d.negated?"phrase is negated":""].filter(Boolean).join(", ");
-  return `<div class="row"><span class="k">Decision</span> ${badge(d.urgency)} <span class="k">→</span> <b>${routeName(d.route)}</b>
-      ${d.needs_human?'<span class="badge b-high" style="background:#fee2e2">needs a person</span>':""}</div>
+  return `<div class="row"><span class="k">What the person sees:</span><span class="badge b-wf">${WF[d.workflow]}</span></div>
+    <div class="reply">${bits.join("")}${help}<p class="k" style="margin-top:8px">${esc(r.status)}</p></div>
+    <div class="row"><span class="k">What the reviewer sees:</span>${badge(d.priority)}${d.message_urgent?'<span class="badge b-high">URGENT: instant alert</span>':'<span class="k">no instant alert</span>'}</div>
+    <div class="note">${esc(d.reviewer_note)}</div>
     <div class="row"><span class="k">Rule layer:</span> ${d.rule_level}${d.rule_hits.length?" ("+d.rule_hits.join(", ")+")":""}${flags?" · "+flags:""}</div>
-    ${bar}${d.reasons.length?'<ul class="why">'+d.reasons.map(r=>"<li>"+esc(r)+"</li>").join("")+"</ul>":""}`;
+    ${d.reasons.length?'<ul class="why">'+d.reasons.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul>":""}`;
 }
-function addExpectUI(node, d){
+function addExpect(node, d){
   const box = document.createElement("div"); box.className = "exp";
-  box.innerHTML = `<span class="k">What should the answer be?</span><br>
-    <button data-e="low">Stay Low</button><button data-e="medium_plus">Medium or higher</button><button data-e="high">High (a person must see it)</button>
-    <div class="out"></div>`;
+  box.innerHTML = `<span class="k">What should the person see?</span><br>` + Object.entries(WF).map(([k,v])=>`<button data-e="${k}">${v}</button>`).join("") + `<div class="out"></div>`;
   box.querySelectorAll("button").forEach(b => b.onclick = () => {
-    const e = b.dataset.e, ok = judge(e, d);
-    box.querySelector(".out").innerHTML = `<span class="verdict ${ok?"right":"wrong"}">${ok?"✓ Correct":"✗ Wrong"}</span>
-      <span class="k"> you expected "${NAMES[e]}"; the system decided ${d.urgency.toUpperCase()}${d.needs_human?" and sent it to a person":""}.</span>`;
+    const ok = b.dataset.e === d.workflow;
+    box.querySelector(".out").innerHTML = `<span class="verdict ${ok?"right":"wrong"}">${ok?"Correct":"Different"}</span> <span class="k">you expected "${WF[b.dataset.e]}"; the system did "${WF[d.workflow]}".</span>`;
   });
   node.appendChild(box);
 }
 async function send(text){
   const log = $("#log");
   log.insertAdjacentHTML("beforeend", `<div class="you">${esc(text)}</div>`);
-  const node = document.createElement("div"); node.className = "sys"; node.textContent = "thinking…"; log.appendChild(node);
+  const node = document.createElement("div"); node.className = "sys"; node.textContent = "deciding..."; log.appendChild(node);
   log.scrollTop = log.scrollHeight;
   try{
     const r = await fetch("/api/triage", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text, floor:$("#floor").value})});
     if(!r.ok) throw new Error((await r.json()).detail || "error");
-    const d = await r.json(); node.innerHTML = card(d); addExpectUI(node, d);
-  }catch(e){ node.innerHTML = `<span class="verdict wrong">Could not decide: ${esc(String(e.message))}</span>`; }
+    const d = await r.json(); node.innerHTML = card(d); addExpect(node, d);
+  }catch(e){ node.innerHTML = `<span class="verdict wrong">Could not decide: ${esc(e.message)}</span>`; }
   log.scrollTop = log.scrollHeight;
 }
 $("#form").onsubmit = e => { e.preventDefault(); const t = $("#msg").value.trim(); if(!t) return; $("#msg").value = ""; send(t); };
@@ -118,22 +118,20 @@ SAMPLES.forEach(s => { const b = document.createElement("button"); b.type="butto
 
 let LAST = null;
 function renderRows(){
-  const only = $("#onlyfail").checked;
-  $("#rows").innerHTML = LAST.rows.filter(r => !only || !r.passed).map(r => `<tr><td class="t">${esc(r.text)}<div class="k">${r.category}</div></td>
-    <td>${NAMES[r.expect]}</td><td>${badge(r.urgency)}${r.needs_human?'<div class="k">person reads it</div>':""}</td>
-    <td class="${r.passed?"pass":"fail"}">${r.passed?"✓":"✗"}</td></tr>`).join("");
+  const hide = $("#onlyflag").checked;
+  $("#rows").innerHTML = LAST.rows.filter(r => !hide || r.status !== "covered").map(r => `<tr><td class="t">${esc(r.example_message)}<div class="k">${esc(r.category)}</div></td>
+    <td>${WF[r.desired_workflow]}</td><td>${WF[r.observed_workflow]}</td><td class="s-${r.status}">${STATUS[r.status]}${r.question_for_clinician?`<div class="k">${esc(r.question_for_clinician)}</div>`:""}</td></tr>`).join("");
 }
 $("#run").onclick = async () => {
-  $("#run").disabled = true; $("#summary").textContent = "running…";
-  const r = await fetch("/api/challenge"); LAST = await r.json(); $("#run").disabled = false;
-  const s = LAST.summary, f = k => `${s[k].passed}/${s[k].total}`;
-  $("#summary").innerHTML = `<div class="stats"><div class="stat"><b>${f("overall")}</b>correct overall</div>
-    <div class="stat"><b>${f("benign_stay_low")}</b>ordinary sentences kept Low</div>
-    <div class="stat"><b>${f("must_escalate_met")}</b>risky sentences escalated</div></div>
-    <div class="k">${s.failures.length} sentence(s) decided differently from what the challenge set expects (marked ✗). Disagreement can mean the system is wrong or the expectation is debatable; a clinician should judge.</div>`;
+  $("#run").disabled = true; $("#summary").textContent = "running...";
+  LAST = await (await fetch("/api/scenarios")).json(); $("#run").disabled = false;
+  const c = LAST.counts;
+  $("#summary").innerHTML = `<div class="stats"><div class="stat"><b>${c.covered||0}/${LAST.total}</b>behave as desired</div>
+    <div class="stat"><b>${c.clinician_decision_needed||0}</b>clinician decides</div><div class="stat"><b>${c.known_gap||0}</b>known gaps</div></div>
+    <div class="k">These scenarios are written by the code author. They are a regression check, not clinical ground truth, and passing them does not mean every urgent case is caught.</div>`;
   $("#tablewrap").hidden = false; renderRows();
 };
-$("#onlyfail").onchange = () => LAST && renderRows();
+$("#onlyflag").onchange = () => LAST && renderRows();
 </script>
 </body>
 </html>

@@ -14,6 +14,12 @@
       "port": 8000
     },
     {
+      "name": "iris-lab",
+      "runtimeExecutable": "D:\\IRIS\\ml\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-c", "import sys; sys.path.insert(0, r'D:\\IRIS\\ml'); import iris_ml.demo as d; d.main(8765)"],
+      "port": 8765
+    },
+    {
       "name": "iris-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "D:\\IRIS\\frontend", "run", "dev"],

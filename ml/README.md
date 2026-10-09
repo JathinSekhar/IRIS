@@ -60,6 +60,7 @@ pip install -r requirements.txt
 python -m pytest -q
 python -m iris_ml.run_phase1        # reproduce the Phase 1 report (needs data/raw/reddit_cssrs, see docs/DATA_REGISTRY.md)
 python -m iris_ml.gold build        # rebuild the gold pool and blind batches
+python -m iris_ml.demo              # the decision lab: type a sentence, see exactly what the chat would do (http://127.0.0.1:8765; no model, no data, no GPU)
 ```
 
 ## Rules of this folder
