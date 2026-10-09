@@ -1,14 +1,17 @@
 # Data registry
 
 Every dataset is listed here with its terms and status. **Nothing in `data/raw/` is committed to git.**
-Last updated 2026-10-06.
+Last updated 2026-10-09.
 
 | Source | What it is | Maps to | Access | Status |
 | --- | --- | --- | --- | --- |
 | **Reddit C-SSRS** (Gaur et al., 2019) | 500 anonymised Reddit users, one long document each, labelled by four psychiatrists: Supportive, Indicator, Ideation, Behavior, Attempt | urgency (crisis severity) | Open, **CC-BY-4.0** | **Downloaded 2026-10-06, checksums verified, in use** (see below) |
 | **UMD Reddit Suicidality v2** (CLPsych 2019) | 11,129 SuicideWatch + 11,129 control users; crowd labels (621+621) and expert labels (245+245): none, low, moderate, severe | urgency | **Application, with ethics (IRB-equivalent) approval, a supervisor and a data management plan** | **Not started.** Preparation drafts in `UMD_APPLICATION_PREP.md`; needs the project owner and supervisor |
 | **Dreaddit** (Turcan & McKeown, 2019) | About 3.5K Reddit segments labelled stressed or not | stress intent | Licence unconfirmed | **To verify** before any use |
-| **Synthetic chat messages** | Messages written to the taxonomy, including hard cases, to match the chat domain | train only | We generate them | **Blocked: Claude API not yet authorised.** Always `is_synthetic=True`, train split only |
+| **Synthetic chat messages** | 1,084 template-based messages (no language-model API) for hard cases and ordinary chat, written by the code author (`iris_ml/synth.py`) | train only | We generate them | **In use since Phase 2, training folds only, flagged.** A language-model-generated set remains blocked: Claude API not authorised. Its effect cannot be verified without real labelled chat (see `reports/phase2_final_summary.md`) |
+| **ESConv** (emotional-support conversations, Liu et al., 2021) | Real chat-style support dialogues; 6,000 seeker messages sampled | false-alarm **audit only** | Academic research use only (re-read the terms before any other use) | **Used only to count false alarms on ordinary chat, never for training.** Kept out of git; uploaded only to the owner's private Colab session |
+| **Challenge set** | 72 hand-written items (41 benign, 31 that should escalate) | regression / false-alarm check | Our own work | **In use.** Written by the code author: **not gold, not independent** |
+| **Demo accounts** | Three fictional patients and a reviewer for hand-testing the app (`docs/DEMO_ACCOUNTS.md`) | none | Our own work | **Never used for ML evaluation.** An illustrative walkthrough only (`reports/phase2_walkthrough.md`) |
 | **Gold test set** | 300 segments from held-out users, two blind annotators, counsellor adjudication, then frozen | evaluation only | Our own work | **Pool and blind batches built.** Waiting on clinician sign-off of the guide, two annotators, a counsellor (`GOLD_SET_WORKFLOW.md`) |
 | **IRIS app messages** | Real user messages from the product | feedback loop | Only with user consent and ethics approval | **Not used** |
 
@@ -65,3 +68,6 @@ The correct handling (for example High only with recent timing, otherwise Medium
 - Split by **user** (`group_id`), never by post. The test users are fixed by the committed manifest.
 - User ids are replaced by a one-way hash on load; links and `u/` mentions are masked.
 - Record every file's source, retrieval date and checksum here.
+- **Compute and data movement:** heavy training runs on Colab, never on the development laptop. The Colab bundle (git-ignored,
+  `artifacts/colab/`) contains the Reddit CSV and, only on request, ESConv, and is verified against the local project by hash before any
+  training. Model weights stay in the owner's Drive; no dataset text is written to results.

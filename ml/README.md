@@ -10,6 +10,7 @@ sources and terms: [docs/DATA_REGISTRY.md](docs/DATA_REGISTRY.md).
 | --- | --- |
 | P0 Foundations | **Done** (rules, metrics, schema, splits, guide) |
 | P1 Baselines | **Done**: Reddit C-SSRS loaded under CC-BY, split frozen, M0 and M1 evaluated, calibration, model card v0, gold pool and blind batches built. See `reports/phase1_baseline.md` |
+| P2 Modelling | **Done as development evidence (2026-10-09).** 21 model configurations and 4 exploratory ensembles, DistilRoBERTa fine-tuned on Colab, decision layer with fail-safe, false-alarm audit. **The 95%-at-30%-review target was not achieved; no model is detectably better than the Phase 1 baseline; false alarms on ordinary chat are high.** Design decision: rules + check-in floor, the AI only ranks the review queue, a human reviews every case. See `reports/phase2_final_summary.md` and `docs/MODEL_CARD_v1.md` |
 | Waiting on people | Clinician sign-off of the labelling guide and the label mapping; ethics approval + supervisor for UMD; two annotators and a counsellor for the gold set |
 
 ## Claims policy
@@ -38,9 +39,16 @@ tests/            121 tests, including explicit must-flag / must-not-flag phrase
 data/splits/      frozen split manifest (hashed ids + labels; committed)
 data/gold/        gold workflow files (git-ignored: they contain third-party text); GOLD_FREEZE.json (hash) is committed
 data/raw/         downloaded datasets (git-ignored)
-reports/          Phase 1 results (aggregates only)
-docs/             labelling guide, data registry, gold workflow, UMD application prep, model card
+reports/          Phase 1 and Phase 2 results (aggregates only); phase2_final_summary.md is the one to read first
+docs/             labelling guide, data registry, gold workflow, UMD application prep, model cards (M1 v0, system v1)
+colab/            Google Colab notebooks and scripts: fine-tuning and the full report run there, never on the laptop
+docs/clinical_review/   every sentence the support module can show, with a safety checklist and scenarios, for a clinician to review.
+                  **AI-assisted draft, clinical review pending: nothing there is approved.** Start with CLINICAL_REVIEW_STATUS.md
 ```
+
+Phase 2 modules in `iris_ml/`: `experiments.py` (one protocol for every model), `neural.py`, `embeddings.py`, `chunks.py`, `synth.py`,
+`decision.py` (cost-sensitive decision layer, fail-safe, the V1 mandatory-review policy), `system.py`, `ranking.py`, `challenge.py`, `report2.py`,
+`run_phase2.py`, `provenance.py`, `walkthrough.py`.
 
 ## Run
 
