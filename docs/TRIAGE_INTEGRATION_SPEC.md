@@ -1,7 +1,12 @@
-# Triage integration spec (DRAFT, nothing here is applied)
+# Triage integration spec (PARTLY IMPLEMENTED, 2026-10-09)
 
-How the Phase 2 triage system (`ml/iris_ml/system.py`) will plug into the IRIS backend in Phase 4. No migration in this document
-has been run, and no backend code has been changed. It exists so the ML work and the product meet at a defined interface.
+**Status.** The chat and its human review queue now exist, with **no model**: priority comes only from the rule layer and the check-in safety floor, and every message
+waits for a person. Built and tested: `POST/GET /api/messages`, the reviewer's `GET /api/reviewer/messages`, `GET .../{id}` (audited), `POST .../{id}/escalate`
+(raise only, reason required) and `POST .../{id}/review` (the reviewer's own judgement; the only thing that closes a case), the three tables (`messages`, `predictions`,
+`reviews`), and the "Talk to IRIS" page plus a Messages tab for reviewers. **Migration `0002` has not been applied to any Supabase project**; it was checked by generating its SQL
+offline and exercised on SQLite in tests. Differences from the draft below: the queue route is `/api/reviewer/messages`; escalation is a separate endpoint; the user can read their own
+history; `predictions` also stores `status`, `initial_urgency` and the exact reply shown. A model, calibration on real messages, reviewer staffing, consent wording that covers chat messages,
+message encryption/retention, and clinician review of the wording are all still open (section 7).
 
 ## 1. Flow
 
@@ -27,6 +32,15 @@ reviewer opens a case -> audit entry -> records their own judgement -> becomes f
 - A reviewer who finds warning signs, a contradiction or any uncertainty can **escalate** the case to Medium or High (`escalate()`; raise only, reason required).
 - Explicit self-harm, a High check-in floor or a High provisional priority triggers the urgent-response protocol and shows the helplines, **whatever the model predicted**.
 - The reviewer sees a note on every case; for Low it says the case is not cleared and what to look for.
+- **Good news** ("my exams went well") gets a short warm reply and no advice, but only when nothing concerning is present: any unnegated distress word, any safety-rule hit
+  or any raised priority blocks it. A person still reads it.
+- **Explicit first-person statements about ending one's own life** ("I want to die", "I have been thinking about ending my life") are **urgent** under the V1 policy
+  (`urgent_ideation`; negated or third-person statements stay at review level). An urgent message shows the reviewer an instant banner: `GET /api/reviewer/alerts` returns counts only
+  (no names or text), is not audited, and is polled every few seconds.
+- **The person sees the truth about their message**: `care_status` is `waiting`, `being_read` (a reviewer opened it) or `reviewed`, with a reviewed sentence for each. For urgent messages the
+  text says the team has been alerted, that no time can be given, and points to the call buttons. **No time and no doctor are ever promised**, because no doctor connection and no staffed
+  on-call rota exist; a person who believes help is minutes away may wait instead of calling. If a real on-call process with a measured response time is set up, a target can be added
+  to the wording after clinical review.
 - Every sentence the person can see has an ID and is listed, with a safety checklist and scenarios, in `ml/docs/clinical_review/`. It is an **AI-assisted draft,
   clinical review pending**; it must not be shown to real users until a qualified clinician has reviewed it. Every reply also carries an always-visible
   "IRIS is not an emergency service. If you need help right now, call 112 or Tele-MANAS 14416" line, so nobody waits on a reply when they need help now.

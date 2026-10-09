@@ -2,9 +2,13 @@
 
 AI-assisted mental-health support triage: **Baseline assessment, detection, decision, routing, human oversight.**
 
-This repository currently contains **Module 1: onboarding and clinical baseline** (sign-up, consent, clinical
-check-in, scoring, reviewer queue). The conversation pipeline (intent, urgency, confidence, cost-sensitive routing)
-is the next module and will consume the baseline produced here. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+This repository contains **Module 1: onboarding and clinical baseline** (sign-up, consent, clinical check-in, scoring,
+reviewer queue) and a first version of **the chat ("Talk to IRIS") with its human review queue**. In the chat, priority comes
+from the rule layer and the check-in safety floor only: **no AI model is used yet**, because none was good enough in the Phase 2
+evaluation (`ml/reports/phase2_final_summary.md`). Every message waits for a person, who can raise its priority or record their own
+judgement; the system never closes a case. The reply wording is an **AI-assisted draft, clinical review pending**
+(`ml/docs/clinical_review/`), so this is a prototype, not for real people. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[docs/TRIAGE_INTEGRATION_SPEC.md](docs/TRIAGE_INTEGRATION_SPEC.md).
 
 | Layer    | Stack                                                                                       |
 | -------- | ------------------------------------------------------------------------------------------- |
@@ -12,7 +16,7 @@ is the next module and will consume the baseline produced here. See [docs/ARCHIT
 | Backend  | FastAPI, SQLAlchemy 2, Alembic migrations, Pydantic 2                                       |
 | Database | Supabase Postgres (Mumbai), Row Level Security on every table                               |
 | Auth     | Supabase Auth (email confirmation, password reset); tokens kept in `httpOnly` cookies       |
-| Tests    | pytest, 68 tests (scoring, safety tiers, validation, auth flows, role access, audit log)    |
+| Tests    | pytest, 106 tests (scoring, safety tiers, auth flows, role access, audit log, chat and review queue)|
 
 ## Set up Supabase (once)
 
@@ -34,7 +38,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-alembic upgrade head              # creates the tables, RLS rules and audit log in Supabase
+alembic upgrade head              # creates the tables, RLS rules and audit log in Supabase (includes 0002, the chat tables: review it first)
 uvicorn app.main:app --reload
 
 # 2. Frontend (http://localhost:5173, proxies /api to the backend)
@@ -49,6 +53,7 @@ metadata, so nobody can grant it to themselves.
 
 ```bash
 cd backend && pytest          # backend tests (no network or database needed)
+cd backend && python -m devtools.demo_server   # local sandbox: stand-in sign-in and a throwaway database, see docs/DEMO_ACCOUNTS.md
 cd frontend && npm run build  # type-check and production build
 ```
 
