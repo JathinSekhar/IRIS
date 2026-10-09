@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import HIGH, URGENCY, URGENCY_INDEX
-from .metrics import load_costs
+from .costs import load_costs
 from .rules import RuleResult, scan
 
 ROUTES = {"high": "human_reviewer", "medium": "counsellor", "low": "normal_support"}
@@ -43,10 +43,16 @@ class DecisionPolicy:
     min_words: int = MIN_WORDS
     cost_matrix: np.ndarray | None = field(default=None, compare=False)
     mandatory_review: bool = False         # True: every case goes to a human; the model only orders the queue (see V1_POLICY)
+    urgent_ideation: bool = False          # True: a first-person statement about ending one's own life is treated as URGENT (High), not just flagged
 
+
+# Rule hits that are explicit, first-person statements about ending one's own life. With `urgent_ideation` these raise the case to High so a reviewer sees it
+# at once. This is a safety setting awaiting clinical review (docs/clinical_review/SAFETY_REVIEW_CHECKLIST.md): change it here, in one place. It is skipped
+# when the phrase is negated ("I'm not going to kill myself") or concerns someone else; those stay at review level, with helplines, and a person still reads them.
+URGENT_IDEATION_HITS = frozenset({"kill_myself", "end_my_life", "want_to_die"})
 
 # The design to ship. `urgency` on its results is then a PROVISIONAL priority for the reviewer, never a cleared decision.
-V1_POLICY = DecisionPolicy(mandatory_review=True)
+V1_POLICY = DecisionPolicy(mandatory_review=True, urgent_ideation=True)
 
 
 @dataclass(frozen=True)
@@ -130,6 +136,11 @@ def decide(probs: np.ndarray | None, text: str, baseline_floor: str = "none", po
         reasons.append(f"baseline floor from check-in: {baseline_floor}")
         idx = max(idx, FLOOR_INDEX[baseline_floor])
         score = max(score, float(FLOOR_INDEX[baseline_floor]))
+
+    if policy.urgent_ideation and set(rule.hits) & URGENT_IDEATION_HITS and not rule.negated and not rule.third_person:
+        reasons.append("explicit first-person statement about ending their own life: treated as urgent")
+        idx = max(idx, HIGH)
+        score = max(score, float(HIGH))
 
     urgency = URGENCY[idx]
     if policy.mandatory_review:

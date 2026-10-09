@@ -104,12 +104,7 @@ def ece(probs: np.ndarray, y_true: Sequence[int], n_bins: int = 10) -> float:
 
 # --- cost and the human-review tradeoff -------------------------------------------------------------------------
 
-def load_costs() -> tuple[np.ndarray, float]:
-    cfg = load_yaml("costs.yaml")
-    matrix = np.array([cfg["matrix"][name] for name in URGENCY], dtype=float)
-    if matrix.shape != (len(URGENCY), len(URGENCY)):
-        raise ValueError("cost matrix must be urgency x urgency")
-    return matrix, float(cfg["review_cost"])
+from .costs import load_costs  # noqa: E402,F401  (kept here for existing imports; lives in costs.py so the decision layer stays light)
 
 
 def expected_cost(y_true: Sequence[int], y_pred: Sequence[int], matrix: np.ndarray | None = None) -> float:

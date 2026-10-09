@@ -210,3 +210,14 @@ def test_phrasings_found_missing_in_the_review_are_flagged(text):
 ])
 def test_everyday_sentences_near_the_new_patterns_are_not_flagged(text):
     assert not scan(text).flagged, text
+
+
+# From a hand test of the chat: these got only self-help tips and no helplines.
+@pytest.mark.parametrize("text", ["I can't take it anymore. Everything feels too difficult right now.", "I cannot take this any longer", "i can't take it any more"])
+def test_cant_take_it_anymore_is_flagged(text):
+    assert scan(text).flagged, text
+
+
+@pytest.mark.parametrize("text", ["I can't take the noise in the hostel", "I can't take my eyes off this show", "I can't take a day off this week"])
+def test_cant_take_something_else_is_not_flagged(text):
+    assert not scan(text).flagged, text

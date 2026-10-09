@@ -102,7 +102,7 @@ def test_the_check_in_floor_overrides_a_calm_low_prediction_too():
 
 
 def test_a_review_level_rule_shows_support_lines_but_is_not_the_urgent_protocol():
-    p = plan("sometimes I just want to die", SURE_LOW)
+    p = plan("Nobody would notice if I was gone", SURE_LOW)
     assert p.show_crisis_resources and p.provisional_priority == "medium" and not p.urgent_protocol
 
 
@@ -240,3 +240,40 @@ def test_probe_regressions_found_by_trying_to_break_the_matcher():
     assert topics("She told me she is thinking of hurting herself") == ("supporting_others",)
     assert topics("Everything feels pointless")[0] == "low_mood"
     assert "anxiety_worry" in topics("I'm so scared about everything")
+
+
+# --- a message that itself raises a safety signal gets support and helplines, not tips ------------------------------------------------------------------
+
+def test_a_message_with_concerning_language_gets_no_self_help_tips_but_keeps_support_and_helplines():
+    for text in ["Nobody would notice if I was gone", "I can't take it anymore", "I have exams and nobody would care if I disappeared"]:
+        p = plan(text)
+        assert not p.urgent_protocol and p.show_crisis_resources and p.crisis_lines == sp.CRISIS_LINES, text
+        assert p.self_help == () and p.intro == sp.GENERAL.intro and p.reach_out, text
+        assert p.human_review_required
+
+
+def test_a_calm_message_from_someone_whose_check_in_raised_a_flag_keeps_its_advice_and_gets_helplines():
+    p = plan("I have exams next week and I am struggling to study", floor="medium")
+    assert p.show_crisis_resources and p.self_help and p.topics[0] == "academic_stress" and not p.urgent_protocol
+
+
+def test_a_message_about_someone_elses_risk_keeps_the_supporting_content_and_helplines():
+    p = plan("My friend said he wants to kill himself")
+    assert p.topics[0] == "supporting_others" and p.show_crisis_resources and p.self_help
+    assert any("112" in r for r in p.reach_out)
+
+
+def test_explicit_first_person_statements_about_ending_ones_life_get_the_urgent_response_not_just_helplines():
+    for text in ["I want to die", "I have been thinking about ending my life, and I don't know what to do", "sometimes I just want to die"]:
+        p = plan(text)
+        assert p.urgent_protocol and p.layout == "help_now" and p.show_crisis_resources and not p.self_help, text
+        assert p.crisis_lead == sp.CRISIS_LEAD_URGENT and "URGENT" in p.reviewer_note
+
+
+def test_each_plan_says_how_to_present_it_and_carries_tap_to_call_helplines_when_a_safety_layer_fired():
+    assert plan("I have exams next week and I am struggling to study").layout == "tips"
+    assert plan("I have exams next week and I am struggling to study").helplines == ()
+    flagged = plan("Nobody would notice if I was gone")
+    assert flagged.layout == "support" and flagged.helplines == sp.HELPLINES
+    assert plan("I am going to kill myself tonight").layout == "help_now"
+    assert plan("I had a great day with my friends").layout == "celebrate"

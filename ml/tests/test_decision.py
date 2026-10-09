@@ -177,3 +177,25 @@ def test_mcnemar_only_uses_disagreements():
     assert r["p_value"] == 1.0 and r["only_a_correct"] == r["only_b_correct"] == 0
     r2 = rk.mcnemar_exact([True] * 20 + [False] * 5, [False] * 20 + [False] * 5)
     assert r2["only_a_correct"] == 20 and r2["p_value"] < 0.001
+
+
+# --- explicit first-person statements about ending one's life are urgent under the V1 policy ---------------------------------------------------------------
+
+@pytest.mark.parametrize("text", ["I have been thinking about ending my life", "I want to kill myself", "I want to die", "I keep thinking about ending my own life"])
+def test_v1_treats_explicit_ideation_as_urgent_whatever_the_model_says(text):
+    for probs in (SURE_LOW, SURE_MED, SURE_HIGH, UNSURE, None):
+        r = decide(probs, text, policy=d.V1_POLICY)
+        assert r.urgency == "high" and r.needs_human and r.route == "human_reviewer" and r.risk_score >= 2.0
+        assert any("ending their own life" in x for x in r.reasons)
+
+
+@pytest.mark.parametrize("text", ["My friend said he wants to kill himself", "I'm not suicidal, just stressed", "I don't want to die, I just want the pain to stop",
+                                  "Nobody would notice if I was gone", "I've been cutting myself"])
+def test_v1_keeps_negated_third_person_and_indirect_statements_at_review_level_not_urgent(text):
+    r = decide(SURE_LOW, text, policy=d.V1_POLICY)
+    assert r.urgency == "medium" and r.needs_human, text
+
+
+def test_the_evaluation_policy_is_unchanged_so_reported_results_still_hold():
+    assert decide(SURE_LOW, "I want to kill myself").urgency == "medium"
+    assert not DecisionPolicy().urgent_ideation and not DecisionPolicy().mandatory_review

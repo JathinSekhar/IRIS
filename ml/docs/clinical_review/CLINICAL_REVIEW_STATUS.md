@@ -8,8 +8,8 @@
 
 ## What exists and is ready for a clinician to review
 
-- **66 messages** (62 shown to people, 4 for reviewers), each with an ID, topic, trigger keywords, intended situation, safety considerations, limitations and a five-question draft self-check (`support_messages.csv`, `.json`, `SUPPORT_MESSAGES.md`).
-- **49 safety-critical scenarios** covering explicit and indirect self-harm language, ambiguity, negation, past-tense distress, another person's difficulties, everyday idioms and ordinary support: 35 behave as desired, 11 are covered but need a clinician's decision, 3 are known gaps (`support_scenarios.csv`).
+- **84 messages** (80 shown to people, 4 for reviewers), each with an ID, topic, trigger keywords, intended situation, safety considerations, limitations and a five-question draft self-check (`support_messages.csv`, `.json`, `SUPPORT_MESSAGES.md`).
+- **58 safety-critical scenarios** covering explicit and indirect self-harm language, ambiguity, negation, past-tense distress, another person's difficulties, everyday idioms and ordinary support: 43 behave as desired, 13 are covered but need a clinician's decision, 2 are known gaps (`support_scenarios.csv`).
 - A checklist and a list of decisions that need a clinician (`SAFETY_REVIEW_CHECKLIST.md`).
 - Automated tests that regenerate these files and fail if they drift from the code, check that every sentence a person can see is in the list, that every message passes the automatic wording checks, that safety-critical scenarios trigger the right workflow whatever a model predicts, and that nothing claims a person is safe.
 

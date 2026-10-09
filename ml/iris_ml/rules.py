@@ -79,6 +79,8 @@ _RULES: list[tuple[str, str, str]] = [
     ("no_point_in_anything", "review",
      r"(?:don'?t|do\s+not|can'?t|cannot|no\s+longer)\s+see\s+(?:the\s+|any\s+)?(?:point|purpose|reason)\s+(?:in|of|to)\s+"
      r"(?:anything|living|life|going\s+on|being\s+here|all\s+this|any\s+of\s+it)"),
+    ("cant_take_it_anymore", "review",
+     r"(?:can'?t|cannot|couldn'?t)\s+(?:take|bear|stand|handle)\s+(?:it|this|any\s+of\s+it|everything)\s+(?:any\s*more|any\s+longer)"),
     ("cannot_face_another_day", "review",
      r"(?:can'?t|cannot|couldn'?t)\s+(?:face|survive|get\s+through|go\s+through)\s+(?:another|one\s+more|any\s+more)\s+(?:day|night|morning)"),
     ("happier_without_me", "review",

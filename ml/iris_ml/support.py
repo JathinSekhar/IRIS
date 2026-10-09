@@ -49,6 +49,42 @@ REVIEWER_LOW = ("Low provisional priority means LOWER ESTIMATED URGENCY, NOT ZER
                 "queue. Read for warning signs, contradictions or anything that does not fit, and escalate to Medium or High if you find any.")
 ESCALATION_TEMPLATE = "escalated by a reviewer to {to}: {reason}"
 
+# Good news gets a warm, short reply and NO advice. Only used when nothing concerning is present (see `positive_kind`); a person still reads every message.
+POSITIVE_INTRO = {
+    "achieve": "Congratulations, that is a real achievement.",
+    "social": "That sounds like a lovely day.",
+    "better": "We are really glad you are feeling better.",
+    "general": "That is wonderful to hear.",
+}
+POSITIVE_BODY = {
+    "achieve": "You put in the effort, and it shows. Be proud of that.",
+    "social": "Time with people you care about can be a real source of strength. Keep making room for it.",
+    "better": "Keep going at your own pace, and keep doing what is helping.",
+    "general": "Enjoy it, and keep doing what is working for you.",
+}
+POSITIVE_CLOSE = "If things ever feel different, you are welcome to write here any time."
+
+# What the person is told about their message, from what is really true: whether a person has opened it. No time is promised, because none can be.
+STATUS_LINES = {
+    ("waiting", False): "A person on our team will read this, which may take some time.",
+    ("being_read", False): "A person on our team is reading this now.",
+    ("reviewed", False): "A person on our team has read this.",
+    ("waiting", True): "Our team has been alerted and a person will read this as soon as possible. We cannot say exactly when, so please call one of the numbers above if you need someone right away.",
+    ("being_read", True): "A member of our team is reading your message now. If you need someone right away, please also call one of the numbers above.",
+    ("reviewed", True): "A member of our team has read your message. If you need someone right away, you can call one of the numbers above at any time.",
+}
+
+# The same helplines as CRISIS_LINES, as tap-to-call cards: (name, detail, number to show, number to dial). A test keeps the numbers identical.
+HELPLINES = (
+    ("Tele-MANAS", "24×7, free, confidential", "14416", "14416"),
+    ("KIRAN", "Mental health helpline", "1800-599-0019", "18005990019"),
+    ("In immediate danger", "Emergency services", "112", "112"),
+)
+
+
+def status_line(care_status: str, urgent: bool) -> str:
+    return STATUS_LINES[(care_status, bool(urgent))]
+
 BREATHING = ("Slow breathing", "You could try breathing in for 4 seconds, holding for 4, breathing out for 4 and holding for 4, for a few minutes. "
                                "If counting feels uncomfortable, breathe at your own pace instead.")
 JOURNAL = ("Journaling", "You could write down what is on your mind for five minutes. It is private to you and does not need to be neat.")
@@ -208,6 +244,14 @@ def catalog() -> list[dict]:
                 seen.add(mid)
                 add(mid, "user", "reach_out", ro_use[item], item)
 
+    for kind in POSITIVE_INTRO:
+        add(f"SM-POS-{kind.upper()}-INTRO", "user", "positive_intro", ["positive"], POSITIVE_INTRO[kind])
+        add(f"SM-POS-{kind.upper()}-BODY", "user", "positive_body", ["positive"], POSITIVE_BODY[kind])
+    add("SM-POS-CLOSE", "user", "positive_closing", ["positive"], POSITIVE_CLOSE)
+    for n, (name, detail, number, _) in enumerate(HELPLINES, 1):
+        add(f"SM-HELPLINE-{n}", "user", "helpline_card", ["flagged", "urgent"], f"{name}: {detail}: {number}")
+    for (state, urgent), text in STATUS_LINES.items():
+        add(f"SM-STATUS-{state.upper().replace('_', '-')}-{'URGENT' if urgent else 'NORMAL'}", "user", "status_line", ["urgent" if urgent else "all"], text)
     add("SM-REVIEWER-LOW", "reviewer", "reviewer_note", ["low"], REVIEWER_LOW)
     add("SM-REVIEWER-MEDIUM", "reviewer", "reviewer_note", ["medium"], REVIEWER_MEDIUM)
     add("SM-REVIEWER-URGENT", "reviewer", "reviewer_note", ["urgent"], REVIEWER_URGENT)
@@ -281,6 +325,41 @@ def explain_topics(text: str) -> list[dict]:
     return sorted(scores.values(), key=lambda d: (-d["score"], not d["strong"], d["order"]))
 
 
+_POSITIVE = re.compile(
+    r"\b(?:great|wonderful|amazing|fantastic|happy|proud|excited|thrilled|delighted|glad|grateful|thankful|enjoy(?:ed|ing)?|celebrat\w+|"
+    r"went (?:really |very |so )?well|good news|passed|promoted|got the job|got a job|achiev\w+|"
+    r"(?:doing|feeling|feel|much|a lot) better|improv(?:ed|ing)|recover(?:ed|ing)|relieved|calmer|lovely day|good day|thank you|thanks|helped me|really helped|helpful)\b", re.IGNORECASE)
+_DISTRESS = re.compile(
+    r"\b(?:sad|anxious|anxiety|worried|worry|worries|worrying|stress(?:ed|ful)?|overwhelm\w*|lonely|alone|can'?t|cannot|couldn'?t|tired|exhaust\w*|hopeless|"
+    r"worthless|useless|empty|numb|cry|crying|scared|afraid|struggl\w+|difficult|hard|bad|worse|worst|awful|terrible|horrible|angry|upset|hurt|pain|"
+    r"depress\w*|nobody|no one|panic\w*|nervous|pressure|fail(?:ed|ure)?|lost|miss|missing|sorry|guilty|ashamed|burden|unhappy|miserable|down|low|"
+    r"disappear\w*|gone|die|dead|death|kill\w*|suicid\w*|end it|ending)\b", re.IGNORECASE)
+_KIND = [
+    ("better", re.compile(r"\b(?:better|improv\w+|recover\w+|relieved|calmer)\b", re.IGNORECASE)),
+    ("achieve", re.compile(r"\b(?:exams?|results?|passed|promot\w+|job|interview|marks|grades?|proud|achiev\w+|finished|completed|won)\b", re.IGNORECASE)),
+    ("social", re.compile(r"\b(?:friends?|family|party|trip|together|met|with them)\b", re.IGNORECASE)),
+]
+
+
+def positive_kind(text: str) -> str | None:
+    """'achieve' | 'social' | 'better' | 'general' when the message is clearly good news, else None.
+
+    Deliberately strict: ANY sign of distress that is not negated or in the past ("not stressed", "I used to feel anxious") makes this None, so a mixed
+    message ("I passed, but I feel worthless") gets the normal careful reply. The caller also requires that no safety rule fired. This is a keyword
+    heuristic that can miss sarcasm and mixed feelings, which is one more reason a person reads every message.
+    """
+    t = _prepare(text)
+    pos = [m for m in _POSITIVE.finditer(t) if not _negated(t, m.start())]
+    if not pos:
+        return None
+    if any(not _negated(t, m.start()) for m in _DISTRESS.finditer(t)):
+        return None
+    for kind, rx in _KIND:
+        if rx.search(t):
+            return kind
+    return "general"
+
+
 def match_topics(text: str, limit: int = 3) -> tuple[str, ...]:
     """The topics the message is actually about, best-supported first. Empty means nothing specific was recognised."""
     return tuple(d["topic"] for d in explain_topics(text)[:limit])
@@ -299,6 +378,8 @@ class SupportPlan:
     show_crisis_resources: bool
     emergency_footer: str             # always present: IRIS is not an emergency service
     closing: str
+    layout: str                       # how to present it: tips | celebrate | support | help_now (presentation only; never shown as a word)
+    helplines: tuple[tuple[str, str, str, str], ...]   # tap-to-call cards, same numbers as crisis_lines; empty unless a safety layer fired
     a_person_may_reach_out: bool
     # --- for the system and the reviewer ---
     queue_status: str
@@ -318,6 +399,15 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
     """The supportive plan for one message. `result` should come from the V1 policy, so `needs_human` is always true."""
     urgent = result.urgency == "high" or result.rule_level == "high"
     flagged = urgent or result.urgency == "medium" or result.rule_level != "none" or result.baseline_floor != "none"
+    positive = None if (flagged and (urgent or result.rule_level != "none" or result.urgency != "low")) else positive_kind(text)
+    if positive is not None and result.rule_level == "none" and not urgent:
+        return SupportPlan(
+            topics=("positive",), intro=POSITIVE_INTRO[positive], listening=POSITIVE_BODY[positive], self_help=(), reach_out=(POSITIVE_CLOSE,),
+            crisis_lead=CRISIS_LEAD_FLAGGED if flagged else "", crisis_lines=CRISIS_LINES if flagged else (), show_crisis_resources=flagged,
+            emergency_footer=EMERGENCY_FOOTER, closing=CLOSING, layout="celebrate", helplines=HELPLINES if flagged else (),
+            a_person_may_reach_out=True, queue_status=QUEUE_STATUS, provisional_priority=result.urgency, urgent_protocol=False,
+            human_review_required=True, reviewer_note=reviewer_note(result, False), match_confidence="clear",
+        )
     found = explain_topics(text)[:3]
     names = tuple(d["topic"] for d in found)
     best = found[0] if found else None
@@ -330,6 +420,10 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
     if urgent:
         intro = URGENT_INTRO
         reach_out = [URGENT_REACH_OUT]
+    elif result.rule_level != "none" and "supporting_others" not in names:
+        # The message itself contains concerning language: no self-help tips (they can read as dismissive), only support, a person to talk to and the helplines.
+        intro = GENERAL.intro
+        reach_out = list(GENERAL.reach_out)
     else:
         intro = chosen[0].intro if confidence == "clear" else GENERAL.intro      # do not open with a guess
         for i in range(max(len(t.self_help) for t in chosen)):          # interleave, so every matched topic is represented
@@ -349,6 +443,7 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
         crisis_lead=(CRISIS_LEAD_URGENT if urgent else CRISIS_LEAD_FLAGGED) if flagged else "",
         crisis_lines=CRISIS_LINES if flagged else (), show_crisis_resources=flagged,
         emergency_footer=EMERGENCY_FOOTER, closing=CLOSING,
+        layout="help_now" if urgent else ("support" if flagged else "tips"), helplines=HELPLINES if flagged else (),
         a_person_may_reach_out=True,
         queue_status=QUEUE_STATUS, provisional_priority=result.urgency, urgent_protocol=urgent,
         human_review_required=True, reviewer_note=reviewer_note(result, urgent), match_confidence=confidence,
@@ -359,18 +454,25 @@ def user_facing_text(plan: SupportPlan) -> str:
     """Everything the person would read, as one string. The tests scan this for unsupported claims."""
     parts = [plan.intro, plan.listening, plan.closing, plan.emergency_footer, *plan.reach_out, *([plan.crisis_lead] if plan.crisis_lead else []), *plan.crisis_lines]
     parts += [f"{title}: {how}" for title, how in plan.self_help]
+    parts += [f"{name}: {detail}: {number}" for name, detail, number, _ in plan.helplines]
     return "\n".join(parts)
 
 
-def escalate(result: TriageResult, to: str, reason: str) -> TriageResult:
-    """A reviewer raises a case to medium or high. It can only raise, it needs a reason, and the case stays in human hands."""
+def validate_escalation(current: str, to: str, reason: str) -> str:
+    """The one rule for reviewer escalation, shared by the library and the backend: raise only, to medium or high, with a reason. Returns the clean reason."""
     if to not in ("medium", "high"):
         raise ValueError("a reviewer can escalate to 'medium' or 'high'")
     if not reason or not reason.strip():
         raise ValueError("an escalation needs a reason")
-    if URGENCY_INDEX[to] < URGENCY_INDEX[result.urgency]:
-        raise ValueError(f"cannot lower {result.urgency} to {to} here; escalation only raises")
+    if URGENCY_INDEX[to] < URGENCY_INDEX[current]:
+        raise ValueError(f"cannot lower {current} to {to} here; escalation only raises")
+    return reason.strip()
+
+
+def escalate(result: TriageResult, to: str, reason: str) -> TriageResult:
+    """A reviewer raises a case to medium or high. It can only raise, it needs a reason, and the case stays in human hands."""
+    reason = validate_escalation(result.urgency, to, reason)
     idx = URGENCY_INDEX[to]
     return replace(result, urgency=URGENCY[idx], route="human_reviewer", needs_human=True,
                    risk_score=max(result.risk_score, float(idx)),
-                   reasons=result.reasons + (ESCALATION_TEMPLATE.format(to=to, reason=reason.strip()),))
+                   reasons=result.reasons + (ESCALATION_TEMPLATE.format(to=to, reason=reason),))

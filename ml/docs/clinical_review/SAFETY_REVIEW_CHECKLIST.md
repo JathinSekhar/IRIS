@@ -64,7 +64,6 @@ In `clinician_decision` write one of: `approve`, `approve with changes`, `reject
 | --- | --- | --- | --- | --- |
 | SC21 | I'm so done with everything | support_with_helplines | ordinary_support | Ambiguous: may be frustration or may be hopelessness. Currently not flagged. |
 | SC23 | ab jeene ka mann nahi karta | support_with_helplines | ordinary_support | Hinglish. v1 is English only. The message still goes to a human, but no helplines are shown automatically. |
-| SC25 | I can't take it anymore | support_with_helplines | ordinary_support |  |
 
 These are gaps in the hand-written rule patterns and in English-only coverage. In every one of them a person still reads the message under the mandatory-review design, but the person would not automatically be shown helplines. Closing a gap means adding a pattern with tests, and no list of patterns can be shown to catch every urgent phrasing.
 

@@ -142,7 +142,7 @@ own, and the answer is: not enough. They are not the behaviour of the shipped de
   is now flagged at review level (found while probing the support-text matcher). Four more phrasings found by the support-message review are now flagged at
   review level too ("I don't see the point in anything", "I can't face another day", "everyone would be happier if I wasn't around", and "hurting/harming
   himself/herself" for another person). I re-checked after these changes that the rule-dependent numbers in the report are unchanged (challenge 41/41
-  and 19/31; ESConv rule flags 13 of 6,000). Both gaps were found by trying to break the system by hand, which
+  and 19/31). After the last change ("I can't take it anymore", found in a hand test of the chat) the rule layer flags 14 of 6,000 ordinary ESConv messages instead of 13; the challenge-set numbers did not change. Separately, the V1 policy now treats explicit first-person statements about ending one's own life as urgent (`urgent_ideation`, one setting, awaiting clinical review); the evaluation policy used for every reported number is unchanged. Both gaps were found by trying to break the system by hand, which
   is a reminder that more gaps certainly exist: the rule layer is a hand-written pattern list and cannot be shown to catch every urgent phrasing.
 - **Not verified in this session:** the heavy tests (model reload, fine-tune end-to-end) were not re-run, to keep compute off the laptop. The decision,
   rules, walkthrough and demo-account tests pass.

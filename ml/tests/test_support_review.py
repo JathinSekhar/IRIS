@@ -80,7 +80,7 @@ def test_every_message_type_has_context_text():
 
 def test_every_documented_keyword_really_triggers_its_topic():
     for code, meta in rv.TOPIC_META.items():
-        if code == "general":
+        if code in ("general", "positive"):
             continue
         for kw in meta["keywords"]:
             assert code in sp.match_topics(kw, limit=5), (code, kw)
@@ -117,7 +117,7 @@ def test_every_sentence_a_person_can_be_shown_is_in_the_reviewed_list():
 
 # --- safety-critical scenarios ------------------------------------------------------------------------------------------------------------------
 
-URGENT_IDS = ["SC01", "SC02", "SC03", "SC04", "SC05", "SC06", "SC07", "SC37"]
+URGENT_IDS = ["SC01", "SC02", "SC03", "SC04", "SC05", "SC06", "SC07", "SC08", "SC09", "SC09b", "SC37", "SC56"]
 
 
 @pytest.mark.parametrize("sid", URGENT_IDS)
@@ -160,7 +160,7 @@ def test_covered_scenarios_behave_as_desired_and_the_known_gaps_are_exactly_the_
             assert s["observed_workflow"] == s["desired_workflow"], sid
     gaps = {sid for sid, s in SCEN.items() if s["status"] == "known_gap"}
     # If you close a gap, this test fails on purpose: update the list, the notes and the status document together.
-    assert gaps == {"SC21", "SC23", "SC25"}              # SC19, SC20, SC22 and SC38 were closed after the first review
+    assert gaps == {"SC21", "SC23"}              # SC19, SC20, SC22, SC25 and SC38 were closed after review and hand testing
     for sid in gaps:
         assert SCEN[sid]["observed_workflow"] != SCEN[sid]["desired_workflow"]
         assert SCEN[sid]["human_review_mandatory"] == "yes"                                 # a person still reads it
@@ -200,3 +200,44 @@ def test_the_generated_review_files_match_the_code_and_carry_the_draft_banner():
     assert data["review_status"] == sp.REVIEW_STATUS and len(data["rows"]) == len(MSGS)
     rows = list(csv.DictReader(io.StringIO((rv.OUT_DIR / "support_messages.csv").read_text(encoding="utf-8"))))
     assert [r["message_id"] for r in rows] == [m["message_id"] for m in MSGS]
+
+
+# --- good news gets a warm reply, never advice, and never when anything concerning is present ---------------------------------------------------------------
+
+POSITIVE_IDS = ["SC50", "SC51", "SC52", "SC53", "SC54"]
+
+
+@pytest.mark.parametrize("sid", POSITIVE_IDS)
+def test_good_news_gets_a_warm_reply_with_no_advice_and_no_helplines(sid):
+    text = SCEN[sid]["example_message"]
+    p = sp.plan_support(text, decide(SURE_LOW, text, "none", V1_POLICY))
+    assert p.layout == "celebrate" and p.topics == ("positive",) and not p.self_help and not p.show_crisis_resources
+    assert p.intro in sp.POSITIVE_INTRO.values() and p.listening in sp.POSITIVE_BODY.values() and p.human_review_required   # still read by a person
+    assert SCEN[sid]["observed_workflow"] == rv.POS
+
+
+@pytest.mark.parametrize("sid", ["SC55", "SC56", "SC57"])
+def test_mixed_messages_never_get_the_cheerful_reply(sid):
+    text = SCEN[sid]["example_message"]
+    p = sp.plan_support(text, decide(SURE_LOW, text, "none", V1_POLICY))
+    assert p.layout != "celebrate" and p.topics != ("positive",)
+
+
+def test_good_news_from_someone_whose_check_in_raised_a_flag_still_gets_the_helplines():
+    text = SCEN["SC50"]["example_message"]
+    p = sp.plan_support(text, decide(SURE_LOW, text, "high", V1_POLICY))
+    assert p.urgent_protocol and p.layout == "help_now" and p.show_crisis_resources
+
+
+def test_helpline_cards_use_exactly_the_numbers_in_the_crisis_lines():
+    joined = " ".join(sp.CRISIS_LINES)
+    for name, detail, number, tel in sp.HELPLINES:
+        assert number in joined and tel.replace("-", "") == number.replace("-", "")
+
+
+def test_every_status_line_is_in_the_reviewed_list_and_makes_no_promise_of_timing():
+    allowed = {m["recommended_response"] for m in MSGS}
+    for (state, urgent), line in sp.STATUS_LINES.items():
+        assert line in allowed and sp.status_line(state, urgent) == line
+        assert rv.lint(line) == [], (state, urgent, rv.lint(line))
+        assert "minute" not in line and "doctor" not in line.lower()        # no time and no doctor is ever promised
