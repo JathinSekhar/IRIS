@@ -1,11 +1,15 @@
 import type {
   Answers,
+  ChatMessage,
   CheckinResult,
   Questionnaire,
   RegisterPayload,
   RegisterResult,
   ReviewerCheckin,
   ReviewerCheckinSummary,
+  ReviewerMessage,
+  ReviewerMessageSummary,
+  UrgentAlerts,
   User,
 } from './types'
 
@@ -104,4 +108,13 @@ export const api = {
   skipCheckin: () => post<CheckinResult>('/api/checkin', { skipped: true }),
   reviewerQueue: () => request<ReviewerCheckinSummary[]>('/api/reviewer/checkins'),
   reviewerCheckin: (id: number) => request<ReviewerCheckin>(`/api/reviewer/checkins/${id}`),
+  sendMessage: (text: string) => post<ChatMessage>('/api/messages', { text }),
+  messages: () => request<ChatMessage[]>('/api/messages'),
+  reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),
+  reviewerMessages: () => request<ReviewerMessageSummary[]>('/api/reviewer/messages'),
+  reviewerMessage: (id: number) => request<ReviewerMessage>(`/api/reviewer/messages/${id}`),
+  escalateMessage: (id: number, to: 'medium' | 'high', reason: string) =>
+    post<ReviewerMessage>(`/api/reviewer/messages/${id}/escalate`, { to, reason }),
+  reviewMessage: (id: number, urgency: 'low' | 'medium' | 'high', notes: string) =>
+    post<ReviewerMessage>(`/api/reviewer/messages/${id}/review`, { urgency, notes }),
 }

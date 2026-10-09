@@ -1,9 +1,10 @@
 import { AlertTriangle, ShieldAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Card, Spinner, cx } from '../components/ui'
+import ReviewerMessages from './ReviewerMessages'
 import { api, ApiError } from '../lib/api'
 import { BAND_LABEL } from '../lib/questionnaire'
-import type { Answer, Question, Questionnaire, ReviewerCheckin, ReviewerCheckinSummary } from '../lib/types'
+import type { Answer, Question, Questionnaire, ReviewerCheckin, ReviewerCheckinSummary, UrgentAlerts } from '../lib/types'
 
 const RISK_STYLE: Record<string, string> = {
   high: 'bg-red-50 text-red-800 ring-red-200',
@@ -31,7 +32,7 @@ function answerText(q: Question, a: Answer | undefined): string {
   return q.options.find((o) => o.value === a)?.label ?? String(a)
 }
 
-export default function Reviewer() {
+function CheckinQueue() {
   const [rows, setRows] = useState<ReviewerCheckinSummary[] | null>(null)
   const [qn, setQn] = useState<Questionnaire | null>(null)
   const [error, setError] = useState('')
@@ -197,5 +198,81 @@ function Detail({ c, qn }: { c: ReviewerCheckin; qn: Questionnaire }) {
         })}
       </div>
     </Card>
+  )
+}
+
+const age = (sec: number) => (sec < 60 ? `${sec}s` : `${Math.round(sec / 60)} min`)
+
+/** Counts-only polling (no names, no text, not audited), so an urgent message shows up here within seconds of being sent. */
+function useUrgentAlerts() {
+  const [alerts, setAlerts] = useState<UrgentAlerts | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const last = useRef('')
+  useEffect(() => {
+    let stop = false
+    const tick = () => {
+      if (document.hidden) return
+      api.reviewerAlerts()
+        .then((a) => {
+          if (stop) return
+          setAlerts(a)
+          const sig = `${a.urgent_waiting}:${a.latest_urgent_id}`
+          if (last.current && sig !== last.current) setRefreshKey((k) => k + 1)
+          last.current = sig
+        })
+        .catch(() => undefined)
+    }
+    tick()
+    const id = window.setInterval(tick, 4000)
+    return () => {
+      stop = true
+      window.clearInterval(id)
+    }
+  }, [])
+  useEffect(() => {
+    const n = alerts?.urgent_unopened ?? 0
+    document.title = n > 0 ? `(${n}) Urgent waiting · IRIS` : 'IRIS'
+    return () => {
+      document.title = 'IRIS'
+    }
+  }, [alerts?.urgent_unopened])
+  return { alerts, refreshKey }
+}
+
+/** The reviewer's home: two queues, both audited. Check-ins first; messages (the chat) in the second tab. An urgent message raises a banner at once. */
+export default function Reviewer() {
+  const [tab, setTab] = useState<'checkins' | 'messages'>('checkins')
+  const { alerts, refreshKey } = useUrgentAlerts()
+  const tabs = [['checkins', 'Check-ins'], ['messages', 'Messages']] as const
+  const unopened = alerts?.urgent_unopened ?? 0
+  return (
+    <div>
+      {unopened > 0 && (
+        <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span className="flex items-center gap-2 font-medium">
+            <ShieldAlert className="size-5 shrink-0 animate-pulse" aria-hidden />
+            {unopened} urgent message{unopened > 1 ? 's' : ''} waiting, not opened yet
+            {alerts?.oldest_unopened_seconds != null && <span className="font-normal"> · oldest {age(alerts.oldest_unopened_seconds)}</span>}
+          </span>
+          {tab !== 'messages' && (
+            <button onClick={() => setTab('messages')} className="rounded-lg bg-red-700 px-3.5 py-1.5 font-medium text-white hover:bg-red-800">
+              Open messages
+            </button>
+          )}
+        </div>
+      )}
+      <div role="tablist" aria-label="Review queues" className="mb-6 inline-flex rounded-lg bg-slate-100 p-1">
+        {tabs.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+            className={cx('rounded-md px-4 py-1.5 text-sm font-medium', tab === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900')}>
+            {label}
+            {id === 'messages' && (alerts?.urgent_waiting ?? 0) > 0 && (
+              <span className="ml-1.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">{alerts?.urgent_waiting}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {tab === 'checkins' ? <CheckinQueue /> : <div><h1 className="font-display text-3xl font-medium text-slate-900">Message queue</h1><ReviewerMessages refreshKey={refreshKey} /></div>}
+    </div>
   )
 }

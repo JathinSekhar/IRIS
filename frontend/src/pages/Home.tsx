@@ -24,9 +24,10 @@ export default function Home() {
           <p className="mt-1.5 text-sm text-slate-600">
             Share what is on your mind. IRIS understands how urgent it is and brings in a person when needed.
           </p>
-          <span className="mt-4 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-            Coming in the next release
-          </span>
+          <Link to="/chat"
+            className="mt-4 inline-flex h-10 items-center rounded-lg bg-brand-800 px-4 text-sm font-medium text-white hover:bg-brand-900">
+            Start talking
+          </Link>
         </Card>
 
         <Card className="p-6">

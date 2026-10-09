@@ -81,8 +81,10 @@ export function AppLayout() {
   }
 
   const focused = pathname === '/consent' || pathname === '/check-in' || pathname === '/support'
+  // The chat is an app-like screen: it fills the viewport and only its message list scrolls, so the message box never scrolls away.
+  const chat = pathname === '/chat'
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={chat ? 'flex h-dvh flex-col overflow-hidden' : 'flex min-h-dvh flex-col'}>
       <CrisisStrip />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
@@ -103,13 +105,21 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <main className={focused ? 'mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:py-12' : 'mx-auto w-full max-w-6xl flex-1 px-5 py-8'}>
+      <main
+        className={
+          chat
+            ? 'flex min-h-0 w-full flex-1 flex-col'
+            : focused ? 'mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:py-12' : 'mx-auto w-full max-w-6xl flex-1 px-5 py-8'
+        }
+      >
         <Outlet />
       </main>
-      <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-500">
-        <HeartHandshake className="mr-1 inline size-3.5" aria-hidden />
-        IRIS supports, it does not diagnose. Your answers are confidential.
-      </footer>
+      {!chat && (
+        <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-500">
+          <HeartHandshake className="mr-1 inline size-3.5" aria-hidden />
+          IRIS supports, it does not diagnose. Your answers are confidential.
+        </footer>
+      )}
     </div>
   )
 }

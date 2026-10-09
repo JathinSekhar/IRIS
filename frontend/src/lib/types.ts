@@ -121,3 +121,93 @@ export interface RegisterPayload {
   guardian_name?: string
   guardian_email?: string
 }
+
+// --- chat ("Talk to IRIS") ---------------------------------------------------------------------------------------------------------------------
+export interface ReplyItem {
+  title: string
+  how: string
+}
+/** Everything the person may see. The server never sends an urgency label, score or reason. */
+export interface Helpline {
+  name: string
+  detail: string
+  number: string
+  tel: string
+}
+/** How to present a reply. Presentation only: never shown to the person as a word. */
+export type Layout = 'tips' | 'celebrate' | 'support' | 'help_now'
+export interface SupportReply {
+  layout: Layout
+  helplines: Helpline[]
+  intro: string
+  listening: string
+  self_help: ReplyItem[]
+  reach_out: string[]
+  crisis_lead: string
+  crisis_lines: string[]
+  show_crisis_resources: boolean
+  emergency_footer: string
+  closing: string
+  a_person_may_reach_out: boolean
+}
+export type CareStatus = 'waiting' | 'being_read' | 'reviewed'
+export interface ChatMessage {
+  id: number
+  text: string
+  created_at: string
+  reply: SupportReply
+  care_status: CareStatus
+  status_text: string
+}
+
+// --- reviewer: the human review queue for messages ---------------------------------------------------------------------------------------------
+export type Priority = 'low' | 'medium' | 'high'
+export interface ReviewerMessageSummary {
+  id: number
+  user_name: string
+  created_at: string
+  priority: Priority
+  status: string
+  rule_flagged: boolean
+  reviewer_raised: boolean
+  baseline_floor: string
+  opened: boolean
+}
+export interface UrgentAlerts {
+  urgent_waiting: number
+  urgent_unopened: number
+  oldest_unopened_seconds: number | null
+  latest_urgent_id: number | null
+}
+export interface ReviewEvent {
+  id: number
+  kind: 'escalation' | 'judgement'
+  from_urgency: string | null
+  to_urgency: string
+  notes: string
+  reviewer_name: string
+  created_at: string
+}
+export interface ReviewerMessage {
+  id: number
+  user_id: string
+  user_name: string
+  user_email: string
+  text: string
+  created_at: string
+  priority: Priority
+  initial_priority: string
+  status: string
+  rule_level: string
+  rule_hits: string[]
+  baseline_floor: string
+  baseline_known: boolean
+  baseline_risk: string | null
+  checkin_id: number | null
+  reasons: string[]
+  reviewer_note: string
+  model_version: string
+  policy_version: string
+  reply_shown: SupportReply
+  history: ReviewEvent[]
+}
