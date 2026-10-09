@@ -11,74 +11,13 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth_service import AuthError, Claims, Session, SignUpResult, get_auth_service
+from app.auth_service import get_auth_service
 from app.config import settings
 from app.db import Base, get_db
 from app.main import app
 from app.models import AuditLog, CheckIn, User
 
-TEST_SECRET = "test-signing-secret-at-least-32-bytes-long!!"
-
-
-class FakeAuth:
-    """In-memory stand-in for Supabase Auth with the same observable behaviour."""
-
-    def __init__(self):
-        self.users: dict[str, dict] = {}
-        self.refresh_tokens: dict[str, str] = {}
-        self.confirm_required = False
-        self.recoveries: list[str] = []
-
-    def _tokens(self, user_id: str, email: str, meta: dict, ttl: int = 3600) -> Session:
-        now = datetime.now(timezone.utc)
-        payload = {"sub": user_id, "email": email, "user_metadata": meta, "aud": "authenticated",
-                   "iat": now, "exp": now + timedelta(seconds=ttl)}
-        refresh = uuid.uuid4().hex
-        self.refresh_tokens[refresh] = email
-        return Session(jwt.encode(payload, TEST_SECRET, algorithm="HS256"), refresh, ttl)
-
-    def sign_up(self, email, password, metadata, redirect_to):
-        if email in self.users and not self.confirm_required:
-            raise AuthError(409, "An account with this email already exists.")
-        user = self.users.setdefault(email, {"id": str(uuid.uuid4()), "password": password, "meta": metadata,
-                                             "confirmed": not self.confirm_required})
-        session = None if self.confirm_required else self._tokens(user["id"], email, metadata)
-        return SignUpResult(user["id"], session)
-
-    def confirm(self, email):
-        self.users[email]["confirmed"] = True
-
-    def sign_in(self, email, password):
-        u = self.users.get(email)
-        if not u or u["password"] != password:
-            raise AuthError(401, "Incorrect email or password.")
-        if not u["confirmed"]:
-            raise AuthError(403, "Please confirm your email first. Check your inbox for the link.")
-        return self._tokens(u["id"], email, u["meta"])
-
-    def refresh(self, refresh_token):
-        email = self.refresh_tokens.pop(refresh_token, None)
-        if email is None:
-            raise AuthError(401, "Your session has expired. Please sign in again.")
-        u = self.users[email]
-        return self._tokens(u["id"], email, u["meta"])
-
-    def sign_out(self, access_token):
-        pass
-
-    def recover(self, email, redirect_to):
-        self.recoveries.append(email)
-
-    def update_password(self, access_token, new_password):
-        claims = self.verify(access_token)
-        self.users[claims.email]["password"] = new_password
-
-    def verify(self, access_token):
-        try:
-            p = jwt.decode(access_token, TEST_SECRET, algorithms=["HS256"], audience="authenticated")
-        except jwt.PyJWTError:
-            raise AuthError(401, "Not signed in") from None
-        return Claims(p["sub"], p["email"], p.get("user_metadata") or {})
+from devtools.fake_auth import TEST_SECRET, FakeAuth  # noqa: E402  (shared with the demo sandbox)
 
 
 @pytest.fixture()
