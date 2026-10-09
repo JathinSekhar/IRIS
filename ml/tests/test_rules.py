@@ -25,6 +25,9 @@ MUST_BE_HIGH = [
     "I will kill myself this weekend",
     "I'M GOING TO KILL MYSELF",
     "i left a goodbye note on my desk",
+    "The means are ready and tonight I am going to do it",
+    "I have the pills all ready and I will go through with it",
+    "By the time you read this it will all be over",
 ]
 
 # Ideation, self-harm, euphemisms, third-party risk: must be flagged at least REVIEW.
@@ -59,6 +62,10 @@ MUST_BE_FLAGGED = [
     "i wish i could just disappear",
     "I wish I wouldn't wake up",
     "sometimes I think I should never have been born",
+    "Tomorrow is my last day and I have given away all my things",
+    "I will not be here anymore after this week",
+    "I feel hopeless and I have been thinking about ending my life",       # found by the demo walkthrough: "ending" was missed
+    "I keep thinking about ending my own life",
 ]
 
 # Everyday language that must NOT be flagged.
@@ -86,6 +93,11 @@ MUST_BE_NONE = [
     "I wish I wasn't so tired all the time",
     "I wish I could disappear into a good book this weekend",
     "I wish I had studied more",
+    "The pills are ready at the pharmacy for my mother",
+    "Everything is ready for the exam and I am going to do it tomorrow",
+    "I am going to do it tonight, the cake for the party is ready",
+    "I have been thinking about ending things with my boyfriend, we argue too much",
+    "I ended up finishing the exam early",
 ]
 
 
@@ -124,6 +136,8 @@ def test_benign_false_alarm_rate_is_reported_and_small():
 KNOWN_FALSE_POSITIVES = [
     "We watched a documentary about suicide prevention in class",
     "I want to die laughing at this meme",
+    "Tomorrow is my last day at this job and I am excited",
+    "I can't face another day of rain",                     # ambiguous on purpose: the same words are a hopelessness phrase, so it is flagged for a person
 ]
 
 
@@ -164,3 +178,35 @@ def test_normalize_is_idempotent_and_safe_on_odd_input():
         scan(s)  # must never raise
     assert scan("😢 i want to die 😢").flagged
     assert scan("").level == "none"
+
+
+# Found while probing the support matcher: implicit "I would not be missed" language.
+@pytest.mark.parametrize("text", ["Nobody would notice if I was gone", "no one would even miss me if I died", "nobody would care if I disappeared",
+                                  "Nobody would notice if I were not around"])
+def test_not_being_missed_is_flagged(text):
+    assert scan(text).flagged, text
+
+
+@pytest.mark.parametrize("text", ["Nobody would notice if I took a day off", "No one would know if I left the party early",
+                                  "nobody would care if I changed my seat"])
+def test_not_being_noticed_for_everyday_things_is_not_flagged(text):
+    assert not scan(text).flagged, text
+
+
+# Closed after the support-message review found them missed (docs/clinical_review/support_scenarios.csv).
+@pytest.mark.parametrize("text", [
+    "I don't see the point in anything anymore", "I can't see the point of going on", "I just can't face another day",
+    "I can't get through another night like this", "Everyone would be happier if I wasn't around", "they would be better off if I was gone",
+    "She told me she is thinking of hurting herself", "my brother keeps harming himself", "he is killing himself slowly",
+])
+def test_phrasings_found_missing_in_the_review_are_flagged(text):
+    assert scan(text).flagged, text
+
+
+@pytest.mark.parametrize("text", [
+    "I don't see the point in this assignment", "I don't see the point of the meeting on Monday",
+    "I can't do another day of that commute", "Everyone would be happier if I wasn't so grumpy", "my team would be better off if the deadline was moved",
+    "my friend keeps hurting his knee playing football", "she hurt her hand yesterday",
+])
+def test_everyday_sentences_near_the_new_patterns_are_not_flagged(text):
+    assert not scan(text).flagged, text

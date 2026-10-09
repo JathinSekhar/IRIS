@@ -35,7 +35,8 @@ KILL = _fz("kill")
 SUICIDE = r"s+u+" + _V + r"+c+" + _V + r"+d+(?:" + _V + r"+|" + r"[a@4]+l+)"
 MYSELF = r"(?:my\s*self)"
 THIRD = r"(?:him\s*self|her\s*self|them\s*selves)"
-ENDLIFE = r"(?:end\s+(?:it\s+all|it|my\s+life|things)|take\s+my\s+(?:own\s+)?life|commit\s+" + SUICIDE + r")"
+ENDLIFE = (r"(?:end\s+(?:it\s+all|it|my\s+(?:own\s+)?life|things)|ending\s+(?:my\s+(?:own\s+)?life|it\s+all)"
+           r"|take\s+my\s+(?:own\s+)?life|commit\s+" + SUICIDE + r")")
 TIME = r"(?:tonight|today|tomorrow|right\s+now|this\s+(?:weekend|evening|morning|afternoon)|in\s+an\s+hour|later\s+today)"
 INTENT_LEAD = r"(?:going\s+to|gonna|about\s+to|plan(?:ning)?\s+(?:to|on)|intend(?:ing)?\s+to|decided\s+to|will)"
 METHODS = r"(?:pills|tablets|rope|gun|knife|blade|razor|poison|noose)"
@@ -61,6 +62,10 @@ _RULES: list[tuple[str, str, str]] = [
     ("third_party_imminent", "high",
      r"\b(?:he|she|they|my\s+\w+|\w+)\s+(?:is|are|'s)?\s*" + INTENT_LEAD + r"\s+(?:" + KILL + r"\s+" + THIRD
      + r"|end\s+(?:his|her|their)\s+life|commit\s+" + SUICIDE + r")"),
+    ("means_ready", "high",
+     r"\b(?:the\s+)?(?:means|method|pills|tablets|rope|gun|blade|poison)\s+(?:is\s+|are\s+)?(?:all\s+)?(?:ready|prepared|set|in\s+place)\b"
+     r".{0,80}\b(?:do\s+it|go\s+through\s+with\s+it|end\s+it|finish\s+it)\b"),
+    ("note_phrase", "high", r"by\s+the\s+time\s+you\s+(?:read|see|get)\s+this"),
     # ---- review: ideation / self-harm / euphemisms / third party
     ("kill_myself", "review", KILL + r"\s+" + MYSELF),
     ("end_my_life", "review", ENDLIFE),
@@ -68,6 +73,17 @@ _RULES: list[tuple[str, str, str]] = [
     ("want_to_die", "review", r"\b(?:want(?:ed|s)?\s+to|wanna|wish(?:ed)?\s+(?:i|that\s+i)\s+(?:was|were|could)?)\s*(?:d+i+e+|be\s+de+a+d+|de+a+d+)\b"),
     ("better_off_dead", "review",
      r"better\s+off\s+(?:dead|without\s+me)|(?:everyone|they|family|world)(?:'d|\s+would)\s+be\s+better\s+off\s+without\s+me"),
+    ("wouldnt_be_missed", "review",
+     r"(?:nobody|no\s+one|no-one)\s+(?:would|will|'d)\s+(?:even\s+)?(?:notice|miss|care|know)(?:\s+(?:me|about\s+me))?\s+if\s+(?:i|i'?m|i\s+was|i\s+were|i\s+am)\s+"
+     r"(?:gone|dead|died|disappear(?:ed)?|not\s+(?:here|around|alive))"),
+    ("no_point_in_anything", "review",
+     r"(?:don'?t|do\s+not|can'?t|cannot|no\s+longer)\s+see\s+(?:the\s+|any\s+)?(?:point|purpose|reason)\s+(?:in|of|to)\s+"
+     r"(?:anything|living|life|going\s+on|being\s+here|all\s+this|any\s+of\s+it)"),
+    ("cannot_face_another_day", "review",
+     r"(?:can'?t|cannot|couldn'?t)\s+(?:face|survive|get\s+through|go\s+through)\s+(?:another|one\s+more|any\s+more)\s+(?:day|night|morning)"),
+    ("happier_without_me", "review",
+     r"(?:everyone|everybody|they|my\s+family|the\s+world)(?:'d|\s+would|\s+will)\s+(?:be|feel)\s+(?:so\s+much\s+|a\s+lot\s+)?(?:happier|better(?:\s+off)?|relieved|fine)\s+"
+     r"if\s+i\s+(?:wasn'?t|weren'?t|was\s+not|were\s+not)\s+(?:around|here|alive|there)|(?:happier|better(?:\s+off)?|relieved)\s+if\s+i\s+(?:was|were)\s+gone"),
     ("dont_want_to_live", "review",
      r"don'?t\s+want\s+to\s+(?:be\s+here|live|exist|wake\s+up|be\s+alive)(?:\s+anymore)?|no\s+(?:reason|point)\s+(?:to|in)\s+(?:live|living|going\s+on|being\s+alive)|can'?t\s+go\s+on\b"),
     ("wish_not_here", "review",
@@ -78,9 +94,12 @@ _RULES: list[tuple[str, str, str]] = [
     ("self_harm", "review",
      r"self[\s-]*harm|(?:hurt|hurting|cut|cutting|burn|burning|slit|slitting|hang|hanging)\s+" + MYSELF
      + r"|slit\s+my\s+(?:wrists?|throat)"),
+    ("last_day_signals", "review",
+     r"(?:tonight|tomorrow|today)\s+(?:is|will\s+be)\s+my\s+last\s+(?:day|night)|(?:won'?t|will\s+not)\s+be\s+here\s+(?:anymore|tomorrow|after\s+(?:today|tonight))"
+     r"|given\s+away\s+all\s+my\s+(?:things|stuff|belongings)"),
     ("jump_method", "review", r"jump\s+off\s+(?:a\s+|the\s+)?(?:bridge|building|roof|terrace|balcony|cliff)"),
     ("third_party_risk", "review",
-     r"(?:" + KILL + r"|hurt|harm|hang)\s+" + THIRD + r"|(?:friend|brother|sister|mom|mother|dad|father|cousin|classmate|roommate|boyfriend|girlfriend|partner|colleague|son|daughter)\b.{0,40}(?:" + SUICIDE + r"|want(?:s|ed)?\s+to\s+die)"),
+     r"(?:" + KILL + r"|hurt|harm|hang)(?:ing)?\s+" + THIRD + r"|(?:friend|brother|sister|mom|mother|dad|father|cousin|classmate|roommate|boyfriend|girlfriend|partner|colleague|son|daughter)\b.{0,40}(?:" + SUICIDE + r"|want(?:s|ed)?\s+to\s+die)"),
 ]
 _COMPILED = [(n, lvl, re.compile(p, re.IGNORECASE | re.DOTALL)) for n, lvl, p in _RULES]
 _LEVEL_ORDER = {"none": 0, "review": 1, "high": 2}
