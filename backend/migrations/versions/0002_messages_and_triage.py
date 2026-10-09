@@ -54,6 +54,7 @@ def upgrade() -> None:
         sa.Column("reply", JSON, nullable=False),
         sa.Column("reviewer_note", sa.Text(), nullable=False, server_default=""),
         sa.Column("status", sa.String(24), nullable=False, server_default="pending_human_review"),
+        sa.Column("message_urgent", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("first_opened_at", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("urgency in ('low', 'medium', 'high')", name="predictions_urgency_check"),
@@ -62,6 +63,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_predictions_urgency", "predictions", ["urgency"])
     op.create_index("ix_predictions_status", "predictions", ["status"])
+    op.create_index("ix_predictions_message_urgent", "predictions", ["message_urgent"])
     op.create_index("ix_predictions_created_at", "predictions", ["created_at"])
 
     op.create_table(

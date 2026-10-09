@@ -67,6 +67,9 @@ class TriageResult:
     rule_level: str
     baseline_floor: str
     probabilities: tuple[float, ...] | None = None
+    # True when THIS MESSAGE itself is urgent (an explicit intent/plan/means rule, an explicit statement about ending one's life, or a reviewer raised it to High).
+    # A High priority that comes only from the check-in floor leaves this False: the reviewer still sees High, but the person is not told "we are concerned" about a calm message.
+    message_urgent: bool = False
 
 
 def expected_costs(probs: np.ndarray, matrix: np.ndarray) -> np.ndarray:
@@ -137,10 +140,12 @@ def decide(probs: np.ndarray | None, text: str, baseline_floor: str = "none", po
         idx = max(idx, FLOOR_INDEX[baseline_floor])
         score = max(score, float(FLOOR_INDEX[baseline_floor]))
 
+    message_urgent = rule.level == "high"
     if policy.urgent_ideation and set(rule.hits) & URGENT_IDEATION_HITS and not rule.negated and not rule.third_person:
         reasons.append("explicit first-person statement about ending their own life: treated as urgent")
         idx = max(idx, HIGH)
         score = max(score, float(HIGH))
+        message_urgent = True
 
     urgency = URGENCY[idx]
     if policy.mandatory_review:
@@ -158,6 +163,7 @@ def decide(probs: np.ndarray | None, text: str, baseline_floor: str = "none", po
         model_urgency=None if model_idx is None else URGENCY[model_idx], confidence=conf, risk_score=score,
         reasons=tuple(reasons), rule_level=rule.level, baseline_floor=baseline_floor,
         probabilities=None if probs is None else tuple(float(x) for x in np.asarray(probs, float) / np.sum(probs)),
+        message_urgent=message_urgent,
     )
 
 

@@ -131,9 +131,12 @@ def test_explicit_and_imminent_cases_get_the_urgent_workflow_whatever_a_model_pr
         assert not p.self_help and r.needs_human and r.urgency == "high"                  # no self-help in place of help
 
 
-def test_the_check_in_floor_alone_triggers_the_urgent_workflow():
-    p = sp.plan_support("The weather turned colder this week", decide(SURE_LOW, "The weather turned colder this week", "high", V1_POLICY))
-    assert p.urgent_protocol and p.crisis_lead == sp.CRISIS_LEAD_URGENT
+def test_the_check_in_floor_alone_makes_the_case_High_for_reviewers_without_an_alarming_reply():
+    text = "The weather turned colder this week"
+    r = decide(SURE_LOW, text, "high", V1_POLICY)
+    p = sp.plan_support(text, r)
+    assert r.urgency == "high" and not r.message_urgent and r.needs_human
+    assert not p.urgent_protocol and p.layout == "tips" and p.show_crisis_resources and p.crisis_lead == sp.CRISIS_LEAD_FLAGGED
 
 
 def test_ordinary_support_never_triggers_the_urgent_workflow_and_urgent_never_looks_ordinary():
@@ -226,7 +229,7 @@ def test_mixed_messages_never_get_the_cheerful_reply(sid):
 def test_good_news_from_someone_whose_check_in_raised_a_flag_still_gets_the_helplines():
     text = SCEN["SC50"]["example_message"]
     p = sp.plan_support(text, decide(SURE_LOW, text, "high", V1_POLICY))
-    assert p.urgent_protocol and p.layout == "help_now" and p.show_crisis_resources
+    assert p.layout == "celebrate" and not p.urgent_protocol and p.show_crisis_resources and p.helplines and p.provisional_priority == "high"
 
 
 def test_helpline_cards_use_exactly_the_numbers_in_the_crisis_lines():

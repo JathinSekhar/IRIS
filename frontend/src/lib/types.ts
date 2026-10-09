@@ -172,6 +172,7 @@ export interface ReviewerMessageSummary {
   reviewer_raised: boolean
   baseline_floor: string
   opened: boolean
+  urgent: boolean
 }
 export interface UrgentAlerts {
   urgent_waiting: number

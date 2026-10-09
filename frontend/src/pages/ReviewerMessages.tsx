@@ -96,7 +96,7 @@ export default function ReviewerMessages({ refreshKey = 0 }: { refreshKey?: numb
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium text-slate-900">{r.user_name}</span>
-                        {r.priority === 'high' && r.status !== 'reviewed' && !r.opened && <span className="size-2 shrink-0 animate-pulse rounded-full bg-red-600" aria-label="Urgent and not opened yet" />}
+                        {r.urgent && r.status !== 'reviewed' && !r.opened && <span className="size-2 shrink-0 animate-pulse rounded-full bg-red-600" aria-label="Urgent and not opened yet" />}
                         {(r.rule_flagged || r.baseline_floor === 'high') && <ShieldAlert className="size-4 shrink-0 text-red-600" aria-label="Safety layer fired" />}
                       </span>
                       <span className="text-xs text-slate-500">

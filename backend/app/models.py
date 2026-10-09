@@ -129,6 +129,9 @@ class Prediction(Base):
     reply: Mapped[dict] = mapped_column(JsonType, default=dict)  # exactly what the person was shown
     reviewer_note: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(24), default="pending_human_review", index=True)
+    # True when the MESSAGE itself is urgent (explicit intent/plan/means, an explicit statement about ending one's life, or a reviewer raised it to High). A High that comes
+    # only from the check-in floor leaves this False: the case is still High in the queue, but it is not an instant alert and the person is not alarmed by a calm message.
+    message_urgent: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     first_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # when a reviewer first opened it
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 

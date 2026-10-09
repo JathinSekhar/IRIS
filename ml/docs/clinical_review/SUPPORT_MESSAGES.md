@@ -222,6 +222,7 @@
 | ID | Message | When it is shown | Draft self-check |
 | --- | --- | --- | --- |
 | `SM-REVIEWER-LOW` | Low provisional priority means LOWER ESTIMATED URGENCY, NOT ZERO RISK. This message is not cleared. A person must read it in the normal review queue. Read for warning signs, contradictions or anything that does not fit, and escalate to Medium or High if you find any. | Shown to the human reviewer only, never to the person. | automatic checks pass |
+| `SM-REVIEWER-FLOOR` | High priority because of this person's check-in: their safety answers set a High floor. Nothing in this message itself raised a concern. Read it with their check-in in mind and look for anything that has changed. | Shown to the human reviewer only, never to the person. | automatic checks pass |
 | `SM-REVIEWER-MEDIUM` | Medium provisional priority. A person must read this message. Look for anything that should raise it. | Shown to the human reviewer only, never to the person. | automatic checks pass |
 | `SM-REVIEWER-URGENT` | URGENT. Explicit self-harm language or a High provisional priority: follow the urgent-response and human-escalation protocol now, whatever any model predicted. | Shown to the human reviewer only, never to the person. | automatic checks pass |
 | `SM-REVIEWER-ESCALATION` | escalated by a reviewer to {to}: {reason} | Written to the case's audit trail when a reviewer raises a case. Never shown to the person. | automatic checks pass |

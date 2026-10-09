@@ -112,7 +112,7 @@ function Reply({ m, first }: { m: ChatMessage; first: boolean }) {
           {r.reach_out.length > 0 && <Bullets items={r.reach_out} />}
         </>
       )}
-      {(r.layout === 'support' || r.layout === 'celebrate') && r.helplines.length > 0 && <HelpCard lead={r.crisis_lead} lines={r.helplines} />}
+      {r.layout !== 'help_now' && r.helplines.length > 0 && <HelpCard lead={r.crisis_lead} lines={r.helplines} />}
 
       <Status m={m} />
     </div>

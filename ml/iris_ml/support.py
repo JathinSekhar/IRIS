@@ -44,6 +44,8 @@ CRISIS_LINES = (
 # Reviewer-facing notes (never shown to the person).
 REVIEWER_URGENT = ("URGENT. Explicit self-harm language or a High provisional priority: follow the urgent-response and human-escalation protocol now, "
                    "whatever any model predicted.")
+REVIEWER_FLOOR = ("High priority because of this person's check-in: their safety answers set a High floor. Nothing in this message itself raised a concern. "
+                  "Read it with their check-in in mind and look for anything that has changed.")
 REVIEWER_MEDIUM = "Medium provisional priority. A person must read this message. Look for anything that should raise it."
 REVIEWER_LOW = ("Low provisional priority means LOWER ESTIMATED URGENCY, NOT ZERO RISK. This message is not cleared. A person must read it in the normal review "
                 "queue. Read for warning signs, contradictions or anything that does not fit, and escalate to Medium or High if you find any.")
@@ -253,6 +255,7 @@ def catalog() -> list[dict]:
     for (state, urgent), text in STATUS_LINES.items():
         add(f"SM-STATUS-{state.upper().replace('_', '-')}-{'URGENT' if urgent else 'NORMAL'}", "user", "status_line", ["urgent" if urgent else "all"], text)
     add("SM-REVIEWER-LOW", "reviewer", "reviewer_note", ["low"], REVIEWER_LOW)
+    add("SM-REVIEWER-FLOOR", "reviewer", "reviewer_note", ["floor"], REVIEWER_FLOOR)
     add("SM-REVIEWER-MEDIUM", "reviewer", "reviewer_note", ["medium"], REVIEWER_MEDIUM)
     add("SM-REVIEWER-URGENT", "reviewer", "reviewer_note", ["urgent"], REVIEWER_URGENT)
     add("SM-REVIEWER-ESCALATION", "reviewer", "escalation_record", ["escalation"], ESCALATION_TEMPLATE)
@@ -391,15 +394,20 @@ class SupportPlan:
 
 
 def reviewer_note(result: TriageResult, urgent: bool) -> str:
-    base = REVIEWER_URGENT if urgent else (REVIEWER_MEDIUM if result.urgency == "medium" else REVIEWER_LOW)
+    if urgent:
+        base = REVIEWER_URGENT
+    elif result.urgency == "high":
+        base = REVIEWER_FLOOR                      # High only because of the check-in floor
+    else:
+        base = REVIEWER_MEDIUM if result.urgency == "medium" else REVIEWER_LOW
     return base + " Reasons: " + "; ".join(result.reasons)
 
 
 def plan_support(text: str, result: TriageResult) -> SupportPlan:
     """The supportive plan for one message. `result` should come from the V1 policy, so `needs_human` is always true."""
-    urgent = result.urgency == "high" or result.rule_level == "high"
-    flagged = urgent or result.urgency == "medium" or result.rule_level != "none" or result.baseline_floor != "none"
-    positive = None if (flagged and (urgent or result.rule_level != "none" or result.urgency != "low")) else positive_kind(text)
+    urgent = result.message_urgent                 # this MESSAGE is urgent (not merely a High floor from the check-in)
+    flagged = urgent or result.urgency in ("medium", "high") or result.rule_level != "none" or result.baseline_floor != "none"
+    positive = None if (urgent or result.rule_level != "none") else positive_kind(text)
     if positive is not None and result.rule_level == "none" and not urgent:
         return SupportPlan(
             topics=("positive",), intro=POSITIVE_INTRO[positive], listening=POSITIVE_BODY[positive], self_help=(), reach_out=(POSITIVE_CLOSE,),
@@ -443,7 +451,7 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
         crisis_lead=(CRISIS_LEAD_URGENT if urgent else CRISIS_LEAD_FLAGGED) if flagged else "",
         crisis_lines=CRISIS_LINES if flagged else (), show_crisis_resources=flagged,
         emergency_footer=EMERGENCY_FOOTER, closing=CLOSING,
-        layout="help_now" if urgent else ("support" if flagged else "tips"), helplines=HELPLINES if flagged else (),
+        layout="help_now" if urgent else ("support" if result.rule_level != "none" else "tips"), helplines=HELPLINES if flagged else (),
         a_person_may_reach_out=True,
         queue_status=QUEUE_STATUS, provisional_priority=result.urgency, urgent_protocol=urgent,
         human_review_required=True, reviewer_note=reviewer_note(result, urgent), match_confidence=confidence,
@@ -473,6 +481,6 @@ def escalate(result: TriageResult, to: str, reason: str) -> TriageResult:
     """A reviewer raises a case to medium or high. It can only raise, it needs a reason, and the case stays in human hands."""
     reason = validate_escalation(result.urgency, to, reason)
     idx = URGENCY_INDEX[to]
-    return replace(result, urgency=URGENCY[idx], route="human_reviewer", needs_human=True,
+    return replace(result, urgency=URGENCY[idx], route="human_reviewer", needs_human=True, message_urgent=result.message_urgent or to == "high",
                    risk_score=max(result.risk_score, float(idx)),
                    reasons=result.reasons + (ESCALATION_TEMPLATE.format(to=to, reason=reason),))

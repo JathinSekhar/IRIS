@@ -37,6 +37,10 @@ reviewer opens a case -> audit entry -> records their own judgement -> becomes f
 - **Explicit first-person statements about ending one's own life** ("I want to die", "I have been thinking about ending my life") are **urgent** under the V1 policy
   (`urgent_ideation`; negated or third-person statements stay at review level). An urgent message shows the reviewer an instant banner: `GET /api/reviewer/alerts` returns counts only
   (no names or text), is not audited, and is polled every few seconds.
+- **The check-in floor decides priority; only the message decides how alarming the reply is.** A person whose check-in set a High floor stays High in the reviewer's queue
+  for every message, so a person always reads them first. But if the message itself is calm or good news ("I am feeling better"), the person gets a calm reply (helplines still at hand)
+  and no instant alert rings. An explicit statement or a reviewer raising the case to High makes the message urgent (`message_urgent`), which gives the urgent reply, the instant alert
+  and the urgent status wording. The floor can never be lowered by what a person writes.
 - **The person sees the truth about their message**: `care_status` is `waiting`, `being_read` (a reviewer opened it) or `reviewed`, with a reviewed sentence for each. For urgent messages the
   text says the team has been alerted, that no time can be given, and points to the call buttons. **No time and no doctor are ever promised**, because no doctor connection and no staffed
   on-call rota exist; a person who believes help is minutes away may wait instead of calling. If a real on-call process with a measured response time is set up, a target can be added

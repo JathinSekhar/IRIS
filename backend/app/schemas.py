@@ -209,6 +209,7 @@ class ReviewerMessageSummary(BaseModel):
     reviewer_raised: bool
     baseline_floor: str
     opened: bool = False
+    urgent: bool = False                      # the MESSAGE itself is urgent (not just a High floor from the check-in)
 
 
 class UrgentAlertsOut(BaseModel):

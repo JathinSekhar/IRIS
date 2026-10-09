@@ -101,7 +101,7 @@ def _message_summary(m: Message) -> ReviewerMessageSummary:
     return ReviewerMessageSummary(
         id=m.id, user_name=m.user.full_name, created_at=m.created_at, priority=p.urgency, status=p.status,
         rule_flagged=p.rule_level != "none", reviewer_raised=any(r.kind == "escalation" for r in m.reviews), baseline_floor=p.baseline_floor,
-        opened=p.first_opened_at is not None,
+        opened=p.first_opened_at is not None, urgent=p.message_urgent,
     )
 
 
@@ -132,7 +132,7 @@ def alerts(reviewer: User = Depends(require_reviewer), db: Session = Depends(get
     rows = db.execute(
         select(Prediction.id, Prediction.message_id, Prediction.first_opened_at, Message.created_at)
         .join(Message, Message.id == Prediction.message_id)
-        .where(Prediction.urgency == "high", Prediction.status == triage.PENDING).order_by(Message.created_at.asc())
+        .where(Prediction.message_urgent.is_(True), Prediction.status == triage.PENDING).order_by(Message.created_at.asc())
     ).all()
     unopened = [r for r in rows if r.first_opened_at is None]
     now = datetime.now(timezone.utc)
@@ -183,7 +183,9 @@ def escalate_message(message_id: int, body: EscalateIn, reviewer: User = Depends
     p.route = "human_reviewer"
     p.risk_score = max(p.risk_score, float(URGENCY_INDEX[body.to]))
     p.reasons = list(p.reasons or []) + [support.ESCALATION_TEMPLATE.format(to=body.to, reason=reason)]
-    p.reviewer_note = triage.reviewer_note(p.urgency, p.risk_score, p.reasons, p.rule_level, p.baseline_floor)
+    if body.to == "high":
+        p.message_urgent = True                                           # a reviewer who reads it and judges it High has made it urgent
+    p.reviewer_note = triage.reviewer_note(p.urgency, p.risk_score, p.reasons, p.rule_level, p.baseline_floor, p.message_urgent)
     m.reviews.append(Review(reviewer_id=reviewer.id, reviewer_name=reviewer.full_name, kind="escalation", from_urgency=before, to_urgency=body.to, notes=reason))
     db.add(AuditLog(actor_id=reviewer.id, action="escalate_message", target_type="message", target_id=str(message_id)))
     db.commit()

@@ -429,3 +429,52 @@ def test_the_chat_has_no_toolkit_and_uses_no_emoji():
     assert "toolkit" not in page.lower() and "/api/toolkit" not in (src / "lib" / "api.ts").read_text(encoding="utf-8")
     emoji = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50\u2764]")
     assert not emoji.search(page), "no emoji in the chat"
+
+
+
+# --- the check-in floor decides PRIORITY; only the message decides how alarming the reply is and whether an instant alert rings -------------------------------
+
+def test_a_calm_message_from_a_high_risk_check_in_gets_a_calm_reply_but_stays_High_in_the_queue_without_an_alert(env):
+    with TestClient(app) as c:
+        signup(c, dd.HIGH.signup, dd.HIGH.answers)
+        b = send(c, "yah i am feeling better")
+        r = b["reply"]
+        assert r["layout"] == "celebrate" and not r["self_help"] and r["helplines"]               # warm reply, helplines still at hand
+        assert "concerned" not in r["intro"].lower() and "alerted" not in b["status_text"]        # nobody is alarmed by a calm message
+        assert b["status_text"] == "A person on our team will read this, which may take some time."
+        make_reviewer(c, env)
+        assert c.get("/api/reviewer/alerts").json()["urgent_waiting"] == 0                         # no instant alert for a calm message
+        q = c.get("/api/reviewer/messages").json()
+        assert q[0]["priority"] == "high" and q[0]["urgent"] is False and q[0]["baseline_floor"] == "high"
+        d = c.get(f"/api/reviewer/messages/{b['id']}").json()
+        assert "check-in" in d["reviewer_note"] and "URGENT" not in d["reviewer_note"] and d["status"] == "pending_human_review"
+
+
+def test_an_ordinary_worry_from_a_high_risk_check_in_keeps_its_advice_and_gets_helplines(env):
+    with TestClient(app) as c:
+        signup(c, dd.HIGH.signup, dd.HIGH.answers)
+        r = send(c, CALM)["reply"]
+        assert r["layout"] == "tips" and r["self_help"] and r["helplines"]
+
+
+def test_a_concerning_message_from_a_high_risk_check_in_is_still_urgent_and_rings_the_alert(env):
+    with TestClient(app) as c:
+        signup(c, dd.HIGH.signup, dd.HIGH.answers)
+        b = send(c, "I want to die")
+        assert b["reply"]["layout"] == "help_now" and "alerted" in b["status_text"]
+        make_reviewer(c, env)
+        assert c.get("/api/reviewer/alerts").json()["urgent_waiting"] == 1
+        assert c.get("/api/reviewer/messages").json()[0]["urgent"] is True
+
+
+def test_a_reviewer_raising_a_floor_only_case_to_high_makes_it_urgent_and_updates_the_note_and_alert(env):
+    with TestClient(app) as c:
+        signup(c, dd.HIGH.signup, dd.HIGH.answers)
+        b = send(c, "yah i am feeling better")
+        make_reviewer(c, env)
+        assert c.get("/api/reviewer/alerts").json()["urgent_waiting"] == 0
+        # already High (from the floor): a reviewer cannot raise it further, but can record their own judgement
+        assert c.post(f"/api/reviewer/messages/{b['id']}/escalate", json={"to": "high", "reason": "reading it differently"}).status_code == 200
+        d = c.get(f"/api/reviewer/messages/{b['id']}").json()
+        assert "URGENT" in d["reviewer_note"]
+        assert c.get("/api/reviewer/alerts").json()["urgent_waiting"] == 1

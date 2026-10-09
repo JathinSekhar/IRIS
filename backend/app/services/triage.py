@@ -60,16 +60,12 @@ def care_status(status: str, first_opened_at) -> str:
     return "being_read" if first_opened_at is not None else "waiting"
 
 
-def is_urgent(urgency: str, rule_level: str) -> bool:
-    return urgency == "high" or rule_level == "high"
-
-
-def result_from_row(urgency: str, risk_score: float, reasons: list[str], rule_level: str, floor: str) -> TriageResult:
+def result_from_row(urgency: str, risk_score: float, reasons: list[str], rule_level: str, floor: str, message_urgent: bool = False) -> TriageResult:
     """Rebuild the decision from stored fields, so the library can regenerate the reviewer note after an escalation."""
     return TriageResult(urgency=urgency, route="human_reviewer", needs_human=True, model_urgency=None, confidence=None, risk_score=risk_score,
-                        reasons=tuple(reasons), rule_level=rule_level, baseline_floor=floor)
+                        reasons=tuple(reasons), rule_level=rule_level, baseline_floor=floor, message_urgent=message_urgent)
 
 
-def reviewer_note(urgency: str, risk_score: float, reasons: list[str], rule_level: str, floor: str) -> str:
-    r = result_from_row(urgency, risk_score, reasons, rule_level, floor)
-    return support.reviewer_note(r, urgent=(urgency == "high" or rule_level == "high"))
+def reviewer_note(urgency: str, risk_score: float, reasons: list[str], rule_level: str, floor: str, message_urgent: bool = False) -> str:
+    r = result_from_row(urgency, risk_score, reasons, rule_level, floor, message_urgent)
+    return support.reviewer_note(r, urgent=message_urgent)

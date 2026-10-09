@@ -18,7 +18,7 @@ def _out(m: Message) -> MessageOut:
     p = m.prediction
     cs = triage.care_status(p.status, p.first_opened_at)
     return MessageOut(id=m.id, text=m.text, created_at=m.created_at, reply=SupportReplyOut(**p.reply), care_status=cs,
-                      status_text=triage.support.status_line(cs, triage.is_urgent(p.urgency, p.rule_level)))
+                      status_text=triage.support.status_line(cs, p.message_urgent))
 
 
 @router.post("", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
@@ -47,7 +47,7 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
         model_version=triage.MODEL_VERSION, policy_version=triage.POLICY_VERSION,
         rule_level=result.rule_level, rule_hits=_hits(result.reasons), baseline_floor=floor, baseline_known=known,
         checkin_id=latest.id if latest else None, probabilities=None, model_urgency=result.model_urgency,
-        initial_urgency=result.urgency, urgency=result.urgency, route=result.route, needs_human=True,
+        initial_urgency=result.urgency, urgency=result.urgency, message_urgent=result.message_urgent, route=result.route, needs_human=True,
         risk_score=result.risk_score, reasons=list(result.reasons), reply=triage.reply_json(plan),
         reviewer_note=plan.reviewer_note, status=triage.PENDING,
     )

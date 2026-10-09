@@ -96,9 +96,11 @@ def test_explicit_self_harm_triggers_the_urgent_protocol_whatever_the_model_says
     assert p.crisis_lines == sp.CRISIS_LINES and not p.self_help                  # no stress tips instead of help
 
 
-def test_the_check_in_floor_overrides_a_calm_low_prediction_too():
+def test_a_high_check_in_floor_keeps_the_case_High_for_the_reviewer_but_does_not_alarm_a_calm_message():
     p = plan(CALM, SURE_LOW, floor="high")
-    assert p.urgent_protocol and p.show_crisis_resources and p.provisional_priority == "high"
+    assert p.provisional_priority == "high" and p.show_crisis_resources and p.helplines == sp.HELPLINES        # the reviewer still sees High, helplines are at hand
+    assert not p.urgent_protocol and p.layout == "tips" and p.crisis_lead == sp.CRISIS_LEAD_FLAGGED         # but nobody is told "we are concerned" about a calm message
+    assert "check-in" in p.reviewer_note and "URGENT" not in p.reviewer_note
 
 
 def test_a_review_level_rule_shows_support_lines_but_is_not_the_urgent_protocol():
@@ -277,3 +279,28 @@ def test_each_plan_says_how_to_present_it_and_carries_tap_to_call_helplines_when
     assert flagged.layout == "support" and flagged.helplines == sp.HELPLINES
     assert plan("I am going to kill myself tonight").layout == "help_now"
     assert plan("I had a great day with my friends").layout == "celebrate"
+
+
+# --- the check-in floor decides priority; only the MESSAGE decides how alarming the reply is ------------------------------------------------------------
+
+def test_a_calm_or_good_message_from_a_high_floor_person_gets_a_calm_reply():
+    for text, layout in [("yah i am feeling better", "celebrate"), ("I had a great day at college", "celebrate"), (CALM, "tips")]:
+        r = decide(SURE_LOW, text, "high", V1_POLICY)
+        p = sp.plan_support(text, r)
+        assert r.urgency == "high" and not r.message_urgent and r.needs_human, text      # still High in the queue, still read by a person
+        assert p.layout == layout and not p.urgent_protocol and p.helplines, text
+
+
+def test_a_concerning_message_from_a_high_floor_person_is_still_urgent():
+    for text in ["I want to die", "I am going to kill myself tonight", "I have been thinking about ending my life"]:
+        r = decide(SURE_LOW, text, "high", V1_POLICY)
+        p = sp.plan_support(text, r)
+        assert r.message_urgent and p.urgent_protocol and p.layout == "help_now", text
+
+
+def test_message_urgency_is_false_for_a_floor_only_case_and_true_when_a_reviewer_raises_it():
+    r = decide(SURE_LOW, CALM, "high", V1_POLICY)
+    assert not r.message_urgent
+    low = decide(SURE_LOW, CALM, "none", V1_POLICY)
+    assert sp.escalate(low, "medium", "doubt").message_urgent is False
+    assert sp.escalate(low, "high", "warning signs").message_urgent is True

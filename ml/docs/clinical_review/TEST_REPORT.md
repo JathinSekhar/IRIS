@@ -6,18 +6,18 @@ Run on 2026-10-09 with the project's virtual environments, on CPU, without the l
 
 | Command | Result |
 | --- | --- |
-| `cd ml && python -m pytest tests/test_support.py tests/test_support_review.py tests/test_decision.py tests/test_rules.py tests/test_walkthrough.py -q` | 435 passed in 5.07s |
-| `cd backend && python -m pytest tests/test_demo_accounts.py tests/test_messages.py -q` | 46 passed, 1 warning in 3.84s |
+| `cd ml && python -m pytest tests/test_support.py tests/test_support_review.py tests/test_decision.py tests/test_rules.py tests/test_walkthrough.py -q` | 438 passed in 5.18s |
+| `cd backend && python -m pytest tests/test_demo_accounts.py tests/test_messages.py -q` | 50 passed, 1 warning in 4.22s |
 
 ## By file
 
 | File | Result |
 | --- | --- |
-| `tests/test_support.py` | 199 passed in 0.95s |
-| `tests/test_support_review.py` | 76 passed in 2.03s |
-| `tests/test_decision.py` | 33 passed in 2.12s |
-| `tests/test_rules.py` | 125 passed in 0.20s |
-| `tests/test_walkthrough.py` | 2 passed in 0.20s |
+| `tests/test_support.py` | 202 passed in 1.03s |
+| `tests/test_support_review.py` | 76 passed in 2.01s |
+| `tests/test_decision.py` | 33 passed in 2.11s |
+| `tests/test_rules.py` | 125 passed in 0.19s |
+| `tests/test_walkthrough.py` | 2 passed in 0.18s |
 
 ## What the tests check
 
