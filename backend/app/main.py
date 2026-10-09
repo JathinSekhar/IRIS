@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .auth_service import AuthError
 from .config import settings
 from .db import IS_SQLITE, Base, engine
-from .routers import auth, checkin, reviewer
+from .routers import auth, checkin, messages, reviewer
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ async def auth_error_handler(_: Request, exc: AuthError) -> JSONResponse:
 
 app.include_router(auth.router)
 app.include_router(checkin.router)
+app.include_router(messages.router)
 app.include_router(reviewer.router)
 
 

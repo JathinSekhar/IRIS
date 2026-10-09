@@ -1,11 +1,19 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session, joinedload
 
 from ..db import get_db
 from ..deps import age_on, require_reviewer
-from ..models import AuditLog, CheckIn, User
-from ..schemas import ReviewerCheckinOut, ReviewerCheckinSummary
+from ..models import AuditLog, CheckIn, Message, Prediction, Review, User
+from ..schemas import (
+    EscalateIn, ReviewEventOut, ReviewerCheckinOut, ReviewerCheckinSummary, ReviewerMessageOut, ReviewerMessageSummary, ReviewIn, SupportReplyOut,
+    UrgentAlertsOut,
+)
+from ..services import triage
+
+from iris_ml import URGENCY_INDEX, support  # noqa: E402  (importable once services.triage has put ml/ on the path)
 
 router = APIRouter(prefix="/api/reviewer", tags=["reviewer"])
 
@@ -80,3 +88,117 @@ def get_checkin(
     db.add(AuditLog(actor_id=reviewer.id, action="view_checkin", target_type="checkin", target_id=str(checkin_id)))
     db.commit()
     return _detail(row)
+
+
+# --- messages (the chat): the human review queue ------------------------------------------------------------------------------------------------
+
+_PRIORITY_ORDER = case((Prediction.urgency == "high", 0), (Prediction.urgency == "medium", 1), else_=2)
+_PENDING_FIRST = case((Prediction.status == triage.PENDING, 0), else_=1)
+
+
+def _message_summary(m: Message) -> ReviewerMessageSummary:
+    p = m.prediction
+    return ReviewerMessageSummary(
+        id=m.id, user_name=m.user.full_name, created_at=m.created_at, priority=p.urgency, status=p.status,
+        rule_flagged=p.rule_level != "none", reviewer_raised=any(r.kind == "escalation" for r in m.reviews), baseline_floor=p.baseline_floor,
+        opened=p.first_opened_at is not None,
+    )
+
+
+def _message_detail(db: Session, m: Message) -> ReviewerMessageOut:
+    p, u = m.prediction, m.user
+    checkin = db.get(CheckIn, p.checkin_id) if p.checkin_id else None
+    return ReviewerMessageOut(
+        id=m.id, user_id=str(u.id), user_name=u.full_name, user_email=u.email, text=m.text, created_at=m.created_at,
+        priority=p.urgency, initial_priority=p.initial_urgency, status=p.status, rule_level=p.rule_level, rule_hits=list(p.rule_hits or []),
+        baseline_floor=p.baseline_floor, baseline_known=p.baseline_known, baseline_risk=checkin.baseline_risk if checkin else None,
+        checkin_id=p.checkin_id, reasons=list(p.reasons or []), reviewer_note=p.reviewer_note, model_version=p.model_version,
+        policy_version=p.policy_version, reply_shown=SupportReplyOut(**p.reply),
+        history=[ReviewEventOut(id=r.id, kind=r.kind, from_urgency=r.from_urgency, to_urgency=r.to_urgency, notes=r.notes,
+                                reviewer_name=r.reviewer_name, created_at=r.created_at) for r in m.reviews],
+    )
+
+
+def _load(db: Session, message_id: int) -> Message:
+    m = db.scalar(select(Message).options(joinedload(Message.user), joinedload(Message.prediction), joinedload(Message.reviews)).where(Message.id == message_id))
+    if m is None or m.prediction is None:
+        raise HTTPException(404, "Message not found")
+    return m
+
+
+@router.get("/alerts", response_model=UrgentAlertsOut)
+def alerts(reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> UrgentAlertsOut:
+    """How many urgent messages are waiting, for an instant banner. Counts only (no names or text), so it is not audited and can be polled every few seconds."""
+    rows = db.execute(
+        select(Prediction.id, Prediction.message_id, Prediction.first_opened_at, Message.created_at)
+        .join(Message, Message.id == Prediction.message_id)
+        .where(Prediction.urgency == "high", Prediction.status == triage.PENDING).order_by(Message.created_at.asc())
+    ).all()
+    unopened = [r for r in rows if r.first_opened_at is None]
+    now = datetime.now(timezone.utc)
+    oldest = None
+    if unopened:
+        c = unopened[0].created_at
+        oldest = max(0, int((now - (c if c.tzinfo else c.replace(tzinfo=timezone.utc))).total_seconds()))
+    return UrgentAlertsOut(urgent_waiting=len(rows), urgent_unopened=len(unopened), oldest_unopened_seconds=oldest,
+                           latest_urgent_id=max((r.message_id for r in rows), default=None))
+
+
+@router.get("/messages", response_model=list[ReviewerMessageSummary])
+def list_messages(limit: int = Query(100, ge=1, le=300), reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)):
+    """Every message waits here for a person. Order: not yet reviewed first, then highest priority, then highest score, then oldest."""
+    rows = db.scalars(
+        select(Message).join(Prediction).options(joinedload(Message.user), joinedload(Message.prediction), joinedload(Message.reviews))
+        .order_by(_PENDING_FIRST, _PRIORITY_ORDER, Prediction.risk_score.desc(), Message.created_at.asc()).limit(limit)
+    ).unique().all()
+    db.add(AuditLog(actor_id=reviewer.id, action="list_message_queue", target_type="message", target_id=f"{len(rows)} rows"))
+    db.commit()
+    return [_message_summary(m) for m in rows]
+
+
+@router.get("/messages/{message_id}", response_model=ReviewerMessageOut)
+def get_message(message_id: int, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> ReviewerMessageOut:
+    """The full message with what the safety layers decided and why. Every call is written to the audit log."""
+    m = _load(db, message_id)
+    if m.prediction.first_opened_at is None:
+        m.prediction.first_opened_at = datetime.now(timezone.utc)      # the person's status line changes to "a person is reading this now"
+    db.add(AuditLog(actor_id=reviewer.id, action="view_message", target_type="message", target_id=str(message_id)))
+    db.commit()
+    return _message_detail(db, m)
+
+
+@router.post("/messages/{message_id}/escalate", response_model=ReviewerMessageOut)
+def escalate_message(message_id: int, body: EscalateIn, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> ReviewerMessageOut:
+    """A reviewer raises a case to Medium or High (warning signs, a contradiction, or doubt). It can only raise, and it needs a reason."""
+    m = _load(db, message_id)
+    p = m.prediction
+    if p.status != triage.PENDING:
+        raise HTTPException(409, "This message has already been reviewed.")
+    try:
+        reason = support.validate_escalation(p.urgency, body.to, body.reason)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    before = p.urgency
+    p.urgency = body.to
+    p.route = "human_reviewer"
+    p.risk_score = max(p.risk_score, float(URGENCY_INDEX[body.to]))
+    p.reasons = list(p.reasons or []) + [support.ESCALATION_TEMPLATE.format(to=body.to, reason=reason)]
+    p.reviewer_note = triage.reviewer_note(p.urgency, p.risk_score, p.reasons, p.rule_level, p.baseline_floor)
+    m.reviews.append(Review(reviewer_id=reviewer.id, reviewer_name=reviewer.full_name, kind="escalation", from_urgency=before, to_urgency=body.to, notes=reason))
+    db.add(AuditLog(actor_id=reviewer.id, action="escalate_message", target_type="message", target_id=str(message_id)))
+    db.commit()
+    return _message_detail(db, m)
+
+
+@router.post("/messages/{message_id}/review", response_model=ReviewerMessageOut)
+def review_message(message_id: int, body: ReviewIn, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> ReviewerMessageOut:
+    """The reviewer's own judgement. This, and nothing automatic, is what moves a case out of the pending state."""
+    m = _load(db, message_id)
+    p = m.prediction
+    if p.status != triage.PENDING:
+        raise HTTPException(409, "This message has already been reviewed.")
+    m.reviews.append(Review(reviewer_id=reviewer.id, reviewer_name=reviewer.full_name, kind="judgement", from_urgency=p.urgency, to_urgency=body.urgency, notes=body.notes.strip()))
+    p.status = triage.REVIEWED
+    db.add(AuditLog(actor_id=reviewer.id, action="review_message", target_type="message", target_id=str(message_id)))
+    db.commit()
+    return _message_detail(db, m)

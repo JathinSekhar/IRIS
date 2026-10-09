@@ -144,3 +144,121 @@ class ReviewerCheckinOut(BaseModel):
 
 
 RegisterOut.model_rebuild()
+
+
+# --- messages (the chat) and the reviewer's view of them ---------------------------------------------------------------------------------
+
+class MessageIn(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("text")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Write a message first")
+        return v.strip()
+
+
+class ReplyItem(BaseModel):
+    title: str
+    how: str
+
+
+class HelplineOut(BaseModel):
+    name: str
+    detail: str
+    number: str
+    tel: str
+
+
+class SupportReplyOut(BaseModel):
+    """Everything the person may see. No urgency label, score, topic code or reason: a test enforces it."""
+
+    layout: str = "tips"                      # how to present it (tips | celebrate | support | help_now); presentation only
+    helplines: list[HelplineOut] = []         # tap-to-call cards; empty unless a safety layer fired
+    intro: str
+    listening: str
+    self_help: list[ReplyItem]
+    reach_out: list[str]
+    crisis_lead: str
+    crisis_lines: list[str]
+    show_crisis_resources: bool
+    emergency_footer: str
+    closing: str
+    a_person_may_reach_out: bool
+
+
+class MessageOut(BaseModel):
+    id: int
+    text: str
+    created_at: datetime
+    reply: SupportReplyOut
+    care_status: str                          # waiting | being_read | reviewed: what is really true about whether a person has opened it
+    status_text: str                          # the reviewed sentence for that state
+
+
+class ReviewerMessageSummary(BaseModel):
+    """Triage the queue without opening anything: no message text."""
+
+    id: int
+    user_name: str
+    created_at: datetime
+    priority: Literal["low", "medium", "high"]
+    status: str
+    rule_flagged: bool
+    reviewer_raised: bool
+    baseline_floor: str
+    opened: bool = False
+
+
+class UrgentAlertsOut(BaseModel):
+    """Counts only, so it is safe to poll often: no names, no text."""
+
+    urgent_waiting: int
+    urgent_unopened: int
+    oldest_unopened_seconds: int | None
+    latest_urgent_id: int | None
+
+
+class ReviewEventOut(BaseModel):
+    id: int
+    kind: str
+    from_urgency: str | None
+    to_urgency: str
+    notes: str
+    reviewer_name: str
+    created_at: datetime
+
+
+class ReviewerMessageOut(BaseModel):
+    id: int
+    user_id: str
+    user_name: str
+    user_email: str
+    text: str
+    created_at: datetime
+    priority: Literal["low", "medium", "high"]
+    initial_priority: str
+    status: str
+    rule_level: str
+    rule_hits: list[str]
+    baseline_floor: str
+    baseline_known: bool
+    baseline_risk: str | None
+    checkin_id: int | None
+    reasons: list[str]
+    reviewer_note: str
+    model_version: str
+    policy_version: str
+    reply_shown: SupportReplyOut
+    history: list[ReviewEventOut]
+
+
+class EscalateIn(BaseModel):
+    to: Literal["medium", "high"]
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ReviewIn(BaseModel):
+    urgency: Literal["low", "medium", "high"]
+    notes: str = Field(default="", max_length=2000)

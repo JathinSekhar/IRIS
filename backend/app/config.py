@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     refresh_cookie_days: int = 7
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # The ML package (rule layer, decision policy, support wording) lives in the repository's `ml/` folder.
+    ml_path: str = str(BACKEND_DIR.parent / "ml")
+    message_max_chars: int = 5000
+    message_rate_limit_per_minute: int = 20
+
     consent_version: str = "2026-10"
     checkin_valid_days: int = 14
     checkin_skip_snooze_hours: int = 24
