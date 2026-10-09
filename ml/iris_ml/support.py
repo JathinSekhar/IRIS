@@ -57,12 +57,14 @@ POSITIVE_INTRO = {
     "social": "That sounds like a lovely day.",
     "better": "We are really glad you are feeling better.",
     "general": "That is wonderful to hear.",
+    "greeting": "Hello, and thank you for writing.",
 }
 POSITIVE_BODY = {
     "achieve": "You put in the effort, and it shows. Be proud of that.",
     "social": "Time with people you care about can be a real source of strength. Keep making room for it.",
     "better": "Keep going at your own pace, and keep doing what is helping.",
     "general": "Enjoy it, and keep doing what is working for you.",
+    "greeting": "Write whatever is on your mind, at your own pace. We are listening.",
 }
 POSITIVE_CLOSE = "If things ever feel different, you are welcome to write here any time."
 
@@ -344,6 +346,9 @@ _KIND = [
 ]
 
 
+_GREETING = re.compile(r"(?:hi+|hello+|hey+|hii+|good\s+(?:morning|afternoon|evening)|namaste)(?:\s+(?:there|iris|everyone))?\s*[.!]*", re.IGNORECASE)
+
+
 def positive_kind(text: str) -> str | None:
     """'achieve' | 'social' | 'better' | 'general' when the message is clearly good news, else None.
 
@@ -352,6 +357,8 @@ def positive_kind(text: str) -> str | None:
     heuristic that can miss sarcasm and mixed feelings, which is one more reason a person reads every message.
     """
     t = _prepare(text)
+    if _GREETING.fullmatch(t.strip()):
+        return "greeting"
     pos = [m for m in _POSITIVE.finditer(t) if not _negated(t, m.start())]
     if not pos:
         return None
@@ -410,7 +417,7 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
     positive = None if (urgent or result.rule_level != "none") else positive_kind(text)
     if positive is not None and result.rule_level == "none" and not urgent:
         return SupportPlan(
-            topics=("positive",), intro=POSITIVE_INTRO[positive], listening=POSITIVE_BODY[positive], self_help=(), reach_out=(POSITIVE_CLOSE,),
+            topics=("positive",), intro=POSITIVE_INTRO[positive], listening=POSITIVE_BODY[positive], self_help=(), reach_out=(() if positive == "greeting" else (POSITIVE_CLOSE,)),
             crisis_lead=CRISIS_LEAD_FLAGGED if flagged else "", crisis_lines=CRISIS_LINES if flagged else (), show_crisis_resources=flagged,
             emergency_footer=EMERGENCY_FOOTER, closing=CLOSING, layout="celebrate", helplines=HELPLINES if flagged else (),
             a_person_may_reach_out=True, queue_status=QUEUE_STATUS, provisional_priority=result.urgency, urgent_protocol=False,

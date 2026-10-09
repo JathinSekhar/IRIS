@@ -44,3 +44,12 @@ def test_scenarios_are_served_with_counts_and_the_page_has_no_emoji():
     assert p["total"] == len(p["rows"]) and sum(p["counts"].values()) == p["total"] and p["counts"]["known_gap"] == 2
     page = demo.PAGE.read_text(encoding="utf-8")
     assert not re.search("[\U0001F300-\U0001FAFF☀-➿]", page) and "No AI model is used" in page
+
+
+def test_a_plain_greeting_gets_a_plain_hello_even_with_a_high_floor():
+    from iris_ml.demo import triage_payload
+    for text in ("hi", "Hello!", "good morning"):
+        d = triage_payload(text, "high")
+        assert d["reply"]["topics"] == ["positive"] or "positive" in d["reply"]["topics"]
+        assert "breathing" not in str(d["reply"]).lower()
+    assert triage_payload("hi I want to die", "high")["workflow"] == "urgent_response"
