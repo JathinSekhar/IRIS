@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     message_max_chars: int = 5000
     message_rate_limit_per_minute: int = 20
 
+    # Optional conversational reply for ordinary messages only (see app/services/companion.py). Off unless enabled AND a key is set.
+    # The key comes from backend/.env (git-ignored): IRIS_GROQ_API_KEY. Never commit it.
+    llm_enabled: bool = False
+    groq_api_key: str = ""
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "openai/gpt-oss-120b"
+    llm_timeout_seconds: float = 6.0
+
     consent_version: str = "2026-10"
     checkin_valid_days: int = 14
     checkin_skip_snooze_hours: int = 24

@@ -186,6 +186,7 @@ class SupportReplyOut(BaseModel):
     emergency_footer: str
     closing: str
     a_person_may_reach_out: bool
+    companion: str | None = None              # an AI-written conversational line, only for ordinary messages; replaces intro+listening when present
 
 
 class MessageOut(BaseModel):

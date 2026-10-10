@@ -149,6 +149,7 @@ export interface SupportReply {
   emergency_footer: string
   closing: string
   a_person_may_reach_out: boolean
+  companion?: string | null
 }
 export type CareStatus = 'waiting' | 'being_read' | 'reviewed'
 export interface ChatMessage {

@@ -9,7 +9,7 @@ from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import CheckIn, Message, Prediction, User
 from ..schemas import MessageIn, MessageOut, SupportReplyOut
-from ..services import triage
+from ..services import companion, triage
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
 
@@ -41,6 +41,13 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
     )
     floor, known = triage.baseline_floor(latest.scores if latest else None)
     result, plan = triage.run(body.text, floor)
+    reply_json = {**triage.reply_json(plan), "companion": None}
+    if companion.eligible(result, floor):
+        earlier = db.scalars(select(Message).where(Message.user_id == user.id).order_by(Message.id.desc()).limit(companion.HISTORY_TURNS)).all()
+        history = [(m.text, (m.prediction.reply or {}).get("companion")) for m in reversed(earlier) if m.prediction]
+        said = companion.reply(body.text, history)
+        if said:
+            reply_json["companion"] = said
 
     msg = Message(user_id=user.id, text=body.text)
     msg.prediction = Prediction(
@@ -48,7 +55,7 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
         rule_level=result.rule_level, rule_hits=_hits(result.reasons), baseline_floor=floor, baseline_known=known,
         checkin_id=latest.id if latest else None, probabilities=None, model_urgency=result.model_urgency,
         initial_urgency=result.urgency, urgency=result.urgency, message_urgent=result.message_urgent, route=result.route, needs_human=True,
-        risk_score=result.risk_score, reasons=list(result.reasons), reply=triage.reply_json(plan),
+        risk_score=result.risk_score, reasons=list(result.reasons), reply=reply_json,
         reviewer_note=plan.reviewer_note, status=triage.PENDING,
     )
     db.add(msg)

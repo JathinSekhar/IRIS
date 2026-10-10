@@ -67,14 +67,25 @@ function Bullets({ items }: { items: string[] }) {
 function Reply({ m, first }: { m: ChatMessage; first: boolean }) {
   const r = m.reply
   const [more, setMore] = useState(false)
-  const [firstIdea, ...otherIdeas] = r.self_help
+  const talked = Boolean(r.companion)          // an AI-written conversational line replaces the fixed opening; the ideas wait behind "More ideas"
+  const firstIdea = talked ? undefined : r.self_help[0]
+  const otherIdeas = talked ? r.self_help : r.self_help.slice(1)
   const hasMore = otherIdeas.length > 0 || (r.layout === 'tips' && r.reach_out.length > 0)
 
   return (
     <div className="space-y-4 text-[15px] leading-7 text-slate-700">
       <div className="space-y-3">
-        <p className="font-semibold text-slate-900">{r.intro}</p>
-        {(first || r.layout !== 'tips') && r.listening && <p>{r.listening}</p>}
+        {talked ? (
+          <>
+            <p className="text-slate-900">{r.companion}</p>
+            <p className="text-xs text-slate-400">Written by an AI assistant. A person on our team still reads your message.</p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold text-slate-900">{r.intro}</p>
+            {(first || r.layout !== 'tips') && r.listening && <p>{r.listening}</p>}
+          </>
+        )}
 
         {r.layout === 'tips' && firstIdea && (
           <p>
