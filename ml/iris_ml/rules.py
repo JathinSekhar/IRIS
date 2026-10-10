@@ -31,7 +31,7 @@ def _fz(word: str) -> str:
     return "".join((_V if ch in "aeiou" else re.escape(ch)) + "+" for ch in word)
 
 
-KILL = _fz("kill")
+KILL = _fz("kill") + r"(?:ing|ed)?"
 SUICIDE = r"s+u+" + _V + r"+c+" + _V + r"+d+(?:" + _V + r"+|" + r"[a@4]+l+)"
 MYSELF = r"(?:my\s*self)"
 THIRD = r"(?:him\s*self|her\s*self|them\s*selves)"
@@ -62,11 +62,18 @@ _RULES: list[tuple[str, str, str]] = [
     ("third_party_imminent", "high",
      r"\b(?:he|she|they|my\s+\w+|\w+)\s+(?:is|are|'s)?\s*" + INTENT_LEAD + r"\s+(?:" + KILL + r"\s+" + THIRD
      + r"|end\s+(?:his|her|their)\s+life|commit\s+" + SUICIDE + r")"),
+    ("decided_to_die", "high", r"\b(?:decided|deciding|planning|plan|plans|going)\s+(?:to|on)\s+(?:d+i+e+|dying)\b(?!\s+(?:of|from|laughing|inside))|\bi'?ve\s+decided\s+to\s+d+i+e+\b"),
+    ("take_all_pills", "high",
+     r"(?:going\s+to|gonna|about\s+to|will|want\s+to|plan(?:ning)?\s+to)\s+(?:take|swallow|drink)\s+(?:all|every\s+one)\s+(?:of\s+)?(?:my|the|these)\s+(?:pills|tablets|meds|medication|medicine)"),
     ("means_ready", "high",
      r"\b(?:the\s+)?(?:means|method|pills|tablets|rope|gun|blade|poison)\s+(?:is\s+|are\s+)?(?:all\s+)?(?:ready|prepared|set|in\s+place)\b"
      r".{0,80}\b(?:do\s+it|go\s+through\s+with\s+it|end\s+it|finish\s+it)\b"),
     ("note_phrase", "high", r"by\s+the\s+time\s+you\s+(?:read|see|get)\s+this"),
     # ---- review: ideation / self-harm / euphemisms / third party
+    ("goodbye_message", "review", r"\b(?:goodbye|good\s*bye|farewell)\s+(?:everyone|everybody|all|world|guys|my\s+(?:friends|family))\b"),
+    ("burden_self", "review", r"\b(?:i'?m|i\s+am|i\s+feel\s+like|feel\s+like)\s+(?:a\s+|such\s+a\s+|just\s+a\s+)?(?:burden|waste\s+of\s+space)"),
+    ("hate_my_life", "review", r"\bi\s+hate\s+my\s+(?:own\s+)?life\b|\b(?:tired|sick|done)\s+of\s+(?:living|being\s+alive|life)\b|\blife\s+is\s+(?:not|n'?t)\s+worth\s+living\b|\bwhat'?s\s+the\s+point\s+(?:of|in)\s+(?:anything|living|life|it\s+all)\b|\bwhat\s+is\s+the\s+point\s+of\s+(?:anything|living|life|it\s+all)\b"),
+    ("want_to_disappear", "review", r"\bwant(?:ed)?\s+(?:to\s+)?(?:just\s+)?(?:disappear|vanish)\b(?!\s+(?:into|in\s+a|for\s+(?:a\s+)?(?:while|week|weekend|day)))|\bwant\s+(?:it\s+all|everything|this)\s+to\s+(?:stop|end|be\s+over)\b"),
     ("kill_myself", "review", KILL + r"\s+" + MYSELF),
     ("end_my_life", "review", ENDLIFE),
     ("suicide_word", "review", r"\b" + SUICIDE + r"\b"),
@@ -91,7 +98,7 @@ _RULES: list[tuple[str, str, str]] = [
     ("wish_not_here", "review",
      r"wish(?:ed)?\s+(?:i|that\s+i)\s+(?:wasn'?t|weren'?t|was\s+not|were\s+not|had\s+never\s+been|never\s+was)\s+(?:here|alive|born|around|existing|a\s+burden)"
      r"|wish(?:ed)?\s+(?:i|that\s+i)\s+(?:could\s+)?(?:just\s+)?(?:disappear|vanish)(?!\s+(?:into|in\s+a|for\s+(?:a\s+)?(?:while|week|weekend|day)))|wish(?:ed)?\s+(?:i|that\s+i)\s+(?:would|could)\s*n'?t\s+wake\s+up"
-     r"|never\s+(?:have\s+)?been\s+born"),
+     r"|never\s+(?:have\s+)?been\s+born|wish(?:ed)?\s+(?:i|that\s+i)\s+(?:was|were)\s+never\s+born"),
     ("euphemism", "review", r"\bun-?alive\s+(?:my\s*self|me)\b|\bunalive\b|end(?:ing)?\s+it\s+all|(?:not|never)\s+wake\s+up|sleep\s+forever|disappear\s+forever"),
     ("self_harm", "review",
      r"self[\s-]*harm|(?:hurt|hurting|cut|cutting|burn|burning|slit|slitting|hang|hanging)\s+" + MYSELF

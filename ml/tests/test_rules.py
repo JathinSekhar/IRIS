@@ -221,3 +221,18 @@ def test_cant_take_it_anymore_is_flagged(text):
 @pytest.mark.parametrize("text", ["I can't take the noise in the hostel", "I can't take my eyes off this show", "I can't take a day off this week"])
 def test_cant_take_something_else_is_not_flagged(text):
     assert not scan(text).flagged, text
+
+
+def test_inflected_and_indirect_statements_are_caught():
+    from iris_ml.rules import scan
+    for text in ("I'm thinking of killing myself", "I've decided to die", "I'm going to take all my pills",
+                 "I feel like a burden to everyone", "I hate my life", "I wish I was never born", "I want to disappear",
+                 "life is not worth living", "Goodbye everyone, I can't continue"):
+        assert scan(text).level != "none", text
+
+
+def test_everyday_phrases_stay_unflagged():
+    from iris_ml.rules import scan
+    for text in ("This homework is killing me", "I could kill for a coffee", "I'm dying to know my results",
+                 "I'm tired of studying all night", "I'm going to die of embarrassment", "I hate my commute"):
+        assert scan(text).level == "none", text

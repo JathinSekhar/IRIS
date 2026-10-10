@@ -333,7 +333,7 @@ def explain_topics(text: str) -> list[dict]:
 _POSITIVE = re.compile(
     r"\b(?:great|wonderful|amazing|fantastic|happy|proud|excited|thrilled|delighted|glad|grateful|thankful|enjoy(?:ed|ing)?|celebrat\w+|"
     r"went (?:really |very |so )?well|good news|passed|promoted|got the job|got a job|achiev\w+|"
-    r"(?:doing|feeling|feel|much|a lot) better|improv(?:ed|ing)|recover(?:ed|ing)|relieved|calmer|lovely day|good day|thank you|thanks|helped me|really helped|helpful)\b", re.IGNORECASE)
+    r"(?:doing|feeling|feel|much|a lot) better|going (?:really |very |so )?well|feel calm|feeling calm|calm now|improv(?:ed|ing)|recover(?:ed|ing)|relieved|calmer|lovely day|good day|thank you|thanks|helped me|really helped|helpful)\b", re.IGNORECASE)
 _DISTRESS = re.compile(
     r"\b(?:sad|anxious|anxiety|worried|worry|worries|worrying|stress(?:ed|ful)?|overwhelm\w*|lonely|alone|can'?t|cannot|couldn'?t|tired|exhaust\w*|hopeless|"
     r"worthless|useless|empty|numb|cry|crying|scared|afraid|struggl\w+|difficult|hard|bad|worse|worst|awful|terrible|horrible|angry|upset|hurt|pain|"
