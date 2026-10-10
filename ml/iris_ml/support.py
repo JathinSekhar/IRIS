@@ -18,6 +18,7 @@ anything the person sees. Self-help is general wellbeing guidance, not treatment
 from __future__ import annotations
 
 import re
+import zlib
 from dataclasses import dataclass, replace
 
 from . import URGENCY, URGENCY_INDEX
@@ -28,6 +29,12 @@ REVIEW_STATUS = "AI-assisted draft - clinical review pending"   # EVERY message 
 
 # --- messages that are not tied to one topic ---------------------------------------------------------------------------------------
 LISTENING = "Thank you for telling us how you are feeling. What you wrote matters, and it is okay to talk about it."
+# Alternatives so a long chat does not repeat one sentence. The choice depends only on the message text, so it is stable and testable.
+LISTENING_VARIANTS = (
+    LISTENING,
+    "It takes something to put this into words, and we are glad you wrote it down.",
+    "What you are going through matters, and you do not have to explain it perfectly.",
+)
 CLOSING = "You deserve support. A person on our team will review your message, which may take some time."
 EMERGENCY_FOOTER = "IRIS is not an emergency service. If you need help right now, call 112 or Tele-MANAS 14416."
 CRISIS_LEAD_FLAGGED = "If things ever feel like too much, these services are there for you at any time."
@@ -35,6 +42,11 @@ CRISIS_LEAD_URGENT = "Please contact one of these now, even if it feels hard."
 FLAGGED_INTRO = "It sounds like things are really hard right now, and we are glad you told us."
 URGENT_INTRO = "We are concerned about how you are feeling, and you do not have to go through this alone."
 URGENT_REACH_OUT = "If you can, be with someone you trust right now, such as a family member or friend, and tell them how you are feeling."
+# Added only when the message itself points to it. They respond to what the person said, and never promise that anyone is coming.
+URGENT_REACH_OUT_SOON = "Because this may be close, please do not stay alone with it: call one of the numbers above now, or tell someone near you what you wrote here."
+URGENT_REACH_OUT_MEANS = "If you have something near you that you could use to hurt yourself, it may help to move it out of reach or ask someone to keep it for you."
+_SOON_CUE = re.compile(r"\b(?:tonight|today|tomorrow|right\s+now|in\s+an\s+hour|this\s+(?:morning|evening|afternoon|weekend)|later\s+today|about\s+to|going\s+to\s+do\s+it)\b", re.IGNORECASE)
+_MEANS_CUE = re.compile(r"\b(?:pills?|tablets?|meds|medication|overdose|rope|noose|knife|blade|razor|poison|gun|cut(?:ting)?\s+(?:my\s+)?wrists?|jump(?:ing)?\s+off)\b", re.IGNORECASE)
 
 # Same numbers the app already shows (frontend/src/components/Brand.tsx, pages/Support.tsx).
 CRISIS_LINES = (
@@ -225,8 +237,12 @@ def catalog() -> list[dict]:
     add("SM-CRISIS-LEAD-URGENT", "user", "crisis_lead_in", ["urgent"], CRISIS_LEAD_URGENT)
     for n, line in enumerate(CRISIS_LINES, 1):
         add(f"SM-CRISIS-LINE{n}", "user", "crisis_resource", ["flagged", "urgent"], line)
+    for n, line in enumerate(LISTENING_VARIANTS[1:], 2):
+        add(f"SM-LISTENING-{n}", "user", "active_listening", ["all"], line)
     add("SM-URGENT-INTRO", "user", "urgent_response", ["urgent"], URGENT_INTRO)
     add("SM-URGENT-REACH", "user", "urgent_response", ["urgent"], URGENT_REACH_OUT)
+    add("SM-URGENT-REACH-SOON", "user", "urgent_response", ["urgent"], URGENT_REACH_OUT_SOON)
+    add("SM-URGENT-REACH-MEANS", "user", "urgent_response", ["urgent"], URGENT_REACH_OUT_MEANS)
 
     sh_use: dict[tuple, list[str]] = {}
     ro_use: dict[str, list[str]] = {}
@@ -412,6 +428,11 @@ def reviewer_note(result: TriageResult, urgent: bool) -> str:
     return base + " Reasons: " + "; ".join(result.reasons)
 
 
+def listening_line(text: str) -> str:
+    """One of the reviewed listening lines, picked from the message text so replies in a long chat do not all open the same way."""
+    return LISTENING_VARIANTS[zlib.crc32(text.strip().lower().encode("utf-8")) % len(LISTENING_VARIANTS)]
+
+
 def plan_support(text: str, result: TriageResult) -> SupportPlan:
     """The supportive plan for one message. `result` should come from the V1 policy, so `needs_human` is always true."""
     urgent = result.message_urgent                 # this MESSAGE is urgent (not merely a High floor from the check-in)
@@ -438,6 +459,10 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
     if urgent:
         intro = URGENT_INTRO
         reach_out = [URGENT_REACH_OUT]
+        if _MEANS_CUE.search(text):
+            reach_out.append(URGENT_REACH_OUT_MEANS)
+        if _SOON_CUE.search(text):
+            reach_out.insert(0, URGENT_REACH_OUT_SOON)
     elif result.rule_level != "none" and "supporting_others" not in names:
         # The message itself contains concerning language: no self-help tips (they can read as dismissive), only support, a person to talk to and the helplines.
         intro = FLAGGED_INTRO
@@ -454,11 +479,13 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
                     reach_out.append(t.reach_out[i])
         self_help = self_help[:4]
         if confidence == "none":
-            self_help = []                                           # nothing was recognised: do not hand out a tip that may not fit
+            self_help = []                                           # nothing recognised: do not hand out a tip that may not fit
+        elif confidence == "tentative":
+            self_help = list(GENERAL.self_help)[:2]                  # a weak match: only general ideas, never a topic's tip on a guess
         reach_out = reach_out[:3]
     return SupportPlan(
         topics=names or ("general",), intro=intro,
-        listening=LISTENING,
+        listening=listening_line(text),
         self_help=tuple(self_help), reach_out=tuple(reach_out),
         crisis_lead=(CRISIS_LEAD_URGENT if urgent else CRISIS_LEAD_FLAGGED) if flagged else "",
         crisis_lines=CRISIS_LINES if flagged else (), show_crisis_resources=flagged,

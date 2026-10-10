@@ -304,3 +304,30 @@ def test_message_urgency_is_false_for_a_floor_only_case_and_true_when_a_reviewer
     low = decide(SURE_LOW, CALM, "none", V1_POLICY)
     assert sp.escalate(low, "medium", "doubt").message_urgent is False
     assert sp.escalate(low, "high", "warning signs").message_urgent is True
+
+
+def test_urgent_replies_respond_to_time_and_means_without_promising_anything():
+    from iris_ml.demo import triage_payload
+    base = triage_payload("I want to kill myself")["reply"]["reach_out"]
+    assert base == [sp.URGENT_REACH_OUT]
+    soon = triage_payload("I'm going to kill myself tonight")["reply"]["reach_out"]
+    assert soon[0] == sp.URGENT_REACH_OUT_SOON and sp.URGENT_REACH_OUT in soon
+    means = triage_payload("I want to kill myself, I have pills")["reply"]["reach_out"]
+    assert sp.URGENT_REACH_OUT_MEANS in means
+    for line in (sp.URGENT_REACH_OUT_SOON, sp.URGENT_REACH_OUT_MEANS):
+        assert not re.search(r"promise|will (?:come|call|be there)|help is|safe|minutes|hours", line, re.IGNORECASE), line
+
+
+def test_the_listening_line_varies_across_messages_but_is_stable_for_one_message():
+    from iris_ml.support import LISTENING_VARIANTS, listening_line
+    texts = ["I feel lonely", "I cannot sleep", "work is a lot", "I miss home", "exams are close", "I argued with a friend", "I feel flat"]
+    lines = {listening_line(t) for t in texts}
+    assert len(lines) > 1 and lines <= set(LISTENING_VARIANTS)
+    assert listening_line("I feel lonely") == listening_line("  I feel LONELY ")
+
+
+def test_a_weak_topic_match_gets_general_ideas_not_that_topics_tip():
+    p = plan("I'm dying to know my results")
+    assert p.match_confidence == "tentative"
+    assert all(item in sp.GENERAL.self_help for item in p.self_help)
+    assert not any(t == "Study planning" for t, _ in p.self_help)

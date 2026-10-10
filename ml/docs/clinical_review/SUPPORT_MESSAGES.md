@@ -18,6 +18,8 @@
 | `SM-COMMON-LISTEN` | Thank you for telling us how you are feeling. What you wrote matters, and it is okay to talk about it. | Shown in every plan, for every person. | automatic checks pass; flagged for clinician: dismissive_risk |
 | `SM-COMMON-CLOSE` | You deserve support. A person on our team will review your message, which may take some time. | Shown in every plan, for every person. | automatic checks pass; flagged for clinician: unsupported_promise |
 | `SM-COMMON-FOOTER` | IRIS is not an emergency service. If you need help right now, call 112 or Tele-MANAS 14416. | Shown in every plan, for every person, so that nobody is left waiting for a reply when they need help now. | automatic checks pass |
+| `SM-LISTENING-2` | It takes something to put this into words, and we are glad you wrote it down. | Shown in every plan, for every person. | automatic checks pass |
+| `SM-LISTENING-3` | What you are going through matters, and you do not have to explain it perfectly. | Shown in every plan, for every person. | automatic checks pass |
 
 ## Helplines (shown when any safety layer fires, or the provisional priority is Medium or High)
 
@@ -34,6 +36,8 @@
 | --- | --- | --- | --- |
 | `SM-URGENT-INTRO` | We are concerned about how you are feeling, and you do not have to go through this alone. | Replaces topic advice (no self-help is shown) when the urgent protocol applies. | automatic checks pass |
 | `SM-URGENT-REACH` | If you can, be with someone you trust right now, such as a family member or friend, and tell them how you are feeling. | Replaces topic advice (no self-help is shown) when the urgent protocol applies. | automatic checks pass; flagged for clinician: inappropriate_advice_risk |
+| `SM-URGENT-REACH-SOON` | Because this may be close, please do not stay alone with it: call one of the numbers above now, or tell someone near you what you wrote here. | Replaces topic advice (no self-help is shown) when the urgent protocol applies. | automatic checks pass |
+| `SM-URGENT-REACH-MEANS` | If you have something near you that you could use to hurt yourself, it may help to move it out of reach or ask someone to keep it for you. | Replaces topic advice (no self-help is shown) when the urgent protocol applies. | automatic checks pass |
 
 ## Topic: Academic stress (`academic_stress`)
 
