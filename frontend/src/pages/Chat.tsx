@@ -253,7 +253,7 @@ export default function Chat() {
         {empty ? (
           <div className="mx-auto grid h-full max-w-3xl place-content-center px-6 text-center">
             <h1 className="font-display text-3xl font-medium text-slate-900 sm:text-4xl">What is on your mind?</h1>
-            <p className="mt-3 text-slate-500">Write in your own words. A person on our team reads every message.</p>
+            <p className="mt-3 text-slate-500">Tell us how you are feeling, in your own words. A person on our team will read it, though not always straight away.</p>
           </div>
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-10 px-4 py-8 sm:px-6">

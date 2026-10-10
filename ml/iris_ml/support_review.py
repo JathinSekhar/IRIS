@@ -101,6 +101,12 @@ TOPIC_META = {
         keywords=["great day", "went well", "passed", "proud", "doing much better", "thank you", "enjoyed"],
         safety="Used only when there is no concerning language, no unnegated distress word, no safety-rule hit, and no raised priority. Mixed messages get the normal careful reply.",
         limits="A keyword heuristic: sarcasm and masked distress can look like good news. A person still reads every message."),
+    "flagged": dict(
+        label="Concerning language (not urgent)",
+        situation="A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent.",
+        keywords=["hate my life", "burden to everyone", "want to disappear", "wish I was never born"],
+        safety="Hedged and gentle; names the difficulty without labelling the person, gives no self-help tip that could read as dismissive, and sits with the helplines and the person reading.",
+        limits="Cannot tell how serious the feeling is. A person reads it and decides; the wording is the same for every concerning message."),
     "general": dict(
         label="General support",
         situation="Anything not recognised as one specific topic, or only weakly matched.",

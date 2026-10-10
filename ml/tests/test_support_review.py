@@ -80,7 +80,7 @@ def test_every_message_type_has_context_text():
 
 def test_every_documented_keyword_really_triggers_its_topic():
     for code, meta in rv.TOPIC_META.items():
-        if code in ("general", "positive"):
+        if code in ("general", "positive", "flagged"):
             continue
         for kw in meta["keywords"]:
             assert code in sp.match_topics(kw, limit=5), (code, kw)

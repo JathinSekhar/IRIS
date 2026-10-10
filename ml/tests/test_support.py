@@ -74,7 +74,7 @@ def test_different_needs_get_different_plans_and_unmatched_text_gets_general_sup
     a, b = plan("I have exams next week and I am struggling to study"), plan("I feel so lonely, I have no friends here")
     assert a.self_help != b.self_help and a.reach_out != b.reach_out and a.intro != b.intro
     g = plan("The weather turned colder this week")
-    assert g.topics == ("general",) and g.self_help and g.reach_out
+    assert g.topics == ("general",) and not g.self_help and g.reach_out   # nothing recognised: no tip that may not fit
     assert plan("I wish I could disappear into a good book this weekend").topics == ("general",)
     assert "academic_stress" in plan("exams and money worries and I can't sleep").topics            # several needs: the main ones show
 
@@ -250,7 +250,7 @@ def test_a_message_with_concerning_language_gets_no_self_help_tips_but_keeps_sup
     for text in ["Nobody would notice if I was gone", "I can't take it anymore", "I have exams and nobody would care if I disappeared"]:
         p = plan(text)
         assert not p.urgent_protocol and p.show_crisis_resources and p.crisis_lines == sp.CRISIS_LINES, text
-        assert p.self_help == () and p.intro == sp.GENERAL.intro and p.reach_out, text
+        assert p.self_help == () and p.intro == sp.FLAGGED_INTRO and p.reach_out, text
         assert p.human_review_required
 
 

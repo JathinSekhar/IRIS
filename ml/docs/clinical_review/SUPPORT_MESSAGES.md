@@ -23,10 +23,10 @@
 
 | ID | Message | When it is shown | Draft self-check |
 | --- | --- | --- | --- |
-| `SM-CRISIS-LEAD-FLAGGED` | If things ever feel like too much, these services are there for you at any time. | Introduces the helplines. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass; flagged for clinician: unsupported_promise |
+| `SM-CRISIS-LEAD-FLAGGED` | If things ever feel like too much, these services are there for you at any time. | A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent. Introduces the helplines. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass; flagged for clinician: unsupported_promise |
 | `SM-CRISIS-LEAD-URGENT` | Please contact one of these now, even if it feels hard. | Introduces the helplines. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass |
-| `SM-CRISIS-LINE1` | If you are in immediate danger, call 112 or go to the nearest emergency room. | Emergency and helpline numbers. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass |
-| `SM-CRISIS-LINE2` | To talk to someone now: Tele-MANAS 14416 (24x7, free, confidential) or KIRAN 1800-599-0019. | Emergency and helpline numbers. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass; flagged for clinician: unsupported_promise |
+| `SM-CRISIS-LINE1` | If you are in immediate danger, call 112 or go to the nearest emergency room. | A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent. Emergency and helpline numbers. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass |
+| `SM-CRISIS-LINE2` | To talk to someone now: Tele-MANAS 14416 (24x7, free, confidential) or KIRAN 1800-599-0019. | A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent. Emergency and helpline numbers. Shown whenever a safety layer fires or the provisional priority is Medium or High. | automatic checks pass; flagged for clinician: unsupported_promise |
 
 ## Urgent response (replaces all advice)
 
@@ -201,6 +201,17 @@
 
 | ID | Message | When it is shown | Draft self-check |
 | --- | --- | --- | --- |
+
+## Topic: Concerning language (not urgent) (`flagged`)
+
+- **Situation:** A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent.
+- **Trigger keywords:** hate my life, burden to everyone, want to disappear, wish I was never born
+- **Safety considerations:** Hedged and gentle; names the difficulty without labelling the person, gives no self-help tip that could read as dismissive, and sits with the helplines and the person reading.
+- **Limitations:** Cannot tell how serious the feeling is. A person reads it and decides; the wording is the same for every concerning message.
+
+| ID | Message | When it is shown | Draft self-check |
+| --- | --- | --- | --- |
+| `SM-FLAGGED-INTRO` | It sounds like things are really hard right now, and we are glad you told us. | A person whose message contains worrying language, such as feeling like a burden or hating their life, without an explicit statement of intent. Opening sentence, used first when the topic match is clear (otherwise the general opening is used). | automatic checks pass |
 
 ## Topic: General support (`general`)
 

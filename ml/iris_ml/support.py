@@ -32,6 +32,7 @@ CLOSING = "You deserve support. A person on our team will review your message, w
 EMERGENCY_FOOTER = "IRIS is not an emergency service. If you need help right now, call 112 or Tele-MANAS 14416."
 CRISIS_LEAD_FLAGGED = "If things ever feel like too much, these services are there for you at any time."
 CRISIS_LEAD_URGENT = "Please contact one of these now, even if it feels hard."
+FLAGGED_INTRO = "It sounds like things are really hard right now, and we are glad you told us."
 URGENT_INTRO = "We are concerned about how you are feeling, and you do not have to go through this alone."
 URGENT_REACH_OUT = "If you can, be with someone you trust right now, such as a family member or friend, and tell them how you are feeling."
 
@@ -157,7 +158,7 @@ TOPICS: tuple[Topic, ...] = (
     _t("low_mood", "MOOD",
        _cues(strong=r"hopeless|empty|numb|unmotivated|no energy|crying|cry|drained|discouraged|pointless|meaningless|worthless|useless",
              weak=r"sad|down|low|depressed|failure",
-             strong_fixed=r"tired of (?:everything|it all|life|living|this|trying|pretending|fighting)"),
+             strong_fixed=r"tired of (?:everything|it all|life|living|this|trying|pretending|fighting)|feel(?:ing)?\s+(?:nothing|numb)(?:\s+anymore)?"),
        "It sounds like things feel heavy right now.",
        [ROUTINE, JOURNAL, ("One small thing you usually enjoy", "If it feels possible, you could pick something short, such as music or a walk. It is fine if it does not feel appealing yet.")],
        ["You could tell a trusted friend or family member how you have been feeling.",
@@ -251,6 +252,7 @@ def catalog() -> list[dict]:
     for kind in POSITIVE_INTRO:
         add(f"SM-POS-{kind.upper()}-INTRO", "user", "positive_intro", ["positive"], POSITIVE_INTRO[kind])
         add(f"SM-POS-{kind.upper()}-BODY", "user", "positive_body", ["positive"], POSITIVE_BODY[kind])
+    add("SM-FLAGGED-INTRO", "user", "topic_intro", ["flagged"], FLAGGED_INTRO)
     add("SM-POS-CLOSE", "user", "positive_closing", ["positive"], POSITIVE_CLOSE)
     for n, (name, detail, number, _) in enumerate(HELPLINES, 1):
         add(f"SM-HELPLINE-{n}", "user", "helpline_card", ["flagged", "urgent"], f"{name}: {detail}: {number}")
@@ -424,6 +426,7 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
             human_review_required=True, reviewer_note=reviewer_note(result, False), match_confidence="clear",
         )
     found = explain_topics(text)[:3]
+    found.sort(key=lambda d: not (d["topic"] == "low_mood" and d["strong"]))   # a heavy feeling comes first (stable sort)
     names = tuple(d["topic"] for d in found)
     best = found[0] if found else None
     confidence = "none" if best is None else ("clear" if best["score"] >= 2 and best["strong"] else "tentative")
@@ -437,7 +440,7 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
         reach_out = [URGENT_REACH_OUT]
     elif result.rule_level != "none" and "supporting_others" not in names:
         # The message itself contains concerning language: no self-help tips (they can read as dismissive), only support, a person to talk to and the helplines.
-        intro = GENERAL.intro
+        intro = FLAGGED_INTRO
         reach_out = list(GENERAL.reach_out)
     else:
         intro = chosen[0].intro if confidence == "clear" else GENERAL.intro      # do not open with a guess
@@ -450,6 +453,8 @@ def plan_support(text: str, result: TriageResult) -> SupportPlan:
                 if i < len(t.reach_out) and t.reach_out[i] not in reach_out:
                     reach_out.append(t.reach_out[i])
         self_help = self_help[:4]
+        if confidence == "none":
+            self_help = []                                           # nothing was recognised: do not hand out a tip that may not fit
         reach_out = reach_out[:3]
     return SupportPlan(
         topics=names or ("general",), intro=intro,
