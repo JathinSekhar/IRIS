@@ -232,6 +232,10 @@ export default function Chat() {
       setText('')
     } catch (err) {
       justSent.current = false
+      if (err instanceof ApiError && err.status === 403 && /consent/i.test(err.message)) {
+        window.location.assign('/consent')          // the saved session is out of date: reload so the app re-checks consent and asks for it
+        return
+      }
       setError(err instanceof ApiError ? err.message : 'Your message was not sent. Please try again.')
     } finally {
       setSending(false)
