@@ -1,5 +1,6 @@
 import { AlertTriangle, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Alert, Button, Card, Spinner, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { DoctorCase, DoctorMe, DoctorOffer } from '../lib/types'
@@ -173,8 +174,14 @@ export default function Doctor() {
             <section className="space-y-3" aria-label="Your cases">
               <h2 className="font-medium text-slate-900">Your cases</h2>
               {cases.map((c) => (
-                <Card key={c.case_id} className="p-4 text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}. Chat opens in the next step.
+                <Card key={c.case_id} className="flex items-center justify-between gap-3 p-4 text-sm text-slate-700">
+                  <span>
+                    <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}
+                  </span>
+                  <Link to={`/doctor/cases/${c.case_id}`}
+                    className="inline-flex h-9 items-center rounded-lg bg-brand-800 px-3 text-sm font-medium text-white hover:bg-brand-900">
+                    Open conversation
+                  </Link>
                 </Card>
               ))}
             </section>

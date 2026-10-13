@@ -189,6 +189,14 @@ export interface DoctorOffer {
   recent_messages: { text: string; created_at: string }[]
   checkin: { baseline_risk: string; safety_flag: boolean; phq9: number | null; gad7: number | null; created_at: string } | null
 }
+export interface ThreadMessage {
+  id: number
+  sender_role: 'user' | 'doctor'
+  mine: boolean
+  text: string
+  created_at: string
+  urgent: boolean
+}
 export interface DoctorCase {
   case_id: number
   first_name: string

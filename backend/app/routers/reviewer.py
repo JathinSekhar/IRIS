@@ -9,7 +9,7 @@ from ..deps import age_on, require_reviewer
 from ..models import AuditLog, CheckIn, Message, Prediction, Review, User
 from ..schemas import (
     EscalateIn, ReviewEventOut, ReviewerCheckinOut, ReviewerCheckinSummary, ReviewerMessageOut, ReviewerMessageSummary, ReviewIn, SupportReplyOut,
-    UrgentAlertsOut,
+    ThreadMessageOut, UrgentAlertsOut,
 )
 from ..services import triage
 
@@ -204,3 +204,17 @@ def review_message(message_id: int, body: ReviewIn, reviewer: User = Depends(req
     db.add(AuditLog(actor_id=reviewer.id, action="review_message", target_type="message", target_id=str(message_id)))
     db.commit()
     return _message_detail(db, m)
+
+
+@router.get("/consults/{case_id}/messages", response_model=list[ThreadMessageOut])
+def consult_thread(case_id: int, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> list[ThreadMessageOut]:
+    """A reviewer can read a doctor conversation on request (for example after a complaint). Every read is written to the audit log."""
+    from ..models import ConsultCase
+    from ..services import consult
+
+    if db.get(ConsultCase, case_id) is None:
+        raise HTTPException(404, "Case not found")
+    db.add(AuditLog(actor_id=reviewer.id, action="view_consult_thread", target_type="consult", target_id=str(case_id)))
+    db.commit()
+    return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=False, text=m.text, created_at=m.created_at, urgent=m.urgent)
+            for m in consult.thread(db, case_id)]

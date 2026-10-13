@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import require_doctor
 from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, User
-from ..schemas import DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut
+from ..schemas import DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, ThreadMessageIn, ThreadMessageOut
 from ..services import consult
 
 router = APIRouter(prefix="/api/doctor", tags=["doctor"])
@@ -98,3 +98,39 @@ def my_cases(doctor: User = Depends(require_doctor), db: Session = Depends(get_d
         select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state == consult.ACCEPTED).order_by(ConsultCase.accepted_at.desc())
     ).all()
     return [MyCaseOut(case_id=c.id, first_name=consult.person_first_name(c.user), state=c.state, accepted_at=c.accepted_at) for c in rows]
+
+
+def _my_accepted(db: Session, case_id: int, doctor: User) -> ConsultCase:
+    case = db.get(ConsultCase, case_id)
+    if case is None or case.accepted_by != doctor.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
+    return case
+
+
+def _thread_out(rows, viewer_id) -> list[ThreadMessageOut]:
+    return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=m.sender_id == viewer_id, text=m.text, created_at=m.created_at, urgent=m.urgent)
+            for m in rows]
+
+
+@router.get("/cases/{case_id}/messages", response_model=list[ThreadMessageOut])
+def case_messages(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[ThreadMessageOut]:
+    """The conversation with the person whose case this doctor accepted. Reading it is audited (at most once every five minutes per case)."""
+    case = _my_accepted(db, case_id, doctor)
+    recent = datetime.now(timezone.utc) - timedelta(minutes=5)
+    seen = db.scalar(select(AuditLog.id).where(AuditLog.actor_id == doctor.id, AuditLog.action == "view_thread", AuditLog.target_id == str(case_id),
+                                               AuditLog.created_at > recent).limit(1))
+    if seen is None:
+        db.add(AuditLog(actor_id=doctor.id, action="view_thread", target_type="consult", target_id=str(case_id)))
+        db.commit()
+    return _thread_out(consult.thread(db, case.id), doctor.id)
+
+
+@router.post("/cases/{case_id}/messages", response_model=ThreadMessageOut, status_code=status.HTTP_201_CREATED)
+def send_case_message(case_id: int, body: ThreadMessageIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> ThreadMessageOut:
+    case = _my_accepted(db, case_id, doctor)
+    if case.state != consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended.")
+    if consult.too_fast(db, case.id, doctor.id):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You are sending messages very quickly. Please wait a moment.")
+    m = consult.add_message(db, case, doctor, "doctor", body.text)
+    return _thread_out([m], doctor.id)[0]

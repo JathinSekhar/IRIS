@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import AuditLog, ConsultCase, User, utcnow
-from ..schemas import ConsultOut, ConsultRequestIn
+from ..schemas import ConsultOut, ConsultRequestIn, ThreadMessageIn, ThreadMessageOut
 from ..services import consult, triage
 
 router = APIRouter(prefix="/api/consults", tags=["consults"])
@@ -59,3 +59,34 @@ def cancel(case_id: int, user: User = Depends(get_current_user), db: Session = D
         case.closed_at = utcnow()
         db.commit()
     return _out(db, case)
+
+
+def _owned_accepted(db: Session, case_id: int, user: User) -> ConsultCase:
+    case = db.get(ConsultCase, case_id)
+    if case is None or case.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    if case.state != consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You can talk here once a doctor has accepted.")
+    return case
+
+
+def _thread_out(rows, viewer_id, show_flag: bool) -> list[ThreadMessageOut]:
+    return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=m.sender_id == viewer_id, text=m.text, created_at=m.created_at,
+                             urgent=bool(m.urgent and show_flag)) for m in rows]
+
+
+@router.get("/{case_id}/messages", response_model=list[ThreadMessageOut])
+def thread_messages(case_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[ThreadMessageOut]:
+    case = db.get(ConsultCase, case_id)
+    if case is None or case.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    return _thread_out(consult.thread(db, case.id), user.id, show_flag=False)
+
+
+@router.post("/{case_id}/messages", response_model=ThreadMessageOut, status_code=status.HTTP_201_CREATED)
+def send_thread_message(case_id: int, body: ThreadMessageIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> ThreadMessageOut:
+    case = _owned_accepted(db, case_id, user)
+    if consult.too_fast(db, case.id, user.id):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You are sending messages very quickly. Please wait a moment.")
+    m = consult.add_message(db, case, user, "user", body.text)
+    return _thread_out([m], user.id, show_flag=False)[0]

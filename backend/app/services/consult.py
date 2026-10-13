@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from ..models import CheckIn, ConsultCase, DoctorProfile, Message, User
+from ..models import CheckIn, ConsultCase, ConsultMessage, DoctorProfile, Message, User
 
 OPEN, ACCEPTED, CLOSED, CANCELLED = "open", "accepted", "closed", "cancelled"
 LIVE = (OPEN, ACCEPTED)
@@ -78,3 +78,34 @@ def summary_for_doctor(db: Session, case: ConsultCase) -> dict:
 
 def person_first_name(user: User) -> str:
     return user.full_name.split()[0]
+
+
+THREAD_MAX_CHARS = 2000
+THREAD_RATE_PER_MINUTE = 30
+
+
+def thread(db: Session, case_id: int) -> list[ConsultMessage]:
+    return list(db.scalars(select(ConsultMessage).where(ConsultMessage.case_id == case_id).order_by(ConsultMessage.id)).all())
+
+
+def too_fast(db: Session, case_id: int, sender_id) -> bool:
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    n = db.scalar(select(func.count()).select_from(ConsultMessage).where(
+        ConsultMessage.case_id == case_id, ConsultMessage.sender_id == sender_id, ConsultMessage.created_at > since))
+    return (n or 0) >= THREAD_RATE_PER_MINUTE
+
+
+def add_message(db: Session, case: ConsultCase, sender: User, role: str, text: str) -> ConsultMessage:
+    """Store one message. A person's line is scanned by the rule layer so the doctor sees a flag on a worrying one; a doctor's is stored as written."""
+    from . import triage
+
+    urgent = role == "user" and triage.run(text, "none")[0].rule_level != "none"
+    m = ConsultMessage(case_id=case.id, sender_id=sender.id, sender_role=role, text=text, urgent=urgent)
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return m

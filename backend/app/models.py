@@ -127,6 +127,24 @@ class ConsultDecline(Base):
     declined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ConsultMessage(Base):
+    """One message in the conversation between a person and the doctor who accepted their case. Sensitive: only those two (and a reviewer, audited) can read it.
+
+    `urgent` is a flag from the same rule layer that scans chat messages; it is shown to the doctor so a worrying line is not missed. It never changes
+    what the person sees, and nothing here is written by a model.
+    """
+
+    __tablename__ = "consult_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("consult_cases.id", ondelete="CASCADE"), index=True)
+    sender_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
+    sender_role: Mapped[str] = mapped_column(String(8))                     # user | doctor
+    text: Mapped[str] = mapped_column(Text)
+    urgent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class AuditLog(Base):
     """Append-only record of reviewer access to sensitive data. No foreign keys, so entries outlive accounts."""
 

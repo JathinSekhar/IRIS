@@ -239,6 +239,27 @@ class OfferOut(BaseModel):
     checkin: OfferCheckinOut | None = None
 
 
+class ThreadMessageIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def _strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Write a message first.")
+        return v
+
+
+class ThreadMessageOut(BaseModel):
+    id: int
+    sender_role: str                          # user | doctor
+    mine: bool                                # true when the signed-in person wrote it
+    text: str
+    created_at: datetime
+    urgent: bool = False                      # only ever true in what a doctor or reviewer sees
+
+
 class MyCaseOut(BaseModel):
     case_id: int
     first_name: str

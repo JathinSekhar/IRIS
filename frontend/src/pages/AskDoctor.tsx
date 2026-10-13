@@ -1,6 +1,7 @@
 import { Phone, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ConsultThread from '../components/ConsultThread'
 import { Alert, Button, Card, Spinner } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { Consult } from '../lib/types'
@@ -123,6 +124,13 @@ export default function AskDoctor() {
             )}
           </Card>
           {current.state === 'open' && <Helplines lines={current.helplines} />}
+          {current.state === 'accepted' && (
+            <ConsultThread
+              load={() => api.consultMessages(current.id)}
+              send={(t) => api.sendConsultMessage(current.id, t)}
+              otherName={current.doctor_name ?? 'your doctor'}
+            />
+          )}
         </>
       )}
 
