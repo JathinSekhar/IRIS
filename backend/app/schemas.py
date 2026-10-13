@@ -202,6 +202,50 @@ class DoctorAvailabilityIn(BaseModel):
     on_duty: bool
 
 
+class ConsultRequestIn(BaseModel):
+    share: bool                               # the person agreed to share recent messages and check-in answers with the doctor who accepts
+
+
+class ConsultOut(BaseModel):
+    id: int
+    state: str                                # open | accepted | closed | cancelled
+    status_text: str                          # the honest sentence for this state; never promises a doctor or a time before one accepts
+    created_at: datetime
+    doctor_name: str | None = None            # only once a doctor has accepted
+    helplines: list[HelplineOut] = []         # always present, so the numbers are in front of them while they wait
+
+
+class OfferMessageOut(BaseModel):
+    text: str
+    created_at: datetime
+
+
+class OfferCheckinOut(BaseModel):
+    baseline_risk: str
+    safety_flag: bool
+    phq9: int | None = None
+    gad7: int | None = None
+    created_at: datetime
+
+
+class OfferOut(BaseModel):
+    case_id: int
+    first_name: str
+    created_at: datetime
+    source: str
+    urgent: bool
+    priority: str | None = None
+    recent_messages: list[OfferMessageOut]
+    checkin: OfferCheckinOut | None = None
+
+
+class MyCaseOut(BaseModel):
+    case_id: int
+    first_name: str
+    state: str
+    accepted_at: datetime | None = None
+
+
 class MessageOut(BaseModel):
     id: int
     text: str

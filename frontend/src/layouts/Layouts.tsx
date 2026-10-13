@@ -82,12 +82,13 @@ export function AppLayout() {
     if (!user.consent_accepted && pathname !== '/consent') return <Navigate to="/consent" replace />
   }
 
+  const staff = user.role === 'reviewer' || user.role === 'doctor'
   const focused = pathname === '/consent' || pathname === '/check-in' || pathname === '/support'
   // The chat is an app-like screen: it fills the viewport and only its message list scrolls, so the message box never scrolls away.
   const chat = pathname === '/chat'
   return (
     <div className={chat ? 'flex h-dvh flex-col overflow-hidden' : 'flex min-h-dvh flex-col'}>
-      <CrisisStrip />
+      {!staff && <CrisisStrip />}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link to="/" aria-label="IRIS home">
@@ -98,6 +99,11 @@ export function AppLayout() {
               {user.role === 'reviewer' ? 'Reviewer · ' : user.role === 'doctor' ? 'Doctor · ' : ''}
               {user.full_name}
             </span>
+            {user.role === 'user' && pathname !== '/talk-to-a-doctor' && (
+              <Link to="/talk-to-a-doctor" className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50">
+                Talk to a doctor
+              </Link>
+            )}
             <button
               onClick={() => void logout()}
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900"

@@ -171,6 +171,31 @@ export interface DoctorMe {
   on_duty_changed_at: string | null
 }
 
+export interface Consult {
+  id: number
+  state: 'open' | 'accepted' | 'closed' | 'cancelled'
+  status_text: string
+  created_at: string
+  doctor_name: string | null
+  helplines: Helpline[]
+}
+export interface DoctorOffer {
+  case_id: number
+  first_name: string
+  created_at: string
+  source: string
+  urgent: boolean
+  priority: 'low' | 'medium' | 'high' | null
+  recent_messages: { text: string; created_at: string }[]
+  checkin: { baseline_risk: string; safety_flag: boolean; phq9: number | null; gad7: number | null; created_at: string } | null
+}
+export interface DoctorCase {
+  case_id: number
+  first_name: string
+  state: string
+  accepted_at: string | null
+}
+
 // --- reviewer: the human review queue for messages ---------------------------------------------------------------------------------------------
 export type Priority = 'low' | 'medium' | 'high'
 export interface ReviewerMessageSummary {

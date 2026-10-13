@@ -1,29 +1,112 @@
-import { Stethoscope } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Alert, Card, Spinner, cx } from '../components/ui'
+import { AlertTriangle, Stethoscope } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Alert, Button, Card, Spinner, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
-import type { DoctorMe } from '../lib/types'
+import type { DoctorCase, DoctorMe, DoctorOffer } from '../lib/types'
 
-/** The doctor's home: who they are on IRIS, and the one switch that decides whether cases may be offered to them. */
+const PRIORITY_STYLE: Record<string, string> = {
+  high: 'bg-red-50 text-red-800 ring-red-200',
+  medium: 'bg-amber-50 text-amber-800 ring-amber-200',
+  low: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+}
+
+const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boolean; onAccept: () => void; onDecline: () => void }) {
+  return (
+    <Card className="space-y-4 p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-slate-900">{o.first_name}</span>
+        <span className="text-sm text-slate-500">asked {when(o.created_at)}</span>
+        {o.urgent && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+            <AlertTriangle className="size-3.5" aria-hidden /> Urgent message
+          </span>
+        )}
+        {o.priority && (
+          <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1 ring-inset', PRIORITY_STYLE[o.priority])}>
+            {o.priority} priority
+          </span>
+        )}
+      </div>
+
+      {o.recent_messages.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent messages (shared with consent)</p>
+          {o.recent_messages.map((m, i) => (
+            <p key={i} className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
+              {m.text}
+              <span className="ml-2 text-xs text-slate-400">{when(m.created_at)}</span>
+            </p>
+          ))}
+        </div>
+      )}
+
+      {o.checkin && (
+        <p className="text-sm text-slate-700">
+          <span className="font-semibold text-slate-900">Latest check-in.</span> Baseline {o.checkin.baseline_risk}
+          {o.checkin.phq9 !== null && <>, PHQ-9 {o.checkin.phq9}</>}
+          {o.checkin.gad7 !== null && <>, GAD-7 {o.checkin.gad7}</>}
+          {o.checkin.safety_flag && <>, safety flag raised</>}.
+        </p>
+      )}
+
+      <div className="flex gap-3">
+        <Button onClick={onAccept} loading={busy} disabled={busy}>Accept</Button>
+        <Button variant="secondary" onClick={onDecline} disabled={busy}>Pass</Button>
+      </div>
+    </Card>
+  )
+}
+
+/** The doctor's home: the duty switch, open requests they can accept, and the cases they own. */
 export default function Doctor() {
   const [me, setMe] = useState<DoctorMe | null>(null)
+  const [offers, setOffers] = useState<DoctorOffer[]>([])
+  const [cases, setCases] = useState<DoctorCase[]>([])
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<number | 'duty' | null>(null)
+
+  const refresh = useCallback(() => {
+    Promise.all([api.doctorOffers(), api.doctorCases()])
+      .then(([o, c]) => {
+        setOffers(o)
+        setCases(c)
+      })
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     api.doctorMe().then(setMe).catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load your profile.'))
-  }, [])
+    refresh()
+    const t = window.setInterval(refresh, 5000)
+    return () => window.clearInterval(t)
+  }, [refresh])
+
+  async function act(id: number, fn: () => Promise<unknown>) {
+    setBusy(id)
+    setError('')
+    try {
+      await fn()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'That did not work. Please try again.')
+    } finally {
+      setBusy(null)
+      refresh()
+    }
+  }
 
   async function toggle() {
     if (!me || busy) return
-    setBusy(true)
+    setBusy('duty')
     setError('')
     try {
       setMe(await api.doctorAvailability(!me.on_duty))
+      refresh()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not change your availability.')
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -44,14 +127,12 @@ export default function Doctor() {
 
       {me && (
         <>
-          <Card className="space-y-4 p-6">
+          <Card className="p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="font-semibold text-slate-900">{me.on_duty ? 'You are on duty' : 'You are off duty'}</p>
                 <p className="text-sm text-slate-600">
-                  {me.on_duty
-                    ? 'New cases can be offered to you. You will choose whether to accept each one.'
-                    : 'No cases will be offered to you until you go on duty.'}
+                  {me.on_duty ? 'Open requests appear below. You choose whether to accept each one.' : 'No requests are shown to you until you go on duty.'}
                 </p>
               </div>
               <button
@@ -59,12 +140,12 @@ export default function Doctor() {
                 role="switch"
                 aria-checked={me.on_duty}
                 aria-label="On duty"
-                disabled={busy}
+                disabled={busy === 'duty'}
                 onClick={() => void toggle()}
                 className={cx(
                   'relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600',
                   me.on_duty ? 'bg-brand-700' : 'bg-slate-300',
-                  busy && 'opacity-60',
+                  busy === 'duty' && 'opacity-60',
                 )}
               >
                 <span className={cx('absolute top-0.5 size-6 rounded-full bg-white shadow transition-all', me.on_duty ? 'left-[22px]' : 'left-0.5')} />
@@ -72,15 +153,39 @@ export default function Doctor() {
             </div>
           </Card>
 
-          <Card className="space-y-2 p-6 text-sm text-slate-700">
+          {me.on_duty && (
+            <section className="space-y-3" aria-label="Open requests">
+              <h2 className="font-medium text-slate-900">Open requests{offers.length > 0 && ` (${offers.length})`}</h2>
+              {offers.length === 0 && <p className="text-sm text-slate-500">No one is waiting right now. This list refreshes by itself.</p>}
+              {offers.map((o) => (
+                <OfferCard
+                  key={o.case_id}
+                  o={o}
+                  busy={busy === o.case_id}
+                  onAccept={() => void act(o.case_id, () => api.acceptOffer(o.case_id))}
+                  onDecline={() => void act(o.case_id, () => api.declineOffer(o.case_id))}
+                />
+              ))}
+            </section>
+          )}
+
+          {cases.length > 0 && (
+            <section className="space-y-3" aria-label="Your cases">
+              <h2 className="font-medium text-slate-900">Your cases</h2>
+              {cases.map((c) => (
+                <Card key={c.case_id} className="p-4 text-sm text-slate-700">
+                  <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}. Chat opens in the next step.
+                </Card>
+              ))}
+            </section>
+          )}
+
+          <Card className="space-y-1 p-5 text-sm text-slate-700">
             <p><span className="font-semibold text-slate-900">Specialty.</span> {me.specialty}</p>
             <p><span className="font-semibold text-slate-900">Registration.</span> {me.registration_number}</p>
             <p><span className="font-semibold text-slate-900">Languages.</span> {me.languages.join(', ') || 'Not set'}</p>
+            <p className="pt-1 text-slate-500">IRIS does not verify registration numbers; this is a test account.</p>
           </Card>
-
-          <p className="text-sm text-slate-500">
-            Case offers will appear here once the next step is built. IRIS does not verify registration numbers; this is a test account.
-          </p>
         </>
       )}
     </div>

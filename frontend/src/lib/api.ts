@@ -12,6 +12,9 @@ import type {
   UrgentAlerts,
   User,
   DoctorMe,
+  Consult,
+  DoctorOffer,
+  DoctorCase,
 } from './types'
 
 export class ApiError extends Error {
@@ -113,6 +116,14 @@ export const api = {
   messages: () => request<ChatMessage[]>('/api/messages'),
   doctorMe: () => request<DoctorMe>('/api/doctor/me'),
   doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),
+  currentConsult: () => request<Consult | null>('/api/consults/current'),
+  consultNotice: () => request<{ share_notice: string }>('/api/consults/notice'),
+  requestDoctor: (share: boolean) => post<Consult>('/api/consults', { share }),
+  cancelConsult: (id: number) => post<Consult>(`/api/consults/${id}/cancel`),
+  doctorOffers: () => request<DoctorOffer[]>('/api/doctor/offers'),
+  doctorCases: () => request<DoctorCase[]>('/api/doctor/cases'),
+  acceptOffer: (id: number) => post<DoctorCase>(`/api/doctor/offers/${id}/accept`),
+  declineOffer: (id: number) => post<void>(`/api/doctor/offers/${id}/decline`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),
   reviewerMessages: () => request<ReviewerMessageSummary[]>('/api/reviewer/messages'),
   reviewerMessage: (id: number) => request<ReviewerMessage>(`/api/reviewer/messages/${id}`),

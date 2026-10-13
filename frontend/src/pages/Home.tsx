@@ -17,7 +17,18 @@ export default function Home() {
       <h1 className="font-display text-3xl font-medium text-slate-900">Hi {user.first_name}</h1>
       <p className="mt-2 text-slate-600">This is your private space. Take your time.</p>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2">
+      <Card className="mt-8 flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-medium text-slate-900">Talk to a doctor</h2>
+          <p className="mt-1 text-sm text-slate-600">Ask for a doctor on the IRIS team. They may not be able to answer straight away.</p>
+        </div>
+        <Link to="/talk-to-a-doctor"
+          className="inline-flex h-10 shrink-0 items-center rounded-lg border border-brand-800 px-4 text-sm font-medium text-brand-800 hover:bg-brand-50">
+          Ask for a doctor
+        </Link>
+      </Card>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Card className="p-6">
           <MessageCircle className="size-6 text-brand-700" aria-hidden />
           <h2 className="mt-4 font-medium text-slate-900">Talk to IRIS</h2>

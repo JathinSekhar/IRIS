@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .auth_service import AuthError
 from .config import settings
 from .db import IS_SQLITE, Base, engine
-from .routers import auth, checkin, doctor, messages, reviewer
+from .routers import auth, checkin, consults, doctor, messages, reviewer
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(checkin.router)
 app.include_router(messages.router)
 app.include_router(reviewer.router)
 app.include_router(doctor.router)
+app.include_router(consults.router)
 
 
 @app.get("/api/health", tags=["meta"])

@@ -94,6 +94,39 @@ class DoctorProfile(Base):
     user: Mapped[User] = relationship()
 
 
+class ConsultCase(Base):
+    """A person's request to talk to a doctor. It is OPEN to every on-duty doctor until one accepts, and the first to accept owns it.
+
+    states: open -> accepted -> (closed, later steps) | cancelled. `source` says who started it: user | system | reviewer.
+    The person must agree to share their recent messages and check-in answers before the case exists (`share_consent`).
+    """
+
+    __tablename__ = "consult_cases"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    state: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    source: Mapped[str] = mapped_column(String(16), default="user")
+    share_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    accepted_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True, index=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    doctor: Mapped[User | None] = relationship(foreign_keys=[accepted_by])
+
+
+class ConsultDecline(Base):
+    """A doctor passed on a case; it is not shown to them again. Other doctors still see it."""
+
+    __tablename__ = "consult_declines"
+
+    case_id: Mapped[int] = mapped_column(ForeignKey("consult_cases.id", ondelete="CASCADE"), primary_key=True)
+    doctor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True)
+    declined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AuditLog(Base):
     """Append-only record of reviewer access to sensitive data. No foreign keys, so entries outlive accounts."""
 
