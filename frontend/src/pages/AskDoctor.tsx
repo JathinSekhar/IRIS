@@ -1,5 +1,5 @@
 import { Phone, Stethoscope } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConsultThread from '../components/ConsultThread'
 import { Alert, Button, Card, Spinner } from '../components/ui'
@@ -8,6 +8,12 @@ import type { Consult } from '../lib/types'
 
 const SHARE_FALLBACK =
   'If you ask to talk to a doctor, the doctor who accepts can read your recent messages here and your check-in answers, so you do not have to repeat yourself. You can cancel your request at any time.'
+
+const HELPLINES: Consult['helplines'] = [
+  { name: 'Tele-MANAS', detail: '24x7, free, confidential', number: '14416', tel: '14416' },
+  { name: 'KIRAN', detail: 'Mental health helpline', number: '1800-599-0019', tel: '18005990019' },
+  { name: 'In immediate danger', detail: 'Emergency services', number: '112', tel: '112' },
+]
 
 function Helplines({ lines }: { lines: Consult['helplines'] }) {
   return (
@@ -38,9 +44,15 @@ export default function AskDoctor() {
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const wasAccepted = useRef(false)
+  const [ended, setEnded] = useState(false)
 
   const load = useCallback(() => {
-    api.currentConsult().then(setCurrent).catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load your request.'))
+    api.currentConsult().then((c) => {
+      if (c?.state === 'accepted') wasAccepted.current = true
+      else if (c === null && wasAccepted.current) setEnded(true)
+      setCurrent(c)
+    }).catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load your request.'))
   }, [])
 
   useEffect(() => {
@@ -88,6 +100,14 @@ export default function AskDoctor() {
       </div>
 
       {error && <Alert>{error}</Alert>}
+
+      {!current && ended && (
+        <Card className="space-y-2 p-6">
+          <p className="font-semibold text-slate-900">This conversation has ended</p>
+          <p className="text-slate-700">Thank you for talking with us. You can ask for a doctor again at any time, and the numbers below are always there.</p>
+          <Helplines lines={HELPLINES} />
+        </Card>
+      )}
 
       {!current && (
         <Card className="space-y-5 p-6">

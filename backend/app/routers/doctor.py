@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import require_doctor
-from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, User
-from ..schemas import DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, ThreadMessageIn, ThreadMessageOut
+from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, SessionNote, User
+from ..schemas import DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, ThreadMessageIn, ThreadMessageOut
 from ..services import consult
 
 router = APIRouter(prefix="/api/doctor", tags=["doctor"])
@@ -95,7 +95,8 @@ def decline(case_id: int, doctor: User = Depends(require_doctor), db: Session = 
 @router.get("/cases", response_model=list[MyCaseOut])
 def my_cases(doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[MyCaseOut]:
     rows = db.scalars(
-        select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state == consult.ACCEPTED).order_by(ConsultCase.accepted_at.desc())
+        select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state.in_((consult.ACCEPTED, consult.CLOSED)))
+        .order_by(ConsultCase.state, ConsultCase.accepted_at.desc()).limit(40)
     ).all()
     return [MyCaseOut(case_id=c.id, first_name=consult.person_first_name(c.user), state=c.state, accepted_at=c.accepted_at) for c in rows]
 
@@ -134,3 +135,35 @@ def send_case_message(case_id: int, body: ThreadMessageIn, doctor: User = Depend
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You are sending messages very quickly. Please wait a moment.")
     m = consult.add_message(db, case, doctor, "doctor", body.text)
     return _thread_out([m], doctor.id)[0]
+
+
+def _note_out(db: Session, n: SessionNote) -> SessionNoteOut:
+    d = db.get(User, n.doctor_id)
+    return SessionNoteOut(case_id=n.case_id, doctor_name=d.full_name if d else "", created_at=n.created_at, mode=n.mode, concerns=n.concerns,
+                          risk_level=n.risk_level, actions_taken=n.actions_taken, follow_up=n.follow_up, referral=n.referral,
+                          emergency_services_contacted=n.emergency_services_contacted)
+
+
+@router.post("/cases/{case_id}/close", response_model=SessionNoteOut)
+def close_case(case_id: int, body: SessionNoteIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> SessionNoteOut:
+    """End a conversation. The session form is required: no note, no close. The person is then told the conversation has ended and can ask again."""
+    case = _my_accepted(db, case_id, doctor)
+    if case.state != consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has already ended.")
+    note = SessionNote(case_id=case.id, doctor_id=doctor.id, **body.model_dump())
+    db.add(note)
+    case.state = consult.CLOSED
+    case.closed_at = datetime.now(timezone.utc)
+    db.add(AuditLog(actor_id=doctor.id, action="close_case", target_type="consult", target_id=str(case_id)))
+    db.commit()
+    db.refresh(note)
+    return _note_out(db, note)
+
+
+@router.get("/cases/{case_id}/note", response_model=SessionNoteOut)
+def case_note(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> SessionNoteOut:
+    _my_accepted(db, case_id, doctor)
+    n = db.get(SessionNote, case_id)
+    if n is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "There is no session note yet.")
+    return _note_out(db, n)

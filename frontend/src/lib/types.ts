@@ -197,6 +197,20 @@ export interface ThreadMessage {
   created_at: string
   urgent: boolean
 }
+export interface SessionNoteInput {
+  mode: 'chat' | 'video' | 'both'
+  concerns: string
+  risk_level: 'low' | 'medium' | 'high'
+  actions_taken: string
+  follow_up: string
+  referral?: string | null
+  emergency_services_contacted: boolean
+}
+export interface SessionNote extends SessionNoteInput {
+  case_id: number
+  doctor_name: string
+  created_at: string
+}
 export interface DoctorCase {
   case_id: number
   first_name: string

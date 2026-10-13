@@ -260,6 +260,30 @@ class ThreadMessageOut(BaseModel):
     urgent: bool = False                      # only ever true in what a doctor or reviewer sees
 
 
+class SessionNoteIn(BaseModel):
+    mode: Literal["chat", "video", "both"] = "chat"
+    concerns: str = Field(min_length=3, max_length=3000)
+    risk_level: Literal["low", "medium", "high"]
+    actions_taken: str = Field(min_length=3, max_length=3000)
+    follow_up: str = Field(min_length=3, max_length=3000)
+    referral: str | None = Field(default=None, max_length=1000)
+    emergency_services_contacted: bool = False
+
+    @field_validator("concerns", "actions_taken", "follow_up")
+    @classmethod
+    def _text(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 3:
+            raise ValueError("This field is required.")
+        return v
+
+
+class SessionNoteOut(SessionNoteIn):
+    case_id: int
+    doctor_name: str
+    created_at: datetime
+
+
 class MyCaseOut(BaseModel):
     case_id: int
     first_name: str

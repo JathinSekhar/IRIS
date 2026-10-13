@@ -16,6 +16,8 @@ import type {
   DoctorOffer,
   DoctorCase,
   ThreadMessage,
+  SessionNote,
+  SessionNoteInput,
 } from './types'
 
 export class ApiError extends Error {
@@ -129,6 +131,8 @@ export const api = {
   sendConsultMessage: (id: number, text: string) => post<ThreadMessage>(`/api/consults/${id}/messages`, { text }),
   doctorCaseMessages: (id: number) => request<ThreadMessage[]>(`/api/doctor/cases/${id}/messages`),
   sendDoctorCaseMessage: (id: number, text: string) => post<ThreadMessage>(`/api/doctor/cases/${id}/messages`, { text }),
+  closeCase: (id: number, note: SessionNoteInput) => post<SessionNote>(`/api/doctor/cases/${id}/close`, note),
+  doctorCaseNote: (id: number) => request<SessionNote>(`/api/doctor/cases/${id}/note`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),
   reviewerMessages: () => request<ReviewerMessageSummary[]>('/api/reviewer/messages'),
   reviewerMessage: (id: number) => request<ReviewerMessage>(`/api/reviewer/messages/${id}`),

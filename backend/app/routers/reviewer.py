@@ -218,3 +218,18 @@ def consult_thread(case_id: int, reviewer: User = Depends(require_reviewer), db:
     db.commit()
     return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=False, text=m.text, created_at=m.created_at, urgent=m.urgent)
             for m in consult.thread(db, case_id)]
+
+
+@router.get("/consults/{case_id}/note")
+def consult_note(case_id: int, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> dict:
+    """The doctor's session form for a case, on request. Every read is written to the audit log."""
+    from ..models import SessionNote
+
+    n = db.get(SessionNote, case_id)
+    if n is None:
+        raise HTTPException(404, "There is no session note for this case")
+    db.add(AuditLog(actor_id=reviewer.id, action="view_session_note", target_type="consult", target_id=str(case_id)))
+    db.commit()
+    return {"case_id": n.case_id, "mode": n.mode, "concerns": n.concerns, "risk_level": n.risk_level, "actions_taken": n.actions_taken,
+            "follow_up": n.follow_up, "referral": n.referral, "emergency_services_contacted": n.emergency_services_contacted,
+            "created_at": n.created_at}

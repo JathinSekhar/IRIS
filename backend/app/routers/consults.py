@@ -65,6 +65,8 @@ def _owned_accepted(db: Session, case_id: int, user: User) -> ConsultCase:
     case = db.get(ConsultCase, case_id)
     if case is None or case.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    if case.state == consult.CLOSED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended. You can ask for a doctor again at any time.")
     if case.state != consult.ACCEPTED:
         raise HTTPException(status.HTTP_409_CONFLICT, "You can talk here once a doctor has accepted.")
     return case

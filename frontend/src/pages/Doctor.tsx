@@ -170,10 +170,22 @@ export default function Doctor() {
             </section>
           )}
 
-          {cases.length > 0 && (
+          {cases.some((c) => c.state === 'closed') && (
+            <section className="space-y-2" aria-label="Closed cases">
+              <h2 className="font-medium text-slate-900">Closed</h2>
+              {cases.filter((c) => c.state === 'closed').map((c) => (
+                <Card key={c.case_id} className="flex items-center justify-between gap-3 p-3 text-sm text-slate-600">
+                  <span>{c.first_name}, case {c.case_id}</span>
+                  <Link to={`/doctor/cases/${c.case_id}`} className="font-medium text-brand-700 hover:underline">View note</Link>
+                </Card>
+              ))}
+            </section>
+          )}
+
+          {cases.some((c) => c.state === 'accepted') && (
             <section className="space-y-3" aria-label="Your cases">
               <h2 className="font-medium text-slate-900">Your cases</h2>
-              {cases.map((c) => (
+              {cases.filter((c) => c.state === 'accepted').map((c) => (
                 <Card key={c.case_id} className="flex items-center justify-between gap-3 p-4 text-sm text-slate-700">
                   <span>
                     <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}

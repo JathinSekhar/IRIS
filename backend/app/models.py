@@ -145,6 +145,24 @@ class ConsultMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class SessionNote(Base):
+    """The documented session form a doctor must complete to end a conversation. Clinical record: never shown to the person; a reviewer can read
+    it on request (audited). One per case."""
+
+    __tablename__ = "session_notes"
+
+    case_id: Mapped[int] = mapped_column(ForeignKey("consult_cases.id", ondelete="CASCADE"), primary_key=True)
+    doctor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
+    mode: Mapped[str] = mapped_column(String(8))                              # chat | video | both
+    concerns: Mapped[str] = mapped_column(Text)
+    risk_level: Mapped[str] = mapped_column(String(8))                        # low | medium | high
+    actions_taken: Mapped[str] = mapped_column(Text)
+    follow_up: Mapped[str] = mapped_column(Text)
+    referral: Mapped[str | None] = mapped_column(Text, nullable=True)
+    emergency_services_contacted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AuditLog(Base):
     """Append-only record of reviewer access to sensitive data. No foreign keys, so entries outlive accounts."""
 
