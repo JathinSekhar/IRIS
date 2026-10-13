@@ -1,6 +1,7 @@
 import { ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import CaseSummaryCard from '../components/CaseSummaryCard'
 import ConsultThread from '../components/ConsultThread'
 import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Textarea } from '../components/ui'
@@ -183,25 +184,7 @@ export default function DoctorCaseView() {
         </Card>
       )}
 
-      {summary && (
-        <Card className="space-y-3 p-4 text-sm text-slate-700">
-          <h2 className="font-medium text-slate-900">Summary</h2>
-          <ul className="list-disc space-y-1 pl-5">
-            {summary.bullets.map((b, i) => (
-              <li key={i}>{b}</li>
-            ))}
-          </ul>
-          <p className="text-xs text-slate-500">Built from their profile, check-in and chat by plain rules. Nothing about this summary leaves IRIS.</p>
-
-          {summary.ai_summary && (
-            <div className="space-y-1">
-              <p className="text-slate-800">{summary.ai_summary}</p>
-              <p className="text-xs text-slate-500">{summary.ai_disclosure}</p>
-            </div>
-          )}
-          {summary.ai_pending && !summary.ai_summary && <p className="text-xs text-slate-500">A short written summary is being prepared…</p>}
-        </Card>
-      )}
+      {summary && <CaseSummaryCard s={summary} />}
 
       {waiting && (
         <Card className="space-y-3 p-4">

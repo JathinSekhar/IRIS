@@ -342,6 +342,7 @@ class SummaryProfileOut(BaseModel):
     gender: str | None = None
     occupation: str | None = None
     language: str
+    language_name: str | None = None
     is_minor: bool
 
 
@@ -356,6 +357,14 @@ class SummaryCheckinOut(BaseModel):
     urgency_floor: str | None = None
 
 
+class SummaryChatOut(BaseModel):
+    count: int = 0
+    concerning: int = 0
+    explicit: int = 0
+    topics: list[str] = []
+    latest: str | None = None
+
+
 class CaseSummaryOut(BaseModel):
     """What the doctor sees before starting. The bullets are built by plain rules from the profile, the check-in and the chat; the AI draft is separate,
     optional, needs the person's agreement, and is always shown as a draft to be checked against the messages."""
@@ -363,6 +372,7 @@ class CaseSummaryOut(BaseModel):
     profile: SummaryProfileOut
     checkin: SummaryCheckinOut | None = None
     bullets: list[str]
+    chat: SummaryChatOut = SummaryChatOut()
     recent_messages: list[OfferMessageOut]
     ai_allowed: bool
     ai_available: bool

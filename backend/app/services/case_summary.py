@@ -48,6 +48,7 @@ def build(db: Session, case: ConsultCase) -> dict:
     scores = (ck.scores if ck else None) or {}
     phq, gad, safety = scores.get("phq9") or {}, scores.get("gad7") or {}, scores.get("safety") or {}
 
+    chat = {"count": len(msgs), "concerning": 0, "explicit": 0, "topics": [], "latest": None}
     bullets: list[str] = []
     who = f"{u.full_name.split()[0]}, {age}"
     bits = [b for b in (u.gender, u.occupation) if b]
@@ -67,6 +68,7 @@ def build(db: Session, case: ConsultCase) -> dict:
     if msgs:
         flagged = [m for m in msgs if m.prediction and (m.prediction.rule_level != "none" or m.prediction.message_urgent)]
         urgent = [m for m in msgs if m.prediction and m.prediction.message_urgent]
+        chat["concerning"], chat["explicit"] = len(flagged), len(urgent)
         bullets.append(f"Wrote {len(msgs)} recent message{'s' if len(msgs) != 1 else ''} to IRIS; {len(flagged)} contained concerning language"
                        f"{f', {len(urgent)} explicit' if urgent else ''}.")
         topics: list[str] = []
@@ -75,20 +77,23 @@ def build(db: Session, case: ConsultCase) -> dict:
                 label = TOPIC_LABEL.get(t)
                 if label and label not in topics:
                     topics.append(label)
+        chat["topics"] = topics[:5]
         if topics:
             bullets.append("Topics mentioned: " + ", ".join(topics[:5]) + ".")
         last = msgs[-1]
+        chat["latest"] = last.text.strip()[:240]
         bullets.append(f"Most recent message: \u201c{last.text.strip()[:160]}{'…' if len(last.text.strip()) > 160 else ''}\u201d")
     else:
         bullets.append("Has not written to IRIS yet.")
     return {
         "profile": {"first_name": u.full_name.split()[0], "age": age, "gender": u.gender, "occupation": u.occupation, "language": u.language,
-                    "is_minor": age < 18},
+                    "language_name": LANGUAGE_NAME.get((u.language or "").lower(), u.language), "is_minor": age < 18},
         "checkin": None if ck is None else {
             "created_at": ck.created_at, "baseline_risk": ck.baseline_risk, "phq9": phq.get("score"), "phq9_band": phq.get("band"),
             "gad7": gad.get("score"), "gad7_band": gad.get("band"), "safety_flag": ck.safety_flag, "urgency_floor": safety.get("urgency_floor"),
         },
         "bullets": bullets,
+        "chat": chat,
         "recent_messages": [{"text": m.text, "created_at": m.created_at} for m in msgs[-6:]],
     }
 

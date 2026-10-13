@@ -245,7 +245,7 @@ export interface CallSignal {
   payload: Record<string, unknown> | null
 }
 export interface CaseSummary {
-  profile: { first_name: string; age: number; gender: string | null; occupation: string | null; language: string; is_minor: boolean }
+  profile: { first_name: string; age: number; gender: string | null; occupation: string | null; language: string; language_name?: string | null; is_minor: boolean }
   checkin: {
     created_at: string
     baseline_risk: string
@@ -257,6 +257,7 @@ export interface CaseSummary {
     urgency_floor: string | null
   } | null
   bullets: string[]
+  chat: { count: number; concerning: number; explicit: number; topics: string[]; latest: string | null }
   recent_messages: { text: string; created_at: string }[]
   ai_allowed: boolean
   ai_available: boolean
