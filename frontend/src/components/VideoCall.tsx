@@ -145,20 +145,27 @@ export default function VideoCall({
   useEffect(() => {
     let stop = false
     let first = true
+    let running = false
     const tick = async () => {
+      if (running) return                       // never process two polls at once: the messages must be handled in order
+      running = true
       try {
         const got = await poll(lastId.current)
-        if (stop || got.length === 0) return
+        if (stop) return
+        const wasFirst = first
+        first = false                           // the first answer is history even when it is empty; everything after it is live
+        if (got.length === 0) return
         lastId.current = got[got.length - 1].id
-        if (first) {
-          first = false
+        if (wasFirst) {
           const last = got[got.length - 1]
-          if (last.kind === 'request') await handle(last)
+          if (last.kind === 'request') await handle(last)     // only an unanswered request from before the page opened still matters
           return
         }
         for (const s of got) await handle(s)
       } catch {
         /* a failed poll is retried on the next tick */
+      } finally {
+        running = false
       }
     }
     void tick()
