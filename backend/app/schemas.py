@@ -212,6 +212,8 @@ class ConsultOut(BaseModel):
     status_text: str                          # the honest sentence for this state; never promises a doctor or a time before one accepts
     created_at: datetime
     doctor_name: str | None = None            # only once a doctor has accepted
+    doctor_specialty: str | None = None
+    doctor_registration_number: str | None = None   # shown to the person once a doctor has accepted, as the guidelines expect
     helplines: list[HelplineOut] = []         # always present, so the numbers are in front of them while they wait
 
 
@@ -235,6 +237,7 @@ class OfferOut(BaseModel):
     source: str
     urgent: bool
     priority: str | None = None
+    is_minor: bool = False
     recent_messages: list[OfferMessageOut]
     checkin: OfferCheckinOut | None = None
 
@@ -260,16 +263,32 @@ class ThreadMessageOut(BaseModel):
     urgent: bool = False                      # only ever true in what a doctor or reviewer sees
 
 
+YesNo = Literal["yes", "no", "not_assessed"]
+
+
 class SessionNoteIn(BaseModel):
+    """The session form. Every risk question must be answered explicitly ('not assessed' is a valid answer; a blank is not)."""
+
     mode: Literal["chat", "video", "both"] = "chat"
     concerns: str = Field(min_length=3, max_length=3000)
+    observations: str | None = Field(default=None, max_length=3000)
+    ideation: YesNo
+    plan: YesNo
+    intent: YesNo
+    means_access: YesNo
+    previous_attempt: YesNo
+    protective_factors: str = Field(min_length=3, max_length=2000)
     risk_level: Literal["low", "medium", "high"]
+    safety_plan: Literal["not_needed", "created", "updated", "reviewed"]
+    safety_plan_copy_given: bool = False
+    impression: str | None = Field(default=None, max_length=2000)
     actions_taken: str = Field(min_length=3, max_length=3000)
     follow_up: str = Field(min_length=3, max_length=3000)
+    follow_up_date: date | None = None
     referral: str | None = Field(default=None, max_length=1000)
     emergency_services_contacted: bool = False
 
-    @field_validator("concerns", "actions_taken", "follow_up")
+    @field_validator("concerns", "actions_taken", "follow_up", "protective_factors")
     @classmethod
     def _text(cls, v: str) -> str:
         v = v.strip()
@@ -277,11 +296,33 @@ class SessionNoteIn(BaseModel):
             raise ValueError("This field is required.")
         return v
 
+    @field_validator("follow_up_date")
+    @classmethod
+    def _not_past(cls, v: date | None) -> date | None:
+        if v is not None and v < date.today():
+            raise ValueError("The follow-up date cannot be in the past.")
+        return v
+
 
 class SessionNoteOut(SessionNoteIn):
     case_id: int
     doctor_name: str
     created_at: datetime
+
+
+class CaseDetailOut(BaseModel):
+    """Who the doctor is speaking with, for an accepted case: the details the Indian telemedicine rules expect a doctor to hold, and whether the
+    person is a minor (a consultation with a minor needs an identified adult family member)."""
+
+    case_id: int
+    state: str
+    full_name: str
+    age: int
+    is_minor: bool
+    guardian_name: str | None = None
+    guardian_consent_status: str | None = None
+    phone: str | None = None
+    emergency_contact: str | None = None
 
 
 class MyCaseOut(BaseModel):

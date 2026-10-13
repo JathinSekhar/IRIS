@@ -177,6 +177,8 @@ export interface Consult {
   status_text: string
   created_at: string
   doctor_name: string | null
+  doctor_specialty: string | null
+  doctor_registration_number: string | null
   helplines: Helpline[]
 }
 export interface DoctorOffer {
@@ -186,6 +188,7 @@ export interface DoctorOffer {
   source: string
   urgent: boolean
   priority: 'low' | 'medium' | 'high' | null
+  is_minor: boolean
   recent_messages: { text: string; created_at: string }[]
   checkin: { baseline_risk: string; safety_flag: boolean; phq9: number | null; gad7: number | null; created_at: string } | null
 }
@@ -197,14 +200,37 @@ export interface ThreadMessage {
   created_at: string
   urgent: boolean
 }
+export type YesNo = 'yes' | 'no' | 'not_assessed'
 export interface SessionNoteInput {
   mode: 'chat' | 'video' | 'both'
   concerns: string
+  observations?: string | null
+  ideation: YesNo
+  plan: YesNo
+  intent: YesNo
+  means_access: YesNo
+  previous_attempt: YesNo
+  protective_factors: string
   risk_level: 'low' | 'medium' | 'high'
+  safety_plan: 'not_needed' | 'created' | 'updated' | 'reviewed'
+  safety_plan_copy_given: boolean
+  impression?: string | null
   actions_taken: string
   follow_up: string
+  follow_up_date?: string | null
   referral?: string | null
   emergency_services_contacted: boolean
+}
+export interface CaseDetail {
+  case_id: number
+  state: string
+  full_name: string
+  age: number
+  is_minor: boolean
+  guardian_name: string | null
+  guardian_consent_status: string | null
+  phone: string | null
+  emergency_contact: string | null
 }
 export interface SessionNote extends SessionNoteInput {
   case_id: number

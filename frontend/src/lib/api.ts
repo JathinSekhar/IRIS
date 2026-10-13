@@ -18,6 +18,7 @@ import type {
   ThreadMessage,
   SessionNote,
   SessionNoteInput,
+  CaseDetail,
 } from './types'
 
 export class ApiError extends Error {
@@ -132,6 +133,7 @@ export const api = {
   doctorCaseMessages: (id: number) => request<ThreadMessage[]>(`/api/doctor/cases/${id}/messages`),
   sendDoctorCaseMessage: (id: number, text: string) => post<ThreadMessage>(`/api/doctor/cases/${id}/messages`, { text }),
   closeCase: (id: number, note: SessionNoteInput) => post<SessionNote>(`/api/doctor/cases/${id}/close`, note),
+  doctorCaseDetail: (id: number) => request<CaseDetail>(`/api/doctor/cases/${id}`),
   doctorCaseNote: (id: number) => request<SessionNote>(`/api/doctor/cases/${id}/note`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),
   reviewerMessages: () => request<ReviewerMessageSummary[]>('/api/reviewer/messages'),

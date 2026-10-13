@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import get_current_user, user_out
-from ..models import AuditLog, ConsultCase, User, utcnow
+from ..models import AuditLog, ConsultCase, DoctorProfile, User, utcnow
 from ..schemas import ConsultOut, ConsultRequestIn, ThreadMessageIn, ThreadMessageOut
 from ..services import consult, triage
 
@@ -12,8 +12,11 @@ router = APIRouter(prefix="/api/consults", tags=["consults"])
 
 def _out(db: Session, c: ConsultCase) -> ConsultOut:
     helplines = [{"name": n, "detail": d, "number": num, "tel": tel} for n, d, num, tel in triage.support.HELPLINES]
+    prof = db.get(DoctorProfile, c.accepted_by) if c.state == consult.ACCEPTED and c.accepted_by else None
     return ConsultOut(id=c.id, state=c.state, status_text=consult.status_text(db, c), created_at=c.created_at,
-                      doctor_name=c.doctor.full_name if c.state == consult.ACCEPTED and c.doctor else None, helplines=helplines)
+                      doctor_name=c.doctor.full_name if c.state == consult.ACCEPTED and c.doctor else None,
+                      doctor_specialty=prof.specialty if prof else None,
+                      doctor_registration_number=prof.registration_number if prof else None, helplines=helplines)
 
 
 @router.get("/current", response_model=ConsultOut | None)

@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import require_doctor
 from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, SessionNote, User
-from ..schemas import DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, ThreadMessageIn, ThreadMessageOut
+from ..deps import age_on
+from ..schemas import (
+    CaseDetailOut, DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, ThreadMessageIn, ThreadMessageOut,
+)
 from ..services import consult
 
 router = APIRouter(prefix="/api/doctor", tags=["doctor"])
@@ -139,9 +142,13 @@ def send_case_message(case_id: int, body: ThreadMessageIn, doctor: User = Depend
 
 def _note_out(db: Session, n: SessionNote) -> SessionNoteOut:
     d = db.get(User, n.doctor_id)
-    return SessionNoteOut(case_id=n.case_id, doctor_name=d.full_name if d else "", created_at=n.created_at, mode=n.mode, concerns=n.concerns,
-                          risk_level=n.risk_level, actions_taken=n.actions_taken, follow_up=n.follow_up, referral=n.referral,
-                          emergency_services_contacted=n.emergency_services_contacted)
+    return SessionNoteOut(
+        case_id=n.case_id, doctor_name=d.full_name if d else "", created_at=n.created_at, mode=n.mode, concerns=n.concerns, observations=n.observations,
+        ideation=n.ideation, plan=n.plan, intent=n.intent, means_access=n.means_access, previous_attempt=n.previous_attempt,
+        protective_factors=n.protective_factors, risk_level=n.risk_level, safety_plan=n.safety_plan, safety_plan_copy_given=n.safety_plan_copy_given,
+        impression=n.impression, actions_taken=n.actions_taken, follow_up=n.follow_up, follow_up_date=n.follow_up_date, referral=n.referral,
+        emergency_services_contacted=n.emergency_services_contacted,
+    )
 
 
 @router.post("/cases/{case_id}/close", response_model=SessionNoteOut)
@@ -167,3 +174,15 @@ def case_note(case_id: int, doctor: User = Depends(require_doctor), db: Session 
     if n is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "There is no session note yet.")
     return _note_out(db, n)
+
+
+@router.get("/cases/{case_id}", response_model=CaseDetailOut)
+def case_detail(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseDetailOut:
+    """Who this doctor is speaking with: only for a case they accepted. Contact details are shown because the person asked for a doctor, and the read is audited."""
+    case = _my_accepted(db, case_id, doctor)
+    u = case.user
+    age = age_on(u.date_of_birth)
+    db.add(AuditLog(actor_id=doctor.id, action="view_case_detail", target_type="consult", target_id=str(case_id)))
+    db.commit()
+    return CaseDetailOut(case_id=case.id, state=case.state, full_name=u.full_name, age=age, is_minor=age < 18, guardian_name=u.guardian_name,
+                         guardian_consent_status=u.guardian_consent_status, phone=u.phone, emergency_contact=u.emergency_contact)

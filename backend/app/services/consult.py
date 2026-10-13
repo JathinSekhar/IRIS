@@ -64,7 +64,10 @@ def summary_for_doctor(db: Session, case: ConsultCase) -> dict:
     urgent = any(m.prediction and m.prediction.message_urgent for m in msgs)
     priorities = [m.prediction.urgency for m in msgs if m.prediction]
     rank = {"high": 0, "medium": 1, "low": 2}
+    from ..deps import age_on
+
     return {
+        "is_minor": age_on(case.user.date_of_birth) < 18,
         "urgent": urgent,
         "priority": min(priorities, key=lambda p: rank.get(p, 3)) if priorities else None,
         "recent_messages": [{"text": m.text, "created_at": m.created_at} for m in reversed(msgs)],

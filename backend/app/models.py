@@ -155,9 +155,21 @@ class SessionNote(Base):
     doctor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"))
     mode: Mapped[str] = mapped_column(String(8))                              # chat | video | both
     concerns: Mapped[str] = mapped_column(Text)
-    risk_level: Mapped[str] = mapped_column(String(8))                        # low | medium | high
+    # Structured suicide-risk questions, each answered explicitly: yes | no | not_assessed. "not_assessed" is a real answer, not a blank.
+    ideation: Mapped[str] = mapped_column(String(12))
+    plan: Mapped[str] = mapped_column(String(12))
+    intent: Mapped[str] = mapped_column(String(12))
+    means_access: Mapped[str] = mapped_column(String(12))
+    previous_attempt: Mapped[str] = mapped_column(String(12))
+    protective_factors: Mapped[str] = mapped_column(Text)
+    risk_level: Mapped[str] = mapped_column(String(8))                        # low | medium | high: the doctor's overall judgement
+    safety_plan: Mapped[str] = mapped_column(String(12))                      # not_needed | created | updated | reviewed
+    safety_plan_copy_given: Mapped[bool] = mapped_column(Boolean, default=False)
+    observations: Mapped[str | None] = mapped_column(Text, nullable=True)     # what the doctor observed, kept apart from what the person reported
+    impression: Mapped[str | None] = mapped_column(Text, nullable=True)       # clinical impression in the doctor's words; IRIS itself does not diagnose
     actions_taken: Mapped[str] = mapped_column(Text)
     follow_up: Mapped[str] = mapped_column(Text)
+    follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     referral: Mapped[str | None] = mapped_column(Text, nullable=True)
     emergency_services_contacted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

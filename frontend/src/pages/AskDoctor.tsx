@@ -137,6 +137,11 @@ export default function AskDoctor() {
               {current.state === 'accepted' ? (current.doctor_name ? `${current.doctor_name} has accepted` : 'A doctor has accepted') : 'Your request is open'}
             </p>
             <p className="text-slate-700">{current.status_text}</p>
+            {current.state === 'accepted' && current.doctor_registration_number && (
+              <p className="text-sm text-slate-600">
+                {current.doctor_specialty ? `${current.doctor_specialty}. ` : ''}Registration number: {current.doctor_registration_number}
+              </p>
+            )}
             {current.state === 'open' && (
               <Button variant="secondary" onClick={() => void cancel()} disabled={busy}>
                 Cancel my request

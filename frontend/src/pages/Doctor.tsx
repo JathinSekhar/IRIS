@@ -24,6 +24,11 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
             <AlertTriangle className="size-3.5" aria-hidden /> Urgent message
           </span>
         )}
+        {o.is_minor && (
+          <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
+            Under 18
+          </span>
+        )}
         {o.priority && (
           <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1 ring-inset', PRIORITY_STYLE[o.priority])}>
             {o.priority} priority

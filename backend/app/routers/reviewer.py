@@ -230,6 +230,8 @@ def consult_note(case_id: int, reviewer: User = Depends(require_reviewer), db: S
         raise HTTPException(404, "There is no session note for this case")
     db.add(AuditLog(actor_id=reviewer.id, action="view_session_note", target_type="consult", target_id=str(case_id)))
     db.commit()
-    return {"case_id": n.case_id, "mode": n.mode, "concerns": n.concerns, "risk_level": n.risk_level, "actions_taken": n.actions_taken,
-            "follow_up": n.follow_up, "referral": n.referral, "emergency_services_contacted": n.emergency_services_contacted,
-            "created_at": n.created_at}
+    return {"case_id": n.case_id, "mode": n.mode, "concerns": n.concerns, "observations": n.observations, "ideation": n.ideation, "plan": n.plan,
+            "intent": n.intent, "means_access": n.means_access, "previous_attempt": n.previous_attempt, "protective_factors": n.protective_factors,
+            "risk_level": n.risk_level, "safety_plan": n.safety_plan, "safety_plan_copy_given": n.safety_plan_copy_given, "impression": n.impression,
+            "actions_taken": n.actions_taken, "follow_up": n.follow_up, "follow_up_date": n.follow_up_date, "referral": n.referral,
+            "emergency_services_contacted": n.emergency_services_contacted, "created_at": n.created_at}
