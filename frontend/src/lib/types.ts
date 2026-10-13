@@ -173,7 +173,7 @@ export interface DoctorMe {
 
 export interface Consult {
   id: number
-  state: 'open' | 'accepted' | 'closed' | 'cancelled'
+  state: 'open' | 'accepted' | 'in_session' | 'closed' | 'cancelled'
   status_text: string
   created_at: string
   doctor_name: string | null
@@ -243,6 +243,26 @@ export interface CallSignal {
   sender_role: 'user' | 'doctor'
   kind: 'request' | 'accept' | 'decline' | 'end' | 'offer' | 'answer' | 'ice'
   payload: Record<string, unknown> | null
+}
+export interface CaseSummary {
+  profile: { first_name: string; age: number; gender: string | null; occupation: string | null; language: string; is_minor: boolean }
+  checkin: {
+    created_at: string
+    baseline_risk: string
+    phq9: number | null
+    phq9_band: string | null
+    gad7: number | null
+    gad7_band: string | null
+    safety_flag: boolean
+    urgency_floor: string | null
+  } | null
+  bullets: string[]
+  recent_messages: { text: string; created_at: string }[]
+  ai_allowed: boolean
+  ai_available: boolean
+  ai_summary: string | null
+  ai_summary_at: string | null
+  ai_disclosure: string
 }
 export interface DoctorCase {
   case_id: number

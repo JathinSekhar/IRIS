@@ -12,14 +12,17 @@ from sqlalchemy.orm import Session
 
 from ..models import CheckIn, ConsultCase, ConsultMessage, DoctorProfile, Message, User
 
-OPEN, ACCEPTED, CLOSED, CANCELLED = "open", "accepted", "closed", "cancelled"
-LIVE = (OPEN, ACCEPTED)
+OPEN, ACCEPTED, IN_SESSION, CLOSED, CANCELLED = "open", "accepted", "in_session", "closed", "cancelled"
+# accepted = a doctor took the case and has not begun yet; in_session = the doctor started the conversation (chat and video open).
+LIVE = (OPEN, ACCEPTED, IN_SESSION)
+WITH_DOCTOR = (ACCEPTED, IN_SESSION)
 
 STATUS_TRYING = ("We are trying to reach a doctor for you. We cannot say how long this will take, so if you need someone right away, "
                  "please call one of the numbers below.")
 STATUS_NONE_ON_DUTY = ("No doctor is available at the moment, and we cannot say when one might be. If you need someone right away, "
                        "please call one of the numbers below. Your request stays open.")
-STATUS_ACCEPTED = "A doctor has accepted your request."
+STATUS_ACCEPTED = "A doctor has accepted your request. The conversation will begin when they are ready."
+STATUS_IN_SESSION = "Your doctor has started the conversation."
 STATUS_CANCELLED = "You cancelled this request. You can ask again at any time."
 STATUS_CLOSED = "This conversation has ended. You can ask again at any time."
 SHARE_NOTICE = ("If you ask to talk to a doctor, the doctor who accepts can read your recent messages here and your check-in answers, "
@@ -33,6 +36,8 @@ def any_doctor_on_duty(db: Session) -> bool:
 def status_text(db: Session, case: ConsultCase) -> str:
     if case.state == ACCEPTED:
         return STATUS_ACCEPTED
+    if case.state == IN_SESSION:
+        return STATUS_IN_SESSION
     if case.state == CANCELLED:
         return STATUS_CANCELLED
     if case.state == CLOSED:

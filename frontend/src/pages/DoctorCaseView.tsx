@@ -1,11 +1,11 @@
-import { ArrowLeft, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ShieldAlert, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ConsultThread from '../components/ConsultThread'
 import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Textarea } from '../components/ui'
 import { api, ApiError } from '../lib/api'
-import type { CaseDetail, SessionNote, SessionNoteInput, YesNo } from '../lib/types'
+import type { CaseDetail, CaseSummary, SessionNote, SessionNoteInput, YesNo } from '../lib/types'
 
 const RISK_LABEL: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High' }
 const MODE_LABEL: Record<string, string> = { chat: 'Chat', video: 'Video', both: 'Chat and video' }
@@ -81,6 +81,10 @@ export default function DoctorCaseView() {
   const id = Number(useParams().id)
   const nav = useNavigate()
   const [detail, setDetail] = useState<CaseDetail | null>(null)
+  const [summary, setSummary] = useState<CaseSummary | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [startBusy, setStartBusy] = useState(false)
+  const [aiError, setAiError] = useState('')
   const [note, setNote] = useState<SessionNote | null | undefined>(undefined)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [ending, setEnding] = useState(false)
@@ -94,6 +98,7 @@ export default function DoctorCaseView() {
     if (!Number.isFinite(id)) return
     loadNote()
     api.doctorCaseDetail(id).then(setDetail).catch(() => undefined)
+    api.caseSummary(id).then(setSummary).catch(() => undefined)
   }, [id, loadNote])
   useEffect(() => {
     if (detail?.video_used) setForm((f) => (f.mode === 'chat' ? { ...f, mode: 'both' } : f))     // a call happened: pre-fill the form's mode
@@ -130,6 +135,34 @@ export default function DoctorCaseView() {
   }
 
   const closed = note != null
+  const inSession = detail?.state === 'in_session' && !closed
+  const waiting = detail?.state === 'accepted' && !closed
+
+  async function startConversation() {
+    setStartBusy(true)
+    setError('')
+    try {
+      await api.startCase(id)
+      setDetail(await api.doctorCaseDetail(id))
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start the conversation. Please try again.')
+    } finally {
+      setStartBusy(false)
+    }
+  }
+
+  async function draftAi() {
+    setAiBusy(true)
+    setAiError('')
+    try {
+      setSummary(await api.draftAiSummary(id))
+    } catch (err) {
+      setAiError(err instanceof ApiError ? err.message : 'The AI draft is not available right now.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-4 py-8">
       <Link to="/doctor" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -156,7 +189,47 @@ export default function DoctorCaseView() {
         </Card>
       )}
 
-      {!closed && note !== undefined && (
+      {summary && (
+        <Card className="space-y-3 p-4 text-sm text-slate-700">
+          <h2 className="font-medium text-slate-900">Summary</h2>
+          <ul className="list-disc space-y-1 pl-5">
+            {summary.bullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-slate-500">Built from their profile, check-in and chat by plain rules. Nothing about this summary leaves IRIS.</p>
+
+          {summary.ai_summary && (
+            <div className="space-y-1 rounded-lg bg-slate-50 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Sparkles className="size-3.5" aria-hidden /> AI draft
+              </p>
+              <p className="text-slate-800">{summary.ai_summary}</p>
+              <p className="text-xs text-slate-500">{summary.ai_disclosure}</p>
+            </div>
+          )}
+          {aiError && <Alert>{aiError}</Alert>}
+          {summary.ai_allowed && summary.ai_available && !closed && (
+            <Button variant="secondary" onClick={() => void draftAi()} loading={aiBusy} disabled={aiBusy}>
+              {summary.ai_summary ? 'Redraft with AI' : 'Draft an AI summary'}
+            </Button>
+          )}
+          {!summary.ai_allowed && <p className="text-xs text-slate-500">This person did not agree to an AI-drafted summary.</p>}
+        </Card>
+      )}
+
+      {waiting && (
+        <Card className="space-y-3 p-4">
+          <p className="text-sm text-slate-700">
+            The person has been told you accepted and will begin when ready. Read the summary, then start. Chat and video open for both of you.
+          </p>
+          <Button onClick={() => void startConversation()} loading={startBusy} disabled={startBusy}>
+            Start conversation
+          </Button>
+        </Card>
+      )}
+
+      {inSession && (
         <VideoCall
           post={(kind, payload) => api.doctorCallPost(id, kind, payload)}
           poll={(after) => api.doctorCallPoll(id, after)}
@@ -164,13 +237,15 @@ export default function DoctorCaseView() {
         />
       )}
 
-      <ConsultThread
-        load={() => api.doctorCaseMessages(id)}
-        send={(t) => api.sendDoctorCaseMessage(id, t)}
-        otherName="the person"
-        showFlags
-        active={!closed}
-      />
+      {(inSession || closed) && (
+        <ConsultThread
+          load={() => api.doctorCaseMessages(id)}
+          send={(t) => api.sendDoctorCaseMessage(id, t)}
+          otherName="the person"
+          showFlags
+          active={inSession}
+        />
+      )}
 
       {closed && note && <NoteView n={note} />}
 

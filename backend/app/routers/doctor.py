@@ -9,10 +9,10 @@ from ..deps import require_doctor
 from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, SessionNote, User
 from ..deps import age_on
 from ..schemas import (
-    CaseDetailOut, DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, SignalIn, SignalOut, ThreadMessageIn,
+    CaseDetailOut, CaseSummaryOut, DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, SignalIn, SignalOut, ThreadMessageIn,
     ThreadMessageOut,
 )
-from ..services import consult
+from ..services import case_summary, consult
 
 router = APIRouter(prefix="/api/doctor", tags=["doctor"])
 
@@ -99,8 +99,8 @@ def decline(case_id: int, doctor: User = Depends(require_doctor), db: Session = 
 @router.get("/cases", response_model=list[MyCaseOut])
 def my_cases(doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[MyCaseOut]:
     rows = db.scalars(
-        select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state.in_((consult.ACCEPTED, consult.CLOSED)))
-        .order_by(ConsultCase.state, ConsultCase.accepted_at.desc()).limit(40)
+        select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state.in_((consult.ACCEPTED, consult.IN_SESSION, consult.CLOSED)))
+        .order_by(ConsultCase.accepted_at.desc()).limit(40)
     ).all()
     return [MyCaseOut(case_id=c.id, first_name=consult.person_first_name(c.user), state=c.state, accepted_at=c.accepted_at) for c in rows]
 
@@ -133,7 +133,9 @@ def case_messages(case_id: int, doctor: User = Depends(require_doctor), db: Sess
 @router.post("/cases/{case_id}/messages", response_model=ThreadMessageOut, status_code=status.HTTP_201_CREATED)
 def send_case_message(case_id: int, body: ThreadMessageIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> ThreadMessageOut:
     case = _my_accepted(db, case_id, doctor)
-    if case.state != consult.ACCEPTED:
+    if case.state == consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Start the conversation first.")
+    if case.state != consult.IN_SESSION:
         raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended.")
     if consult.too_fast(db, case.id, doctor.id):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You are sending messages very quickly. Please wait a moment.")
@@ -156,7 +158,7 @@ def _note_out(db: Session, n: SessionNote) -> SessionNoteOut:
 def close_case(case_id: int, body: SessionNoteIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> SessionNoteOut:
     """End a conversation. The session form is required: no note, no close. The person is then told the conversation has ended and can ask again."""
     case = _my_accepted(db, case_id, doctor)
-    if case.state != consult.ACCEPTED:
+    if case.state not in consult.WITH_DOCTOR:
         raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has already ended.")
     note = SessionNote(case_id=case.id, doctor_id=doctor.id, **body.model_dump())
     db.add(note)
@@ -199,7 +201,9 @@ def case_detail(case_id: int, doctor: User = Depends(require_doctor), db: Sessio
 def call_signal(case_id: int, body: SignalIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> SignalOut:
     """Video call set-up from the doctor's side, on a case they own and while it is still open."""
     case = _my_accepted(db, case_id, doctor)
-    if case.state != consult.ACCEPTED:
+    if case.state == consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Start the conversation first.")
+    if case.state != consult.IN_SESSION:
         raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended.")
     if consult.signals_too_fast(db, case.id, "doctor"):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many call messages. Please wait a moment.")
@@ -214,3 +218,51 @@ def call_signal(case_id: int, body: SignalIn, doctor: User = Depends(require_doc
 def call_poll(case_id: int, after: int = 0, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[SignalOut]:
     case = _my_accepted(db, case_id, doctor)
     return [SignalOut(id=s.id, sender_role=s.sender_role, kind=s.kind, payload=s.payload) for s in consult.signals_for(db, case.id, "doctor", after)]
+
+
+@router.post("/cases/{case_id}/start", response_model=MyCaseOut)
+def start_case(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> MyCaseOut:
+    """The doctor begins the conversation. Until then the person is told the doctor has accepted and will begin when ready; chat and video are closed."""
+    case = _my_accepted(db, case_id, doctor)
+    if case.state == consult.ACCEPTED:
+        case.state = consult.IN_SESSION
+        case.started_at = datetime.now(timezone.utc)
+        db.add(AuditLog(actor_id=doctor.id, action="start_case", target_type="consult", target_id=str(case_id)))
+        db.commit()
+    elif case.state != consult.IN_SESSION:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended.")
+    return MyCaseOut(case_id=case.id, first_name=consult.person_first_name(case.user), state=case.state, accepted_at=case.accepted_at)
+
+
+def _summary_out(db: Session, case: ConsultCase) -> CaseSummaryOut:
+    from ..config import settings
+
+    s = case_summary.build(db, case)
+    return CaseSummaryOut(**s, ai_allowed=case.ai_summary_consent, ai_available=bool(settings.llm_enabled and settings.groq_api_key),
+                          ai_summary=case.ai_summary, ai_summary_at=case.ai_summary_at, ai_disclosure=case_summary.AI_DISCLOSURE)
+
+
+@router.get("/cases/{case_id}/summary", response_model=CaseSummaryOut)
+def case_summary_view(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseSummaryOut:
+    """The rules-based summary (profile, check-in, chat). Nothing leaves the server for this. Audited."""
+    case = _my_accepted(db, case_id, doctor)
+    db.add(AuditLog(actor_id=doctor.id, action="view_summary", target_type="consult", target_id=str(case_id)))
+    db.commit()
+    return _summary_out(db, case)
+
+
+@router.post("/cases/{case_id}/summary/ai", response_model=CaseSummaryOut)
+def draft_ai_summary(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseSummaryOut:
+    """Ask for an AI-written draft. Only if the person separately agreed; only on request; the minimum text is sent; every request is audited."""
+    case = _my_accepted(db, case_id, doctor)
+    if not case.ai_summary_consent:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This person did not agree to an AI-drafted summary.")
+    text = case_summary.draft_ai(db, case)
+    db.add(AuditLog(actor_id=doctor.id, action="ai_summary_ok" if text else "ai_summary_failed", target_type="consult", target_id=str(case_id)))
+    if text:
+        case.ai_summary = text
+        case.ai_summary_at = datetime.now(timezone.utc)
+    db.commit()
+    if not text:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The AI draft is not available right now. The summary above still works.")
+    return _summary_out(db, case)

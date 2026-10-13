@@ -113,6 +113,11 @@ class ConsultCase(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     video_used: Mapped[bool] = mapped_column(Boolean, default=False)         # a video call was accepted during this case
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)    # the doctor began the conversation
+    # Optional, separate agreement: an AI tool may draft a short summary for the doctor. Nothing is sent to it without this.
+    ai_summary_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_summary_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     doctor: Mapped[User | None] = relationship(foreign_keys=[accepted_by])

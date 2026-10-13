@@ -13,9 +13,9 @@ router = APIRouter(prefix="/api/consults", tags=["consults"])
 
 def _out(db: Session, c: ConsultCase) -> ConsultOut:
     helplines = [{"name": n, "detail": d, "number": num, "tel": tel} for n, d, num, tel in triage.support.HELPLINES]
-    prof = db.get(DoctorProfile, c.accepted_by) if c.state == consult.ACCEPTED and c.accepted_by else None
+    prof = db.get(DoctorProfile, c.accepted_by) if c.state in consult.WITH_DOCTOR and c.accepted_by else None
     return ConsultOut(id=c.id, state=c.state, status_text=consult.status_text(db, c), created_at=c.created_at,
-                      doctor_name=c.doctor.full_name if c.state == consult.ACCEPTED and c.doctor else None,
+                      doctor_name=c.doctor.full_name if c.state in consult.WITH_DOCTOR and c.doctor else None,
                       doctor_specialty=prof.specialty if prof else None,
                       doctor_registration_number=prof.registration_number if prof else None, helplines=helplines)
 
@@ -45,7 +45,7 @@ def request_doctor(body: ConsultRequestIn, user: User = Depends(get_current_user
     existing = consult.live_case(db, user.id)
     if existing:
         return _out(db, existing)
-    case = ConsultCase(user_id=user.id, source="user", share_consent=True)
+    case = ConsultCase(user_id=user.id, source="user", share_consent=True, ai_summary_consent=body.share_ai)
     db.add(case)
     db.add(AuditLog(actor_id=user.id, action="request_doctor", target_type="consult", target_id="new"))
     db.commit()
@@ -71,7 +71,9 @@ def _owned_accepted(db: Session, case_id: int, user: User) -> ConsultCase:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
     if case.state == consult.CLOSED:
         raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended. You can ask for a doctor again at any time.")
-    if case.state != consult.ACCEPTED:
+    if case.state == consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Your doctor has accepted and will begin the conversation when they are ready.")
+    if case.state != consult.IN_SESSION:
         raise HTTPException(status.HTTP_409_CONFLICT, "You can talk here once a doctor has accepted.")
     return case
 

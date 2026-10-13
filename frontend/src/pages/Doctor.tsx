@@ -187,17 +187,17 @@ export default function Doctor() {
             </section>
           )}
 
-          {cases.some((c) => c.state === 'accepted') && (
+          {cases.some((c) => c.state === 'accepted' || c.state === 'in_session') && (
             <section className="space-y-3" aria-label="Your cases">
               <h2 className="font-medium text-slate-900">Your cases</h2>
-              {cases.filter((c) => c.state === 'accepted').map((c) => (
+              {cases.filter((c) => c.state === 'accepted' || c.state === 'in_session').map((c) => (
                 <Card key={c.case_id} className="flex items-center justify-between gap-3 p-4 text-sm text-slate-700">
                   <span>
                     <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}
                   </span>
                   <Link to={`/doctor/cases/${c.case_id}`}
                     className="inline-flex h-9 items-center rounded-lg bg-brand-800 px-3 text-sm font-medium text-white hover:bg-brand-900">
-                    Open conversation
+                    {c.state === 'accepted' ? 'Review and start' : 'Open conversation'}
                   </Link>
                 </Card>
               ))}

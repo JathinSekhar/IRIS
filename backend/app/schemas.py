@@ -204,6 +204,7 @@ class DoctorAvailabilityIn(BaseModel):
 
 class ConsultRequestIn(BaseModel):
     share: bool                               # the person agreed to share recent messages and check-in answers with the doctor who accepts
+    share_ai: bool = False                    # optional, separate: an AI tool may draft a short summary for the doctor
 
 
 class ConsultOut(BaseModel):
@@ -333,6 +334,41 @@ class SignalOut(BaseModel):
 
 class IceOut(BaseModel):
     ice_servers: list[dict]
+
+
+class SummaryProfileOut(BaseModel):
+    first_name: str
+    age: int
+    gender: str | None = None
+    occupation: str | None = None
+    language: str
+    is_minor: bool
+
+
+class SummaryCheckinOut(BaseModel):
+    created_at: datetime
+    baseline_risk: str
+    phq9: int | None = None
+    phq9_band: str | None = None
+    gad7: int | None = None
+    gad7_band: str | None = None
+    safety_flag: bool = False
+    urgency_floor: str | None = None
+
+
+class CaseSummaryOut(BaseModel):
+    """What the doctor sees before starting. The bullets are built by plain rules from the profile, the check-in and the chat; the AI draft is separate,
+    optional, needs the person's agreement, and is always shown as a draft to be checked against the messages."""
+
+    profile: SummaryProfileOut
+    checkin: SummaryCheckinOut | None = None
+    bullets: list[str]
+    recent_messages: list[OfferMessageOut]
+    ai_allowed: bool
+    ai_available: bool
+    ai_summary: str | None = None
+    ai_summary_at: datetime | None = None
+    ai_disclosure: str
 
 
 class CaseDetailOut(BaseModel):

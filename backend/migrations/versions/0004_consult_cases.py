@@ -30,7 +30,11 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("closed_at", sa.DateTime(timezone=True)),
         sa.Column("video_used", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.CheckConstraint("state in ('open', 'accepted', 'closed', 'cancelled')", name="consult_cases_state_check"),
+        sa.Column("started_at", sa.DateTime(timezone=True)),
+        sa.Column("ai_summary_consent", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("ai_summary", sa.Text()),
+        sa.Column("ai_summary_at", sa.DateTime(timezone=True)),
+        sa.CheckConstraint("state in ('open', 'accepted', 'in_session', 'closed', 'cancelled')", name="consult_cases_state_check"),
         sa.CheckConstraint("source in ('user', 'system', 'reviewer')", name="consult_cases_source_check"),
     )
     op.create_index("ix_consult_cases_user_id", "consult_cases", ["user_id"])

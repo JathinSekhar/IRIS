@@ -43,6 +43,7 @@ export default function AskDoctor() {
   const [current, setCurrent] = useState<Consult | null | undefined>(undefined)
   const [notice, setNotice] = useState(SHARE_FALLBACK)
   const [agree, setAgree] = useState(false)
+  const [agreeAi, setAgreeAi] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const wasAccepted = useRef(false)
@@ -50,7 +51,7 @@ export default function AskDoctor() {
 
   const load = useCallback(() => {
     api.currentConsult().then((c) => {
-      if (c?.state === 'accepted') wasAccepted.current = true
+      if (c?.state === 'accepted' || c?.state === 'in_session') wasAccepted.current = true
       else if (c === null && wasAccepted.current) setEnded(true)
       setCurrent(c)
     }).catch((e) => setError(e instanceof ApiError ? e.message : 'Could not load your request.'))
@@ -67,7 +68,7 @@ export default function AskDoctor() {
     setBusy(true)
     setError('')
     try {
-      setCurrent(await api.requestDoctor(agree))
+      setCurrent(await api.requestDoctor(agree, agree && agreeAi))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Your request was not sent. Please try again.')
     } finally {
@@ -121,6 +122,13 @@ export default function AskDoctor() {
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 size-4" />
             <span>I agree to share my recent messages and check-in answers with the doctor who accepts.</span>
           </label>
+          <label className="flex items-start gap-3 text-sm text-slate-800">
+            <input type="checkbox" checked={agreeAi} onChange={(e) => setAgreeAi(e.target.checked)} disabled={!agree} className="mt-1 size-4" />
+            <span>
+              Optional: also allow an AI tool to draft a short summary of this for the doctor. It would see your recent messages and check-in
+              headline, not your name or contact details. The doctor reads the original messages too, and you can leave this unticked.
+            </span>
+          </label>
           <Button onClick={() => void request()} disabled={!agree || busy} loading={busy}>
             Ask for a doctor
           </Button>
@@ -151,13 +159,20 @@ export default function AskDoctor() {
           </Card>
           {current.state === 'open' && <Helplines lines={current.helplines} />}
           {current.state === 'accepted' && (
+            <Card className="p-4 text-sm text-slate-700">
+              {current.doctor_name ?? 'Your doctor'} is getting ready. The chat and video open here as soon as they begin. The numbers below are always
+              there if you need someone right away.
+            </Card>
+          )}
+          {current.state === 'accepted' && <Helplines lines={current.helplines} />}
+          {current.state === 'in_session' && (
             <VideoCall
               post={(kind, payload) => api.consultCallPost(current.id, kind, payload)}
               poll={(after) => api.consultCallPoll(current.id, after)}
               otherName={current.doctor_name ?? 'your doctor'}
             />
           )}
-          {current.state === 'accepted' && (
+          {current.state === 'in_session' && (
             <ConsultThread
               load={() => api.consultMessages(current.id)}
               send={(t) => api.sendConsultMessage(current.id, t)}

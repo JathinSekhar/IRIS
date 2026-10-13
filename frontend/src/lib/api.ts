@@ -20,6 +20,7 @@ import type {
   SessionNoteInput,
   CaseDetail,
   CallSignal,
+  CaseSummary,
 } from './types'
 
 export class ApiError extends Error {
@@ -123,7 +124,7 @@ export const api = {
   doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),
   currentConsult: () => request<Consult | null>('/api/consults/current'),
   consultNotice: () => request<{ share_notice: string }>('/api/consults/notice'),
-  requestDoctor: (share: boolean) => post<Consult>('/api/consults', { share }),
+  requestDoctor: (share: boolean, share_ai = false) => post<Consult>('/api/consults', { share, share_ai }),
   cancelConsult: (id: number) => post<Consult>(`/api/consults/${id}/cancel`),
   doctorOffers: () => request<DoctorOffer[]>('/api/doctor/offers'),
   doctorCases: () => request<DoctorCase[]>('/api/doctor/cases'),
@@ -141,6 +142,9 @@ export const api = {
   doctorCallPost: (id: number, kind: CallSignal['kind'], payload?: Record<string, unknown> | null) =>
     post<CallSignal>(`/api/doctor/cases/${id}/call`, { kind, payload: payload ?? null }),
   doctorCallPoll: (id: number, after: number) => request<CallSignal[]>(`/api/doctor/cases/${id}/call?after=${after}`),
+  startCase: (id: number) => post<DoctorCase>(`/api/doctor/cases/${id}/start`),
+  caseSummary: (id: number) => request<CaseSummary>(`/api/doctor/cases/${id}/summary`),
+  draftAiSummary: (id: number) => post<CaseSummary>(`/api/doctor/cases/${id}/summary/ai`),
   doctorCaseDetail: (id: number) => request<CaseDetail>(`/api/doctor/cases/${id}`),
   doctorCaseNote: (id: number) => request<SessionNote>(`/api/doctor/cases/${id}/note`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),

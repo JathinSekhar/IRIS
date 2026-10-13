@@ -29,7 +29,7 @@ def test_a_conversation_cannot_be_closed_without_the_form(env):
         assert c.post(f"/api/doctor/cases/{case_id}/close", json={**NOTE, "concerns": "  "}).status_code == 422
         assert c.post(f"/api/doctor/cases/{case_id}/close", json={**NOTE, "risk_level": "fine"}).status_code == 422
     with env() as s:
-        assert s.get(ConsultCase, case_id).state == "accepted"
+        assert s.get(ConsultCase, case_id).state == "in_session"
 
 
 def test_every_risk_question_must_be_answered_explicitly(env):

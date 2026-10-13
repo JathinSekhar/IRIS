@@ -15,12 +15,15 @@ def doctor_login(c, data=dd.DOCTOR):
     assert c.post("/api/auth/login", json={"email": data["email"], "password": data["password"]}).status_code == 200
 
 
-def accepted_case(c, env):
+def accepted_case(c, env, started=True, share_ai=False):
+    """A person asked, a doctor accepted and (by default) began the conversation. Leaves the doctor signed in."""
     signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
-    case_id = ask(c).json()["id"]
+    case_id = c.post("/api/consults", json={"share": True, "share_ai": share_ai}).json()["id"]
     add_doctor(c, env)
     doctor_login(c)
     assert c.post(f"/api/doctor/offers/{case_id}/accept").status_code == 200
+    if started:
+        assert c.post(f"/api/doctor/cases/{case_id}/start").status_code == 200
     return case_id
 
 
