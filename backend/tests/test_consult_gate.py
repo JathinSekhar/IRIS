@@ -89,34 +89,57 @@ def test_another_doctor_and_the_patient_cannot_read_the_summary(env):
         assert c.get(f"/api/doctor/cases/{case_id}/summary").status_code == 403
 
 
-def test_the_ai_draft_needs_the_persons_separate_agreement(env, monkeypatch):
-    called = []
-    monkeypatch.setattr(case_summary, "draft_ai", lambda db, case: called.append(case.id) or "should not be used")
-    with TestClient(app) as c:
-        case_id = accepted_case(c, env, share_ai=False)
-        assert c.post(f"/api/doctor/cases/{case_id}/summary/ai").status_code == 403
-    assert called == []
-
-
-def test_the_ai_draft_is_stored_labelled_and_audited_when_the_person_agreed(env, monkeypatch):
+def _ai_on(monkeypatch, text="Sleeps badly and feels like a burden; no plan stated."):
     monkeypatch.setattr(settings, "llm_enabled", True)
     monkeypatch.setattr(settings, "groq_api_key", "test-key-not-real")
-    monkeypatch.setattr(case_summary, "draft_ai", lambda db, case: "Sleeps badly and feels like a burden; no plan stated.")
+    calls = []
+
+    def fake(db, case):
+        calls.append(case.id)
+        return text
+
+    monkeypatch.setattr(case_summary, "draft_ai", fake)
+    return calls
+
+
+def test_there_is_no_manual_ai_button_endpoint_any_more(env):
     with TestClient(app) as c:
         case_id = accepted_case(c, env, share_ai=True)
-        out = c.post(f"/api/doctor/cases/{case_id}/summary/ai").json()
-        assert out["ai_summary"].startswith("Sleeps badly") and out["ai_disclosure"].startswith("AI-assisted draft")
-        assert c.get(f"/api/doctor/cases/{case_id}/summary").json()["ai_summary"] == out["ai_summary"]
+        assert c.post(f"/api/doctor/cases/{case_id}/summary/ai").status_code in (404, 405)
+
+
+def test_the_ai_draft_is_prepared_automatically_when_the_person_agreed(env, monkeypatch):
+    calls = _ai_on(monkeypatch)
+    with TestClient(app) as c:
+        case_id = accepted_case(c, env, started=False, share_ai=True)          # accepting starts the draft in the background
+        out = c.get(f"/api/doctor/cases/{case_id}/summary").json()
+        assert out["ai_summary"].startswith("Sleeps badly") and out["ai_allowed"] is True and out["ai_pending"] is False
+        assert out["ai_disclosure"].startswith("AI-assisted draft")
+    assert calls == [case_id]                                                    # once, not once per page view
     with env() as s:
         assert "ai_summary_ok" in [a.action for a in s.scalars(select(AuditLog))]
 
 
-def test_an_ai_failure_leaves_the_rules_based_summary_working(env, monkeypatch):
-    monkeypatch.setattr(case_summary, "draft_ai", lambda db, case: None)
+def test_nothing_is_sent_to_the_ai_without_the_persons_agreement(env, monkeypatch):
+    calls = _ai_on(monkeypatch)
     with TestClient(app) as c:
-        case_id = accepted_case(c, env, share_ai=True)
-        assert c.post(f"/api/doctor/cases/{case_id}/summary/ai").status_code == 503
-        assert c.get(f"/api/doctor/cases/{case_id}/summary").status_code == 200
+        case_id = accepted_case(c, env, share_ai=False)
+        out = c.get(f"/api/doctor/cases/{case_id}/summary").json()
+        assert out["ai_allowed"] is False and out["ai_summary"] is None and out["ai_pending"] is False
+    assert calls == []
+
+
+def test_an_ai_failure_leaves_the_rules_based_summary_and_stops_after_a_few_tries(env, monkeypatch):
+    calls = _ai_on(monkeypatch)
+    monkeypatch.setattr(case_summary, "draft_ai", lambda db, case: calls.append(case.id))        # returns None: a failure
+    monkeypatch.setattr(case_summary, "RETRY_AFTER_SECONDS", 0)
+    with TestClient(app) as c:
+        case_id = accepted_case(c, env, started=False, share_ai=True)
+        for _ in range(6):
+            r = c.get(f"/api/doctor/cases/{case_id}/summary")
+            assert r.status_code == 200 and r.json()["bullets"] and r.json()["ai_summary"] is None
+        assert r.json()["ai_pending"] is False                                   # gave up: the page stops asking
+    assert len(calls) == case_summary.MAX_ATTEMPTS
     with env() as s:
         assert "ai_summary_failed" in [a.action for a in s.scalars(select(AuditLog))]
 
@@ -152,3 +175,10 @@ def test_the_ai_output_check_rejects_empty_and_long_text(monkeypatch):
         assert case_summary.draft_ai(None, None) is None
     monkeypatch.setattr(case_summary.httpx, "post", lambda *a, **k: R("Short factual summary."))
     assert case_summary.draft_ai(None, None) == "Short factual summary."
+
+
+def test_reassuring_filler_is_removed_from_the_ai_draft():
+    raw = ("The person reports poor sleep and feeling like a burden for two weeks. No other concerns, duration, or risk factors are mentioned. "
+           "Not stated. They are worried about exams.")
+    assert case_summary.scrub(raw) == "The person reports poor sleep and feeling like a burden for two weeks. They are worried about exams."
+    assert case_summary.scrub("Nothing else is reported. No safety concerns were flagged.") == ""

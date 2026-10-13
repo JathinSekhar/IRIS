@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -70,7 +70,7 @@ def offers(doctor: User = Depends(require_doctor), db: Session = Depends(get_db)
 
 
 @router.post("/offers/{case_id}/accept", response_model=MyCaseOut)
-def accept(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> MyCaseOut:
+def accept(case_id: int, background: BackgroundTasks, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> MyCaseOut:
     """First doctor to accept owns the case. A second doctor, or a cancelled request, gets a 409. Only on-duty doctors can accept."""
     if not _profile(db, doctor).on_duty:
         raise HTTPException(status.HTTP_409_CONFLICT, "Go on duty to accept cases.")
@@ -82,6 +82,9 @@ def accept(case_id: int, doctor: User = Depends(require_doctor), db: Session = D
     db.add(AuditLog(actor_id=doctor.id, action="accept_case", target_type="consult", target_id=str(case_id)))
     db.commit()
     db.refresh(case)
+    if case_summary.wants_draft(case):
+        case_summary.mark_attempt(db, case)
+        background.add_task(case_summary.run_in_background, db.get_bind(), case.id)
     return MyCaseOut(case_id=case.id, first_name=consult.person_first_name(case.user), state=case.state, accepted_at=case.accepted_at)
 
 
@@ -238,31 +241,18 @@ def _summary_out(db: Session, case: ConsultCase) -> CaseSummaryOut:
     from ..config import settings
 
     s = case_summary.build(db, case)
-    return CaseSummaryOut(**s, ai_allowed=case.ai_summary_consent, ai_available=bool(settings.llm_enabled and settings.groq_api_key),
+    return CaseSummaryOut(**s, ai_allowed=case.ai_summary_consent, ai_available=case_summary.available(), ai_pending=case_summary.is_pending(case),
                           ai_summary=case.ai_summary, ai_summary_at=case.ai_summary_at, ai_disclosure=case_summary.AI_DISCLOSURE)
 
 
 @router.get("/cases/{case_id}/summary", response_model=CaseSummaryOut)
-def case_summary_view(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseSummaryOut:
-    """The rules-based summary (profile, check-in, chat). Nothing leaves the server for this. Audited."""
+def case_summary_view(case_id: int, background: BackgroundTasks, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseSummaryOut:
+    """The summary for the doctor. The bullets are rules-based. If the person agreed to an AI-drafted paragraph and it is not ready yet, preparing it
+    starts here in the background and the page asks again in a few seconds. Audited."""
     case = _my_accepted(db, case_id, doctor)
     db.add(AuditLog(actor_id=doctor.id, action="view_summary", target_type="consult", target_id=str(case_id)))
     db.commit()
-    return _summary_out(db, case)
-
-
-@router.post("/cases/{case_id}/summary/ai", response_model=CaseSummaryOut)
-def draft_ai_summary(case_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> CaseSummaryOut:
-    """Ask for an AI-written draft. Only if the person separately agreed; only on request; the minimum text is sent; every request is audited."""
-    case = _my_accepted(db, case_id, doctor)
-    if not case.ai_summary_consent:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "This person did not agree to an AI-drafted summary.")
-    text = case_summary.draft_ai(db, case)
-    db.add(AuditLog(actor_id=doctor.id, action="ai_summary_ok" if text else "ai_summary_failed", target_type="consult", target_id=str(case_id)))
-    if text:
-        case.ai_summary = text
-        case.ai_summary_at = datetime.now(timezone.utc)
-    db.commit()
-    if not text:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The AI draft is not available right now. The summary above still works.")
+    if case_summary.wants_draft(case):
+        case_summary.mark_attempt(db, case)
+        background.add_task(case_summary.run_in_background, db.get_bind(), case.id)
     return _summary_out(db, case)

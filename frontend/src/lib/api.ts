@@ -144,7 +144,6 @@ export const api = {
   doctorCallPoll: (id: number, after: number) => request<CallSignal[]>(`/api/doctor/cases/${id}/call?after=${after}`),
   startCase: (id: number) => post<DoctorCase>(`/api/doctor/cases/${id}/start`),
   caseSummary: (id: number) => request<CaseSummary>(`/api/doctor/cases/${id}/summary`),
-  draftAiSummary: (id: number) => post<CaseSummary>(`/api/doctor/cases/${id}/summary/ai`),
   doctorCaseDetail: (id: number) => request<CaseDetail>(`/api/doctor/cases/${id}`),
   doctorCaseNote: (id: number) => request<SessionNote>(`/api/doctor/cases/${id}/note`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),

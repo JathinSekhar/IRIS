@@ -34,6 +34,8 @@ def upgrade() -> None:
         sa.Column("ai_summary_consent", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("ai_summary", sa.Text()),
         sa.Column("ai_summary_at", sa.DateTime(timezone=True)),
+        sa.Column("ai_summary_attempts", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("ai_summary_tried_at", sa.DateTime(timezone=True)),
         sa.CheckConstraint("state in ('open', 'accepted', 'in_session', 'closed', 'cancelled')", name="consult_cases_state_check"),
         sa.CheckConstraint("source in ('user', 'system', 'reviewer')", name="consult_cases_source_check"),
     )

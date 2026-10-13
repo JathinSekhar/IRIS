@@ -1,4 +1,4 @@
-import { ArrowLeft, ShieldAlert, Sparkles } from 'lucide-react'
+import { ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ConsultThread from '../components/ConsultThread'
@@ -82,9 +82,7 @@ export default function DoctorCaseView() {
   const nav = useNavigate()
   const [detail, setDetail] = useState<CaseDetail | null>(null)
   const [summary, setSummary] = useState<CaseSummary | null>(null)
-  const [aiBusy, setAiBusy] = useState(false)
   const [startBusy, setStartBusy] = useState(false)
-  const [aiError, setAiError] = useState('')
   const [note, setNote] = useState<SessionNote | null | undefined>(undefined)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [ending, setEnding] = useState(false)
@@ -100,6 +98,14 @@ export default function DoctorCaseView() {
     api.doctorCaseDetail(id).then(setDetail).catch(() => undefined)
     api.caseSummary(id).then(setSummary).catch(() => undefined)
   }, [id, loadNote])
+
+  // The AI paragraph is prepared on its own after the person agreed. While it is being prepared, check again every few seconds.
+  const aiPending = summary?.ai_pending === true
+  useEffect(() => {
+    if (!aiPending) return
+    const t = window.setInterval(() => api.caseSummary(id).then(setSummary).catch(() => undefined), 3000)
+    return () => window.clearInterval(t)
+  }, [aiPending, id])
   useEffect(() => {
     if (detail?.video_used) setForm((f) => (f.mode === 'chat' ? { ...f, mode: 'both' } : f))     // a call happened: pre-fill the form's mode
   }, [detail?.video_used])
@@ -151,18 +157,6 @@ export default function DoctorCaseView() {
     }
   }
 
-  async function draftAi() {
-    setAiBusy(true)
-    setAiError('')
-    try {
-      setSummary(await api.draftAiSummary(id))
-    } catch (err) {
-      setAiError(err instanceof ApiError ? err.message : 'The AI draft is not available right now.')
-    } finally {
-      setAiBusy(false)
-    }
-  }
-
   return (
     <div className="mx-auto max-w-2xl space-y-4 py-8">
       <Link to="/doctor" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -200,21 +194,12 @@ export default function DoctorCaseView() {
           <p className="text-xs text-slate-500">Built from their profile, check-in and chat by plain rules. Nothing about this summary leaves IRIS.</p>
 
           {summary.ai_summary && (
-            <div className="space-y-1 rounded-lg bg-slate-50 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <Sparkles className="size-3.5" aria-hidden /> AI draft
-              </p>
+            <div className="space-y-1">
               <p className="text-slate-800">{summary.ai_summary}</p>
               <p className="text-xs text-slate-500">{summary.ai_disclosure}</p>
             </div>
           )}
-          {aiError && <Alert>{aiError}</Alert>}
-          {summary.ai_allowed && summary.ai_available && !closed && (
-            <Button variant="secondary" onClick={() => void draftAi()} loading={aiBusy} disabled={aiBusy}>
-              {summary.ai_summary ? 'Redraft with AI' : 'Draft an AI summary'}
-            </Button>
-          )}
-          {!summary.ai_allowed && <p className="text-xs text-slate-500">This person did not agree to an AI-drafted summary.</p>}
+          {summary.ai_pending && !summary.ai_summary && <p className="text-xs text-slate-500">A short written summary is being prepared…</p>}
         </Card>
       )}
 

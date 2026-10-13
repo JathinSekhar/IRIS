@@ -117,6 +117,20 @@ def payload_text(db: Session, case: ConsultCase) -> str:
     return "\n".join(lines)
 
 
+_REASSURING = re.compile(
+    r"\bno\s+(?:other\s+|further\s+|additional\s+|significant\s+)?(?:risks?|concerns?|risk\s+factors?|safety\s+concerns?|warning\s+signs?)\b"
+    r"|\bnothing\s+else\b|\bnot\s+(?:a\s+)?(?:concern|risk)\b|^not\s+stated\.?$",
+    re.IGNORECASE,
+)
+
+
+def scrub(text: str) -> str:
+    """Drop sentences that read as reassurance ("no other concerns are mentioned") or are empty filler ("Not stated."). The material may be incomplete,
+    so a summary must only say what was written, never what was absent."""
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return " ".join(x for x in sentences if x and not _REASSURING.search(x.strip())).strip()
+
+
 def draft_ai(db: Session, case: ConsultCase) -> str | None:
     if not (settings.llm_enabled and settings.groq_api_key):
         return None
@@ -134,4 +148,60 @@ def draft_ai(db: Session, case: ConsultCase) -> str | None:
         return None
     if not text or len(text) > 1200 or re.search(r"[\U0001F000-\U0001FFFF]", text):
         return None
-    return text
+    return scrub(text) or None
+
+
+MAX_ATTEMPTS = 3
+RETRY_AFTER_SECONDS = 45
+
+
+def available() -> bool:
+    return bool(settings.llm_enabled and settings.groq_api_key)
+
+
+def wants_draft(case: ConsultCase) -> bool:
+    """True when a draft should be prepared now: the person agreed, the model is configured, there is none yet, and we have not tried too often."""
+    from datetime import datetime, timezone
+
+    if not (case.ai_summary_consent and available()) or case.ai_summary:
+        return False
+    if (case.ai_summary_attempts or 0) >= MAX_ATTEMPTS:
+        return False
+    if case.ai_summary_tried_at is not None:
+        tried = case.ai_summary_tried_at if case.ai_summary_tried_at.tzinfo else case.ai_summary_tried_at.replace(tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - tried).total_seconds() < RETRY_AFTER_SECONDS:
+            return False
+    return True
+
+
+def is_pending(case: ConsultCase) -> bool:
+    return bool(case.ai_summary_consent and available() and not case.ai_summary and (case.ai_summary_attempts or 0) < MAX_ATTEMPTS)
+
+
+def mark_attempt(db: Session, case: ConsultCase) -> None:
+    from datetime import datetime, timezone
+
+    case.ai_summary_attempts = (case.ai_summary_attempts or 0) + 1
+    case.ai_summary_tried_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def run_in_background(bind, case_id: int) -> None:
+    """Runs after the response has been sent. Uses its own session on the same database, never the request's."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy.orm import sessionmaker
+
+    from ..models import AuditLog
+
+    with sessionmaker(bind=bind, expire_on_commit=False)() as db:
+        case = db.get(ConsultCase, case_id)
+        if case is None or case.ai_summary or not case.ai_summary_consent:
+            return
+        text = draft_ai(db, case)
+        actor = case.accepted_by or case.user_id
+        db.add(AuditLog(actor_id=actor, action="ai_summary_ok" if text else "ai_summary_failed", target_type="consult", target_id=str(case_id)))
+        if text:
+            case.ai_summary = text
+            case.ai_summary_at = datetime.now(timezone.utc)
+        db.commit()

@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -118,6 +118,8 @@ class ConsultCase(Base):
     ai_summary_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_summary_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_summary_attempts: Mapped[int] = mapped_column(Integer, default=0)       # background tries so far; stops after a few so a failing model is not hammered
+    ai_summary_tried_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     doctor: Mapped[User | None] = relationship(foreign_keys=[accepted_by])

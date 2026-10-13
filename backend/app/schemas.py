@@ -366,6 +366,7 @@ class CaseSummaryOut(BaseModel):
     recent_messages: list[OfferMessageOut]
     ai_allowed: bool
     ai_available: bool
+    ai_pending: bool = False                  # a draft is being prepared; the page checks again in a few seconds
     ai_summary: str | None = None
     ai_summary_at: datetime | None = None
     ai_disclosure: str

@@ -260,6 +260,7 @@ export interface CaseSummary {
   recent_messages: { text: string; created_at: string }[]
   ai_allowed: boolean
   ai_available: boolean
+  ai_pending: boolean
   ai_summary: string | null
   ai_summary_at: string | null
   ai_disclosure: string
