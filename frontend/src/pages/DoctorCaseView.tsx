@@ -2,6 +2,7 @@ import { ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ConsultThread from '../components/ConsultThread'
+import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Textarea } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { CaseDetail, SessionNote, SessionNoteInput, YesNo } from '../lib/types'
@@ -94,6 +95,9 @@ export default function DoctorCaseView() {
     loadNote()
     api.doctorCaseDetail(id).then(setDetail).catch(() => undefined)
   }, [id, loadNote])
+  useEffect(() => {
+    if (detail?.video_used) setForm((f) => (f.mode === 'chat' ? { ...f, mode: 'both' } : f))     // a call happened: pre-fill the form's mode
+  }, [detail?.video_used])
 
   if (!Number.isFinite(id)) return null
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -150,6 +154,14 @@ export default function DoctorCaseView() {
             </p>
           )}
         </Card>
+      )}
+
+      {!closed && note !== undefined && (
+        <VideoCall
+          post={(kind, payload) => api.doctorCallPost(id, kind, payload)}
+          poll={(after) => api.doctorCallPoll(id, after)}
+          otherName={detail?.full_name.split(' ')[0] ?? 'the person'}
+        />
       )}
 
       <ConsultThread

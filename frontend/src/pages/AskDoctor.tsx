@@ -2,6 +2,7 @@ import { Phone, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConsultThread from '../components/ConsultThread'
+import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Spinner } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { Consult } from '../lib/types'
@@ -149,6 +150,13 @@ export default function AskDoctor() {
             )}
           </Card>
           {current.state === 'open' && <Helplines lines={current.helplines} />}
+          {current.state === 'accepted' && (
+            <VideoCall
+              post={(kind, payload) => api.consultCallPost(current.id, kind, payload)}
+              poll={(after) => api.consultCallPoll(current.id, after)}
+              otherName={current.doctor_name ?? 'your doctor'}
+            />
+          )}
           {current.state === 'accepted' && (
             <ConsultThread
               load={() => api.consultMessages(current.id)}

@@ -29,6 +29,7 @@ def upgrade() -> None:
         sa.Column("accepted_at", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("closed_at", sa.DateTime(timezone=True)),
+        sa.Column("video_used", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.CheckConstraint("state in ('open', 'accepted', 'closed', 'cancelled')", name="consult_cases_state_check"),
         sa.CheckConstraint("source in ('user', 'system', 'reviewer')", name="consult_cases_source_check"),
     )

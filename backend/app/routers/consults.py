@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import AuditLog, ConsultCase, DoctorProfile, User, utcnow
-from ..schemas import ConsultOut, ConsultRequestIn, ThreadMessageIn, ThreadMessageOut
+from ..config import settings
+from ..schemas import ConsultOut, ConsultRequestIn, IceOut, SignalIn, SignalOut, ThreadMessageIn, ThreadMessageOut
 from ..services import consult, triage
 
 router = APIRouter(prefix="/api/consults", tags=["consults"])
@@ -95,3 +96,30 @@ def send_thread_message(case_id: int, body: ThreadMessageIn, user: User = Depend
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You are sending messages very quickly. Please wait a moment.")
     m = consult.add_message(db, case, user, "user", body.text)
     return _thread_out([m], user.id, show_flag=False)[0]
+
+
+@router.get("/ice", response_model=IceOut)
+def ice(user: User = Depends(get_current_user)) -> IceOut:
+    """The STUN/TURN servers the browser uses to set up a call."""
+    return IceOut(ice_servers=settings.ice_servers)
+
+
+@router.post("/{case_id}/call", response_model=SignalOut, status_code=status.HTTP_201_CREATED)
+def call_signal(case_id: int, body: SignalIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> SignalOut:
+    """Video call set-up from the person's side. Only while a doctor has accepted. Nothing is sent to anyone but the doctor on this case."""
+    case = _owned_accepted(db, case_id, user)
+    if consult.signals_too_fast(db, case.id, "user"):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many call messages. Please wait a moment.")
+    s = consult.add_signal(db, case, "user", body.kind, body.payload)
+    if body.kind in ("request", "accept", "end"):
+        db.add(AuditLog(actor_id=user.id, action=f"video_{body.kind}", target_type="consult", target_id=str(case.id)))
+        db.commit()
+    return SignalOut(id=s.id, sender_role=s.sender_role, kind=s.kind, payload=s.payload)
+
+
+@router.get("/{case_id}/call", response_model=list[SignalOut])
+def call_poll(case_id: int, after: int = 0, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[SignalOut]:
+    case = db.get(ConsultCase, case_id)
+    if case is None or case.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    return [SignalOut(id=s.id, sender_role=s.sender_role, kind=s.kind, payload=s.payload) for s in consult.signals_for(db, case.id, "user", after)]

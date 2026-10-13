@@ -112,3 +112,51 @@ def add_message(db: Session, case: ConsultCase, sender: User, role: str, text: s
     db.commit()
     db.refresh(m)
     return m
+
+
+# ---- video call set-up (signalling only) --------------------------------------------------------------------------------------------------------
+SIGNAL_RATE_PER_MINUTE = 240
+RTC_KINDS = ("offer", "answer", "ice")
+
+
+def add_signal(db: Session, case: ConsultCase, role: str, kind: str, payload: dict | None):
+    """Store one set-up message. A new request starts clean; an end or decline wipes the set-up data (it holds network addresses) and keeps only
+    itself so the other side learns the call is over. An accept marks the case as having used video."""
+    from sqlalchemy import delete
+
+    from ..models import ConsultSignal
+
+    if kind == "request":
+        db.execute(delete(ConsultSignal).where(ConsultSignal.case_id == case.id))
+    if kind in ("end", "decline"):
+        db.execute(delete(ConsultSignal).where(ConsultSignal.case_id == case.id))
+    if kind == "accept":
+        case.video_used = True
+    sig = ConsultSignal(case_id=case.id, sender_role=role, kind=kind, payload=payload)
+    db.add(sig)
+    db.commit()
+    db.refresh(sig)
+    return sig
+
+
+def signals_for(db: Session, case_id: int, viewer_role: str, after: int = 0):
+    """What the other side sent, after id `after`. Your own messages are not echoed back."""
+    from ..models import ConsultSignal
+
+    return list(db.scalars(
+        select(ConsultSignal).where(ConsultSignal.case_id == case_id, ConsultSignal.id > after, ConsultSignal.sender_role != viewer_role)
+        .order_by(ConsultSignal.id)
+    ).all())
+
+
+def signals_too_fast(db: Session, case_id: int, role: str) -> bool:
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from ..models import ConsultSignal
+
+    since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    n = db.scalar(select(func.count()).select_from(ConsultSignal).where(
+        ConsultSignal.case_id == case_id, ConsultSignal.sender_role == role, ConsultSignal.created_at > since))
+    return (n or 0) >= SIGNAL_RATE_PER_MINUTE

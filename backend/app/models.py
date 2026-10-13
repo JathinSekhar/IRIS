@@ -112,6 +112,7 @@ class ConsultCase(Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    video_used: Mapped[bool] = mapped_column(Boolean, default=False)         # a video call was accepted during this case
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
     doctor: Mapped[User | None] = relationship(foreign_keys=[accepted_by])
@@ -143,6 +144,20 @@ class ConsultMessage(Base):
     text: Mapped[str] = mapped_column(Text)
     urgent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class ConsultSignal(Base):
+    """Set-up messages for a video call (request, accept, decline, end, offer, answer, ice). Never media. The WebRTC payloads contain network addresses, so
+    they are deleted as soon as a call ends or is declined; only the final end/decline event is kept so the other side learns about it."""
+
+    __tablename__ = "consult_signals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("consult_cases.id", ondelete="CASCADE"), index=True)
+    sender_role: Mapped[str] = mapped_column(String(8))
+    kind: Mapped[str] = mapped_column(String(16))
+    payload: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class SessionNote(Base):

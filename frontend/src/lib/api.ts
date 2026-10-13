@@ -19,6 +19,7 @@ import type {
   SessionNote,
   SessionNoteInput,
   CaseDetail,
+  CallSignal,
 } from './types'
 
 export class ApiError extends Error {
@@ -133,6 +134,13 @@ export const api = {
   doctorCaseMessages: (id: number) => request<ThreadMessage[]>(`/api/doctor/cases/${id}/messages`),
   sendDoctorCaseMessage: (id: number, text: string) => post<ThreadMessage>(`/api/doctor/cases/${id}/messages`, { text }),
   closeCase: (id: number, note: SessionNoteInput) => post<SessionNote>(`/api/doctor/cases/${id}/close`, note),
+  iceServers: () => request<{ ice_servers: unknown[] }>('/api/consults/ice'),
+  consultCallPost: (id: number, kind: CallSignal['kind'], payload?: Record<string, unknown> | null) =>
+    post<CallSignal>(`/api/consults/${id}/call`, { kind, payload: payload ?? null }),
+  consultCallPoll: (id: number, after: number) => request<CallSignal[]>(`/api/consults/${id}/call?after=${after}`),
+  doctorCallPost: (id: number, kind: CallSignal['kind'], payload?: Record<string, unknown> | null) =>
+    post<CallSignal>(`/api/doctor/cases/${id}/call`, { kind, payload: payload ?? null }),
+  doctorCallPoll: (id: number, after: number) => request<CallSignal[]>(`/api/doctor/cases/${id}/call?after=${after}`),
   doctorCaseDetail: (id: number) => request<CaseDetail>(`/api/doctor/cases/${id}`),
   doctorCaseNote: (id: number) => request<SessionNote>(`/api/doctor/cases/${id}/note`),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),

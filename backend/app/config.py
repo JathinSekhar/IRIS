@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     groq_model: str = "openai/gpt-oss-120b"
     llm_timeout_seconds: float = 6.0
 
+    # Video calls are direct person-to-doctor (WebRTC). Our backend only passes the set-up messages; no video provider sees the media. STUN lets the
+    # two browsers find each other and is the only third party involved; use your own STUN/TURN server for real use (calls can fail on strict networks).
+    ice_servers: list[dict] = [{"urls": "stun:stun.l.google.com:19302"}]
+
     consent_version: str = "2026-10"
     checkin_valid_days: int = 14
     checkin_skip_snooze_hours: int = 24

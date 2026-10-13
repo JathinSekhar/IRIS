@@ -310,6 +310,31 @@ class SessionNoteOut(SessionNoteIn):
     created_at: datetime
 
 
+class SignalIn(BaseModel):
+    kind: Literal["request", "accept", "decline", "end", "offer", "answer", "ice"]
+    payload: dict | None = None
+
+    @field_validator("payload")
+    @classmethod
+    def _small(cls, v: dict | None) -> dict | None:
+        import json as _json
+
+        if v is not None and len(_json.dumps(v)) > 20000:
+            raise ValueError("That message is too large.")
+        return v
+
+
+class SignalOut(BaseModel):
+    id: int
+    sender_role: str
+    kind: str
+    payload: dict | None = None
+
+
+class IceOut(BaseModel):
+    ice_servers: list[dict]
+
+
 class CaseDetailOut(BaseModel):
     """Who the doctor is speaking with, for an accepted case: the details the Indian telemedicine rules expect a doctor to hold, and whether the
     person is a minor (a consultation with a minor needs an identified adult family member)."""
@@ -323,6 +348,7 @@ class CaseDetailOut(BaseModel):
     guardian_consent_status: str | None = None
     phone: str | None = None
     emergency_contact: str | None = None
+    video_used: bool = False
 
 
 class MyCaseOut(BaseModel):

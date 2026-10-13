@@ -9,7 +9,8 @@ from ..deps import require_doctor
 from ..models import AuditLog, ConsultCase, ConsultDecline, DoctorProfile, SessionNote, User
 from ..deps import age_on
 from ..schemas import (
-    CaseDetailOut, DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, ThreadMessageIn, ThreadMessageOut,
+    CaseDetailOut, DoctorAvailabilityIn, DoctorMeOut, MyCaseOut, OfferOut, SessionNoteIn, SessionNoteOut, SignalIn, SignalOut, ThreadMessageIn,
+    ThreadMessageOut,
 )
 from ..services import consult
 
@@ -161,6 +162,11 @@ def close_case(case_id: int, body: SessionNoteIn, doctor: User = Depends(require
     db.add(note)
     case.state = consult.CLOSED
     case.closed_at = datetime.now(timezone.utc)
+    from sqlalchemy import delete
+
+    from ..models import ConsultSignal
+
+    db.execute(delete(ConsultSignal).where(ConsultSignal.case_id == case.id))      # set-up data holds network addresses: gone with the conversation
     db.add(AuditLog(actor_id=doctor.id, action="close_case", target_type="consult", target_id=str(case_id)))
     db.commit()
     db.refresh(note)
@@ -185,4 +191,26 @@ def case_detail(case_id: int, doctor: User = Depends(require_doctor), db: Sessio
     db.add(AuditLog(actor_id=doctor.id, action="view_case_detail", target_type="consult", target_id=str(case_id)))
     db.commit()
     return CaseDetailOut(case_id=case.id, state=case.state, full_name=u.full_name, age=age, is_minor=age < 18, guardian_name=u.guardian_name,
-                         guardian_consent_status=u.guardian_consent_status, phone=u.phone, emergency_contact=u.emergency_contact)
+                         guardian_consent_status=u.guardian_consent_status, phone=u.phone, emergency_contact=u.emergency_contact,
+                         video_used=case.video_used)
+
+
+@router.post("/cases/{case_id}/call", response_model=SignalOut, status_code=status.HTTP_201_CREATED)
+def call_signal(case_id: int, body: SignalIn, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> SignalOut:
+    """Video call set-up from the doctor's side, on a case they own and while it is still open."""
+    case = _my_accepted(db, case_id, doctor)
+    if case.state != consult.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This conversation has ended.")
+    if consult.signals_too_fast(db, case.id, "doctor"):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many call messages. Please wait a moment.")
+    s = consult.add_signal(db, case, "doctor", body.kind, body.payload)
+    if body.kind in ("request", "accept", "end"):
+        db.add(AuditLog(actor_id=doctor.id, action=f"video_{body.kind}", target_type="consult", target_id=str(case.id)))
+        db.commit()
+    return SignalOut(id=s.id, sender_role=s.sender_role, kind=s.kind, payload=s.payload)
+
+
+@router.get("/cases/{case_id}/call", response_model=list[SignalOut])
+def call_poll(case_id: int, after: int = 0, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[SignalOut]:
+    case = _my_accepted(db, case_id, doctor)
+    return [SignalOut(id=s.id, sender_role=s.sender_role, kind=s.kind, payload=s.payload) for s in consult.signals_for(db, case.id, "doctor", after)]

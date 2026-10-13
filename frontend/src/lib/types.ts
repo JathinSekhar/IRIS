@@ -231,11 +231,18 @@ export interface CaseDetail {
   guardian_consent_status: string | null
   phone: string | null
   emergency_contact: string | null
+  video_used: boolean
 }
 export interface SessionNote extends SessionNoteInput {
   case_id: number
   doctor_name: string
   created_at: string
+}
+export interface CallSignal {
+  id: number
+  sender_role: 'user' | 'doctor'
+  kind: 'request' | 'accept' | 'decline' | 'end' | 'offer' | 'answer' | 'ice'
+  payload: Record<string, unknown> | null
 }
 export interface DoctorCase {
   case_id: number
