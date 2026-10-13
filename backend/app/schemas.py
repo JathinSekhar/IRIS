@@ -189,6 +189,19 @@ class SupportReplyOut(BaseModel):
     companion: str | None = None              # an AI-written conversational line, only for ordinary messages; replaces intro+listening when present
 
 
+class DoctorMeOut(BaseModel):
+    full_name: str
+    specialty: str
+    registration_number: str
+    languages: list[str]
+    on_duty: bool
+    on_duty_changed_at: datetime | None = None
+
+
+class DoctorAvailabilityIn(BaseModel):
+    on_duty: bool
+
+
 class MessageOut(BaseModel):
     id: int
     text: str

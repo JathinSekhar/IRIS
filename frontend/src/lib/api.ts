@@ -11,6 +11,7 @@ import type {
   ReviewerMessageSummary,
   UrgentAlerts,
   User,
+  DoctorMe,
 } from './types'
 
 export class ApiError extends Error {
@@ -110,6 +111,8 @@ export const api = {
   reviewerCheckin: (id: number) => request<ReviewerCheckin>(`/api/reviewer/checkins/${id}`),
   sendMessage: (text: string) => post<ChatMessage>('/api/messages', { text }),
   messages: () => request<ChatMessage[]>('/api/messages'),
+  doctorMe: () => request<DoctorMe>('/api/doctor/me'),
+  doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),
   reviewerAlerts: () => request<UrgentAlerts>('/api/reviewer/alerts'),
   reviewerMessages: () => request<ReviewerMessageSummary[]>('/api/reviewer/messages'),
   reviewerMessage: (id: number) => request<ReviewerMessage>(`/api/reviewer/messages/${id}`),

@@ -26,7 +26,7 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     email: Mapped[str] = mapped_column(String(254), index=True)
-    role: Mapped[str] = mapped_column(String(16), default="user")  # user | reviewer. Only the backend can write this.
+    role: Mapped[str] = mapped_column(String(16), default="user")  # user | reviewer | doctor. Only the backend can write this.
 
     full_name: Mapped[str] = mapped_column(String(120))
     date_of_birth: Mapped[date] = mapped_column(Date)
@@ -73,6 +73,25 @@ class CheckIn(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
     user: Mapped[User] = relationship(back_populates="checkins")
+
+
+class DoctorProfile(Base):
+    """A clinician who can be offered cases. The account itself is a `profiles` row with role 'doctor'; this holds what a doctor adds.
+
+    `on_duty` is the doctor's own switch: cases are offered only to doctors who are on duty. The registration number is stored as given and is NOT
+    verified by IRIS; real use needs a verification step outside this app.
+    """
+
+    __tablename__ = "doctor_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True)
+    specialty: Mapped[str] = mapped_column(String(80))
+    registration_number: Mapped[str] = mapped_column(String(64))
+    languages: Mapped[list] = mapped_column(JsonType, default=list)
+    on_duty: Mapped[bool] = mapped_column(Boolean, default=False)
+    on_duty_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[User] = relationship()
 
 
 class AuditLog(Base):

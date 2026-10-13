@@ -17,6 +17,12 @@ from app.services.questionnaire import BY_ID, QUESTIONS, is_visible
 REVIEWER = {"full_name": "Dr. Meera Iyer", "email": "reviewer.demo@example.com", "password": "Demo-Reviewer-2026",
             "date_of_birth": "1985-02-02"}
 
+# A fictional clinician for the sandbox. The registration number is deliberately not a real one.
+DOCTOR = {"full_name": "Dr. Kavya Menon", "email": "doctor.demo@example.com", "password": "Demo-Doctor-2026",
+          "date_of_birth": "1986-04-11"}
+DOCTOR_PROFILE = {"specialty": "Clinical psychology (test account)", "registration_number": "TEST-000000 (not a real registration)",
+                  "languages": ["English", "Hindi", "Malayalam"]}
+
 
 @dataclass(frozen=True)
 class DemoUser:

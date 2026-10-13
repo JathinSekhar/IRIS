@@ -70,6 +70,7 @@ export function useAuth(): AuthState {
 /** Where a signed-in user should land, based on server-computed state. */
 export function homeFor(u: User): string {
   if (u.role === 'reviewer') return '/reviewer'
+  if (u.role === 'doctor') return '/doctor'
   if (!u.consent_accepted) return '/consent'
   if (u.checkin.prompt) return '/check-in'
   return '/'

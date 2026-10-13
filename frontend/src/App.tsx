@@ -13,6 +13,7 @@ const Chat = lazy(() => import('./pages/Chat'))
 const Support = lazy(() => import('./pages/Support'))
 const Home = lazy(() => import('./pages/Home'))
 const Reviewer = lazy(() => import('./pages/Reviewer'))
+const Doctor = lazy(() => import('./pages/Doctor'))
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/support" element={<Support />} />
           <Route path="/reviewer" element={<Reviewer />} />
+          <Route path="/doctor" element={<Doctor />} />
           <Route path="*" element={<Home />} />
         </Route>
       </Routes>

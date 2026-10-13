@@ -77,6 +77,12 @@ def require_reviewer(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def require_doctor(user: User = Depends(get_current_user)) -> User:
+    if user.role != "doctor":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Doctor access required")
+    return user
+
+
 def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 

@@ -75,8 +75,10 @@ export function AppLayout() {
 
   if (user.role === 'reviewer') {
     if (!pathname.startsWith('/reviewer')) return <Navigate to="/reviewer" replace />
+  } else if (user.role === 'doctor') {
+    if (!pathname.startsWith('/doctor')) return <Navigate to="/doctor" replace />
   } else {
-    if (pathname.startsWith('/reviewer')) return <Navigate to="/" replace />
+    if (pathname.startsWith('/reviewer') || pathname.startsWith('/doctor')) return <Navigate to="/" replace />
     if (!user.consent_accepted && pathname !== '/consent') return <Navigate to="/consent" replace />
   }
 
@@ -93,7 +95,7 @@ export function AppLayout() {
           </Link>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-slate-600 sm:inline">
-              {user.role === 'reviewer' ? 'Reviewer · ' : ''}
+              {user.role === 'reviewer' ? 'Reviewer · ' : user.role === 'doctor' ? 'Doctor · ' : ''}
               {user.full_name}
             </span>
             <button

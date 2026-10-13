@@ -43,7 +43,7 @@ export interface User {
   email: string
   full_name: string
   first_name: string
-  role: 'user' | 'reviewer'
+  role: 'user' | 'reviewer' | 'doctor'
   is_minor: boolean
   guardian_consent_status: string | null
   consent_accepted: boolean
@@ -159,6 +159,16 @@ export interface ChatMessage {
   reply: SupportReply
   care_status: CareStatus
   status_text: string
+}
+
+// --- doctor ---------------------------------------------------------------------------------------------------------------------------------
+export interface DoctorMe {
+  full_name: string
+  specialty: string
+  registration_number: string
+  languages: string[]
+  on_duty: boolean
+  on_duty_changed_at: string | null
 }
 
 // --- reviewer: the human review queue for messages ---------------------------------------------------------------------------------------------
