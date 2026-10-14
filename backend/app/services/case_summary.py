@@ -102,7 +102,7 @@ SYSTEM_PROMPT = (
     "You help a clinician prepare to speak with a person who asked for a doctor. Summarise ONLY what is in the material, in 4 to 6 short plain sentences "
     "(at most 120 words). State the main concerns the person wrote about, how long or how often they mention them if said, and anything that sounds like "
     "risk, using the person's own words where useful. Say 'not stated' for anything unknown. "
-    "Do not diagnose, do not give advice or a plan, do not guess at causes, do not reassure. Never write that there are no risks, no concerns or "
+    "Do not diagnose, do not give advice or a plan, do not guess at causes, do not reassure. Do not mention scores or questionnaires. Never write that there are no risks, no concerns or "
     "nothing else to worry about: the material may be incomplete, so only report what was written. No headings, lists or emojis."
 )
 
@@ -110,20 +110,18 @@ SYSTEM_PROMPT = (
 def payload_text(db: Session, case: ConsultCase) -> str:
     """The only text that leaves this server for the AI draft: no name, phone, email or address."""
     u = case.user
-    ck = _latest_checkin(db, u.id)
-    scores = (ck.scores if ck else None) or {}
     age = age_on(u.date_of_birth)
+    # The check-in scores are deliberately NOT sent: the doctor sees them in the tiles beside this paragraph, and a model given "low scores" tends to
+    # reassure. Less data leaves the server and the paragraph stays about what the person actually wrote.
     lines = [f"Person: age {age}" + (f", {u.gender}" if u.gender else "") + (f", {u.occupation}" if u.occupation else "") + "."]
-    if ck:
-        lines.append(f"Check-in: baseline {ck.baseline_risk}; PHQ-9 {(scores.get('phq9') or {}).get('score')}; GAD-7 {(scores.get('gad7') or {}).get('score')}; "
-                     f"safety flag {'yes' if ck.safety_flag else 'no'}.")
     lines.append("Messages the person wrote to a support chat, oldest first:")
     lines += [f"- {m.text.strip()}" for m in _messages(db, u.id)]
     return "\n".join(lines)
 
 
 _REASSURING = re.compile(
-    r"\bno\s+(?:other\s+|further\s+|additional\s+|significant\s+)?(?:risks?|concerns?|risk\s+factors?|safety\s+concerns?|warning\s+signs?)\b"
+    r"\bno\s+(?:\w+\s+){0,2}(?:risks?|concerns?|risk\s+factors?|flags?|warning\s+signs?|red\s+flags?)\b"
+    r"|\bscores?\s+(?:are|is|were|was)\s+(?:low|minimal|normal|fine)\b"
     r"|\bnothing\s+else\b|\bnot\s+(?:a\s+)?(?:concern|risk)\b|^not\s+stated\.?$",
     re.IGNORECASE,
 )

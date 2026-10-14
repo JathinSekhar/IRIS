@@ -182,3 +182,13 @@ def test_reassuring_filler_is_removed_from_the_ai_draft():
            "Not stated. They are worried about exams.")
     assert case_summary.scrub(raw) == "The person reports poor sleep and feeling like a burden for two weeks. They are worried about exams."
     assert case_summary.scrub("Nothing else is reported. No safety concerns were flagged.") == ""
+
+
+def test_the_scores_are_not_sent_to_the_ai_and_more_reassuring_phrasings_are_dropped(env):
+    with TestClient(app) as c:
+        case_id = accepted_case(c, env, share_ai=True)
+    with env() as s:
+        text = case_summary.payload_text(s, s.get(ConsultCase, case_id))
+    assert "PHQ" not in text and "GAD" not in text and "baseline" not in text.lower()
+    raw = "They cannot sleep before exams. Their scores are low and there is no safety flag. They feel like a burden."
+    assert case_summary.scrub(raw) == "They cannot sleep before exams. They feel like a burden."

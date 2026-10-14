@@ -22,12 +22,17 @@ function Chip({ children }: { children: ReactNode }) {
   return <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{children}</span>
 }
 
-function Tile({ label, value, sub, subClass }: { label: string; value: ReactNode; sub?: string; subClass?: string }) {
+/** A score in plain words first (how they are doing), with the name of the questionnaire as small print for the clinician. */
+function Tile({ title, level, levelClass, score, outOf, scale }: { title: string; level: string; levelClass?: string; score: number | null; outOf: number; scale: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
-      {sub && <p className={cx('text-xs font-medium capitalize', subClass)}>{sub}</p>}
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+      <p className={cx('mt-1.5 text-lg font-semibold capitalize leading-6', levelClass ?? 'text-slate-900')}>{level || 'Not available'}</p>
+      {score !== null && (
+        <p className="mt-0.5 text-xs text-slate-500">
+          {score} out of {outOf} · {scale}
+        </p>
+      )}
     </div>
   )
 }
@@ -65,13 +70,14 @@ export default function CaseSummaryCard({ s }: { s: CaseSummary }) {
           <>
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Baseline</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Overall</p>
                 <span className={cx('mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-sm font-semibold capitalize ring-1 ring-inset', RISK[ck.baseline_risk] ?? RISK.unknown)}>
                   {ck.baseline_risk}
                 </span>
+                <p className="mt-1.5 text-xs text-slate-500">from the check-in</p>
               </div>
-              <Tile label="PHQ-9" value={ck.phq9 ?? 'n/a'} sub={bandLabel(ck.phq9_band)} subClass={BAND[ck.phq9_band ?? '']} />
-              <Tile label="GAD-7" value={ck.gad7 ?? 'n/a'} sub={bandLabel(ck.gad7_band)} subClass={BAND[ck.gad7_band ?? '']} />
+              <Tile title="Low mood" level={bandLabel(ck.phq9_band)} levelClass={BAND[ck.phq9_band ?? '']} score={ck.phq9} outOf={27} scale="PHQ-9" />
+              <Tile title="Anxiety" level={bandLabel(ck.gad7_band)} levelClass={BAND[ck.gad7_band ?? '']} score={ck.gad7} outOf={21} scale="GAD-7" />
             </div>
             {(ck.safety_flag || ck.urgency_floor === 'medium' || ck.urgency_floor === 'high') && (
               <p className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
