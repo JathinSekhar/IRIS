@@ -73,7 +73,7 @@ def test_the_rules_based_summary_shows_profile_checkin_and_chat_and_is_audited(e
         assert s["profile"]["first_name"] == "Ananya" and s["checkin"]["baseline_risk"] == "low" and s["checkin"]["phq9"] is not None
         assert "2 recent messages" in text and "1 explicit" in text and "study or exam pressure" in text
         assert [m["text"] for m in s["recent_messages"]] == [CALM, SELF_HARM]
-        assert s["ai_allowed"] is False and s["ai_overview"] is None
+        assert s["ai_allowed"] is False and s["ai_summary"] is None
         assert "phone" not in str(s).lower() and "@" not in str(s)
     with env() as s_:
         assert "view_summary" in [a.action for a in s_.scalars(select(AuditLog))]
@@ -89,10 +89,7 @@ def test_another_doctor_and_the_patient_cannot_read_the_summary(env):
         assert c.get(f"/api/doctor/cases/{case_id}/summary").status_code == 403
 
 
-OVERVIEW = '{"concerns": ["cannot sleep before exams"], "how_long": "two weeks", "quote": null, "worrying_phrases": []}'
-
-
-def _ai_on(monkeypatch, text=OVERVIEW):
+def _ai_on(monkeypatch, text="Sleeps badly and feels like a burden; no plan stated."):
     monkeypatch.setattr(settings, "llm_enabled", True)
     monkeypatch.setattr(settings, "groq_api_key", "test-key-not-real")
     calls = []
@@ -116,8 +113,7 @@ def test_the_ai_draft_is_prepared_automatically_when_the_person_agreed(env, monk
     with TestClient(app) as c:
         case_id = accepted_case(c, env, started=False, share_ai=True)          # accepting starts the draft in the background
         out = c.get(f"/api/doctor/cases/{case_id}/summary").json()
-        assert out["ai_overview"]["concerns"] == ["cannot sleep before exams"] and out["ai_overview"]["how_long"] == "two weeks"
-        assert out["ai_allowed"] is True and out["ai_pending"] is False
+        assert out["ai_summary"].startswith("Sleeps badly") and out["ai_allowed"] is True and out["ai_pending"] is False
         assert out["ai_disclosure"].startswith("AI-assisted draft")
     assert calls == [case_id]                                                    # once, not once per page view
     with env() as s:
@@ -129,7 +125,7 @@ def test_nothing_is_sent_to_the_ai_without_the_persons_agreement(env, monkeypatc
     with TestClient(app) as c:
         case_id = accepted_case(c, env, share_ai=False)
         out = c.get(f"/api/doctor/cases/{case_id}/summary").json()
-        assert out["ai_allowed"] is False and out["ai_overview"] is None and out["ai_pending"] is False
+        assert out["ai_allowed"] is False and out["ai_summary"] is None and out["ai_pending"] is False
     assert calls == []
 
 
@@ -141,7 +137,7 @@ def test_an_ai_failure_leaves_the_rules_based_summary_and_stops_after_a_few_trie
         case_id = accepted_case(c, env, started=False, share_ai=True)
         for _ in range(6):
             r = c.get(f"/api/doctor/cases/{case_id}/summary")
-            assert r.status_code == 200 and r.json()["bullets"] and r.json()["ai_overview"] is None
+            assert r.status_code == 200 and r.json()["bullets"] and r.json()["ai_summary"] is None
         assert r.json()["ai_pending"] is False                                   # gave up: the page stops asking
     assert len(calls) == case_summary.MAX_ATTEMPTS
     with env() as s:
@@ -160,9 +156,7 @@ def test_only_the_minimum_is_sent_to_the_ai(env):
     assert CALM in text and "age" in text
 
 
-def test_the_model_reply_must_be_json_and_quotes_must_really_be_in_the_messages(monkeypatch):
-    import json
-
+def test_the_ai_output_check_rejects_empty_and_long_text(monkeypatch):
     class R:
         def __init__(self, content):
             self._c = content
@@ -173,37 +167,14 @@ def test_the_model_reply_must_be_json_and_quotes_must_really_be_in_the_messages(
         def json(self):
             return {"choices": [{"message": {"content": self._c}}]}
 
-    sources = ["I have exams next week and I cannot sleep.", "I keep thinking I am a burden to my roommate, it has been two weeks."]
     monkeypatch.setattr(settings, "llm_enabled", True)
     monkeypatch.setattr(settings, "groq_api_key", "test-key-not-real")
     monkeypatch.setattr(case_summary, "payload_text", lambda db, case: "x")
-    monkeypatch.setattr(case_summary, "_source", lambda db, case: sources)
-    for content in ("", "Just a paragraph, not JSON.", "{broken json"):
+    for content in ("", "word " * 400):
         monkeypatch.setattr(case_summary.httpx, "post", lambda *a, _c=content, **k: R(_c))
         assert case_summary.draft_ai(None, None) is None
-    reply = {"concerns": ["cannot sleep before exams", "feels like a burden", "no other concerns"], "how_long": "two weeks",
-             "quote": "I keep thinking I am a burden to my roommate", "worrying_phrases": ["I am a burden", "I want to die"]}
-    monkeypatch.setattr(case_summary.httpx, "post", lambda *a, **k: R("Here you go: " + json.dumps(reply)))
-    out = json.loads(case_summary.draft_ai(None, None))
-    assert out["concerns"] == ["cannot sleep before exams", "feels like a burden"]          # the reassuring item is dropped
-    assert out["quote"] == "I keep thinking I am a burden to my roommate"                    # really in the messages
-    assert out["worrying_phrases"] == ["I am a burden"]                                       # an invented phrase is dropped
-
-
-def test_an_old_free_text_summary_is_replaced_by_the_structured_one(env, monkeypatch):
-    calls = _ai_on(monkeypatch)
-    with TestClient(app) as c:
-        case_id = accepted_case(c, env, started=False, share_ai=False)
-        with env() as s:
-            case = s.get(ConsultCase, case_id)
-            case.ai_summary_consent = True
-            case.ai_summary = "An old paragraph from before."
-            s.commit()
-        first = c.get(f"/api/doctor/cases/{case_id}/summary").json()
-        assert first["ai_overview"] is None and first["ai_pending"] is True          # the old paragraph is not shown; a new overview is on its way
-        out = c.get(f"/api/doctor/cases/{case_id}/summary").json()                   # the page checks again, as it does every few seconds
-        assert out["ai_overview"]["concerns"] == ["cannot sleep before exams"]
-    assert calls == [case_id]
+    monkeypatch.setattr(case_summary.httpx, "post", lambda *a, **k: R("Short factual summary."))
+    assert case_summary.draft_ai(None, None) == "Short factual summary."
 
 
 def test_reassuring_filler_is_removed_from_the_ai_draft():

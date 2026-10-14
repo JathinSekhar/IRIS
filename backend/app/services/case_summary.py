@@ -19,7 +19,7 @@ from ..deps import age_on
 from ..models import CheckIn, ConsultCase, Message
 from . import triage
 
-AI_DISCLOSURE = "AI-assisted draft. It can miss or misread things: check it against what the person wrote."
+AI_DISCLOSURE = "AI-assisted draft. It can miss or misread things: check it against the messages below."
 HISTORY = 12
 
 LANGUAGE_NAME = {"en": "English", "hi": "Hindi", "ml": "Malayalam", "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "bn": "Bengali", "mr": "Marathi",
@@ -99,13 +99,11 @@ def build(db: Session, case: ConsultCase) -> dict:
 
 
 SYSTEM_PROMPT = (
-    "You help a clinician prepare to speak with a person who asked for a doctor. Read ONLY the material and reply with ONE JSON object, nothing else:\n"
-    '{"concerns": [..], "how_long": ".." or null, "quote": ".." or null, "worrying_phrases": [..]}\n'
-    "concerns: up to 4 short plain phrases (3 to 8 words each) naming what the person wrote about, e.g. \"cannot sleep before exams\".\n"
-    "how_long: how long or how often, only if the person said it (e.g. \"two weeks\"), otherwise null.\n"
-    "quote: one sentence copied EXACTLY from the person's messages that best shows how they feel, otherwise null.\n"
-    "worrying_phrases: words copied EXACTLY from the messages that sound like hopelessness, self-harm or not wanting to live; [] if none.\n"
-    "Never diagnose, advise, guess causes or reassure. Never say there is no risk or nothing else. Do not mention scores or questionnaires."
+    "You help a clinician prepare to speak with a person who asked for a doctor. Summarise ONLY what is in the material, in 4 to 6 short plain sentences "
+    "(at most 120 words). State the main concerns the person wrote about, how long or how often they mention them if said, and anything that sounds like "
+    "risk, using the person's own words where useful. Say 'not stated' for anything unknown. "
+    "Do not diagnose, do not give advice or a plan, do not guess at causes, do not reassure. Do not mention scores or questionnaires. Never write that there are no risks, no concerns or "
+    "nothing else to worry about: the material may be incomplete, so only report what was written. No headings, lists or emojis."
 )
 
 
@@ -136,86 +134,24 @@ def scrub(text: str) -> str:
     return " ".join(x for x in sentences if x and not _REASSURING.search(x.strip())).strip()
 
 
-def _source(db: Session, case: ConsultCase) -> list[str]:
-    """The person's own message texts: what every quoted phrase must really come from."""
-    return [m.text.strip() for m in _messages(db, case.user.id)]
-
-
-def _norm(t: str) -> str:
-    return " ".join(re.sub(r"[\u2018\u2019]", "'", re.sub(r"[\u201c\u201d]", '"', t)).lower().split())
-
-
-def validate(raw: dict, sources: list[str]) -> dict | None:
-    """Keep only what is safe to show: short concern phrases with no reassurance, and quotes that really appear in the person's messages."""
-    if not isinstance(raw, dict):
-        return None
-    hay = _norm(" \n ".join(sources))
-
-    def short(x, limit):
-        return isinstance(x, str) and 0 < len(x.strip()) <= limit and not _REASSURING.search(x) and not re.search(r"[\U0001F000-\U0001FFFF]", x)
-
-    def verbatim(x):
-        return isinstance(x, str) and 3 <= len(x.strip()) <= 300 and _norm(x.strip(' "\u201c\u201d')) in hay
-
-    concerns = [c.strip().rstrip(".") for c in (raw.get("concerns") or []) if short(c, 80)][:4]
-    how_long = raw.get("how_long") if short(raw.get("how_long"), 60) else None
-    quote = raw.get("quote").strip(' "\u201c\u201d') if verbatim(raw.get("quote")) else None
-    phrases = []
-    for ph in raw.get("worrying_phrases") or []:
-        if verbatim(ph) and ph.strip(' "\u201c\u201d') not in phrases:
-            phrases.append(ph.strip(' "\u201c\u201d'))
-    if not concerns and not quote:
-        return None
-    return {"concerns": concerns, "how_long": how_long.strip() if how_long else None, "quote": quote, "worrying_phrases": phrases[:4]}
-
-
-def parse_overview(stored: str | None) -> dict | None:
-    """The stored overview, or None if there is none or it is in an older free-text format (it is then prepared again)."""
-    import json
-
-    if not stored:
-        return None
-    try:
-        data = json.loads(stored)
-    except ValueError:
-        return None
-    return data if isinstance(data, dict) and "concerns" in data else None
-
-
-def _extract_json(text: str) -> dict | None:
-    import json
-
-    m = re.search(r"\{.*\}", text or "", re.DOTALL)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group(0))
-    except ValueError:
-        return None
-
-
 def draft_ai(db: Session, case: ConsultCase) -> str | None:
-    """Ask the model for the structured overview and return it as validated JSON text, or None. Every quote is checked against the real messages."""
-    import json
-
     if not (settings.llm_enabled and settings.groq_api_key):
         return None
     try:
         r = httpx.post(
             f"{settings.groq_base_url}/chat/completions",
             headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-            json={"model": settings.groq_model, "temperature": 0.1, "max_tokens": 900, "reasoning_effort": "low",
+            json={"model": settings.groq_model, "temperature": 0.2, "max_tokens": 700, "reasoning_effort": "low",
                   "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": payload_text(db, case)}]},
             timeout=max(settings.llm_timeout_seconds, 12.0),
         )
         r.raise_for_status()
-        raw = _extract_json(r.json()["choices"][0]["message"]["content"] or "")
-    except Exception:                                                    # noqa: BLE001 - any failure means "no AI overview"
+        text = " ".join((r.json()["choices"][0]["message"]["content"] or "").split()).strip()
+    except Exception:                                                    # noqa: BLE001 - any failure means "no AI draft"
         return None
-    if raw is None:
+    if not text or len(text) > 1200 or re.search(r"[\U0001F000-\U0001FFFF]", text):
         return None
-    ok = validate(raw, _source(db, case))
-    return json.dumps(ok) if ok else None
+    return scrub(text) or None
 
 
 MAX_ATTEMPTS = 3
@@ -230,7 +166,7 @@ def wants_draft(case: ConsultCase) -> bool:
     """True when a draft should be prepared now: the person agreed, the model is configured, there is none yet, and we have not tried too often."""
     from datetime import datetime, timezone
 
-    if not (case.ai_summary_consent and available()) or parse_overview(case.ai_summary):
+    if not (case.ai_summary_consent and available()) or case.ai_summary:
         return False
     if (case.ai_summary_attempts or 0) >= MAX_ATTEMPTS:
         return False
@@ -242,7 +178,7 @@ def wants_draft(case: ConsultCase) -> bool:
 
 
 def is_pending(case: ConsultCase) -> bool:
-    return bool(case.ai_summary_consent and available() and not parse_overview(case.ai_summary) and (case.ai_summary_attempts or 0) < MAX_ATTEMPTS)
+    return bool(case.ai_summary_consent and available() and not case.ai_summary and (case.ai_summary_attempts or 0) < MAX_ATTEMPTS)
 
 
 def mark_attempt(db: Session, case: ConsultCase) -> None:
@@ -263,7 +199,7 @@ def run_in_background(bind, case_id: int) -> None:
 
     with sessionmaker(bind=bind, expire_on_commit=False)() as db:
         case = db.get(ConsultCase, case_id)
-        if case is None or parse_overview(case.ai_summary) or not case.ai_summary_consent:
+        if case is None or case.ai_summary or not case.ai_summary_consent:
             return
         text = draft_ai(db, case)
         actor = case.accepted_by or case.user_id

@@ -365,13 +365,6 @@ class SummaryChatOut(BaseModel):
     latest: str | None = None
 
 
-class AiOverviewOut(BaseModel):
-    concerns: list[str] = []
-    how_long: str | None = None
-    quote: str | None = None                  # checked: copied exactly from the person's own messages
-    worrying_phrases: list[str] = []          # checked the same way
-
-
 class CaseSummaryOut(BaseModel):
     """What the doctor sees before starting. The bullets are built by plain rules from the profile, the check-in and the chat; the AI draft is separate,
     optional, needs the person's agreement, and is always shown as a draft to be checked against the messages."""
@@ -384,7 +377,7 @@ class CaseSummaryOut(BaseModel):
     ai_allowed: bool
     ai_available: bool
     ai_pending: bool = False                  # a draft is being prepared; the page checks again in a few seconds
-    ai_overview: AiOverviewOut | None = None
+    ai_summary: str | None = None
     ai_summary_at: datetime | None = None
     ai_disclosure: str
 

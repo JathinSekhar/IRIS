@@ -37,15 +37,6 @@ function Tile({ title, level, levelClass, score, outOf, scale }: { title: string
   )
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-1 text-sm text-slate-800 sm:grid-cols-[140px_1fr] sm:gap-3">
-      <span className="text-slate-500">{label}</span>
-      <div>{children}</div>
-    </div>
-  )
-}
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-2">
@@ -127,42 +118,15 @@ export default function CaseSummaryCard({ s }: { s: CaseSummary }) {
         )}
       </Section>
 
-      {(s.ai_overview || s.ai_pending) && (
+      {(s.ai_summary || (s.ai_pending && !s.ai_summary)) && (
         <Section title="Overview">
-          {s.ai_overview ? (
-            <div className="space-y-3">
-              <Row label="Main concerns">
-                {s.ai_overview.concerns.length > 0 ? (
-                  <ul className="list-disc space-y-0.5 pl-5">
-                    {s.ai_overview.concerns.map((c) => (
-                      <li key={c} className="first-letter:uppercase">{c}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="text-slate-500">Not clear from the messages</span>
-                )}
-              </Row>
-              <Row label="How long">{s.ai_overview.how_long ?? <span className="text-slate-500">Not said</span>}</Row>
-              {s.ai_overview.quote && s.ai_overview.quote.trim() !== (chat.latest ?? '').trim() && (
-                <Row label="In their words">
-                  <span className="italic">{'\u201c'}{s.ai_overview.quote}{'\u201d'}</span>
-                </Row>
-              )}
-              {s.ai_overview.worrying_phrases.length > 0 && (
-                <Row label="Worrying phrases">
-                  <div className="flex flex-wrap gap-1.5">
-                    {s.ai_overview.worrying_phrases.map((w) => (
-                      <span key={w} className="inline-flex rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-800 ring-1 ring-inset ring-red-200">
-                        {w}
-                      </span>
-                    ))}
-                  </div>
-                </Row>
-              )}
+          {s.ai_summary ? (
+            <>
+              <p className="text-sm leading-6 text-slate-800">{s.ai_summary}</p>
               <p className="text-xs text-slate-500">{s.ai_disclosure}</p>
-            </div>
+            </>
           ) : (
-            <p className="text-sm text-slate-500">A short overview is being prepared…</p>
+            <p className="text-sm text-slate-500">A short written overview is being prepared…</p>
           )}
         </Section>
       )}
