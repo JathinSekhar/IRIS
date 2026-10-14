@@ -262,7 +262,7 @@ export interface CaseSummary {
   ai_allowed: boolean
   ai_available: boolean
   ai_pending: boolean
-  ai_summary: string | null
+  ai_overview: { concerns: string[]; how_long: string | null; quote: string | null; worrying_phrases: string[] } | null
   ai_summary_at: string | null
   ai_disclosure: string
 }

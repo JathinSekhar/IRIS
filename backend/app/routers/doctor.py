@@ -242,7 +242,8 @@ def _summary_out(db: Session, case: ConsultCase) -> CaseSummaryOut:
 
     s = case_summary.build(db, case)
     return CaseSummaryOut(**s, ai_allowed=case.ai_summary_consent, ai_available=case_summary.available(), ai_pending=case_summary.is_pending(case),
-                          ai_summary=case.ai_summary, ai_summary_at=case.ai_summary_at, ai_disclosure=case_summary.AI_DISCLOSURE)
+                          ai_overview=case_summary.parse_overview(case.ai_summary), ai_summary_at=case.ai_summary_at,
+                          ai_disclosure=case_summary.AI_DISCLOSURE)
 
 
 @router.get("/cases/{case_id}/summary", response_model=CaseSummaryOut)
