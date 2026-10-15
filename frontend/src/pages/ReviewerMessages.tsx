@@ -126,6 +126,33 @@ export default function ReviewerMessages({ refreshKey = 0 }: { refreshKey?: numb
   )
 }
 
+/** Suggest a doctor to the person. Only an offer: they decide, and nothing is shared unless they say yes. */
+function OfferDoctor({ messageId }: { messageId: number }) {
+  const [state, setState] = useState<'' | 'busy' | 'done' | 'live' | 'error'>('')
+  async function go() {
+    setState('busy')
+    try {
+      await api.reviewerOfferDoctor(messageId)
+      setState('done')
+    } catch (e) {
+      setState(e instanceof ApiError && e.status === 409 ? 'live' : 'error')
+    }
+  }
+  return (
+    <section aria-label="Offer a doctor" className="rounded-xl border border-slate-200 p-4">
+      <h3 className="text-sm font-medium text-slate-900">Offer a doctor</h3>
+      <p className="mt-0.5 text-xs text-slate-500">The person sees an offer and decides. Nothing is shared with a doctor unless they agree.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button variant="secondary" loading={state === 'busy'} disabled={state === 'busy' || state === 'done'} onClick={() => void go()}>
+          {state === 'done' ? 'Offer sent' : 'Offer a doctor'}
+        </Button>
+        {state === 'live' && <span className="text-sm text-slate-600">This person already has a doctor request.</span>}
+        {state === 'error' && <span className="text-sm text-red-700">That did not work. Please try again.</span>}
+      </div>
+    </section>
+  )
+}
+
 function MessageDetail({ m, onChange }: { m: ReviewerMessage; onChange: (d: ReviewerMessage) => void }) {
   const [to, setTo] = useState<'medium' | 'high'>(m.priority === 'medium' ? 'high' : 'medium')
   const [reason, setReason] = useState('')
@@ -225,6 +252,8 @@ function MessageDetail({ m, onChange }: { m: ReviewerMessage; onChange: (d: Revi
       {pending && (
         <div className="mt-6 grid gap-6 border-t border-slate-200 pt-6">
           {err && <Alert>{err}</Alert>}
+
+          <OfferDoctor messageId={m.id} />
 
           {m.priority !== 'high' && (
             <section aria-label="Raise priority">

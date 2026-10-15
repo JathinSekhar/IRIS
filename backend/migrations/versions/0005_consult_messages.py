@@ -26,8 +26,10 @@ def upgrade() -> None:
         sa.Column("sender_role", sa.String(8), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("urgent", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("flag", sa.String(8)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("sender_role in ('user', 'doctor')", name="consult_messages_role_check"),
+        sa.CheckConstraint("flag is null or flag in ('worrying', 'urgent')", name="consult_messages_flag_check"),
         sa.CheckConstraint("char_length(text) <= 2000", name="consult_messages_text_length_check"),
     )
     op.create_index("ix_consult_messages_case_id", "consult_messages", ["case_id"])

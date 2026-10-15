@@ -115,6 +115,8 @@ class ConsultCase(Base):
     video_used: Mapped[bool] = mapped_column(Boolean, default=False)         # a video call was accepted during this case
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)    # the doctor began the conversation
     # Optional, separate agreement: an AI tool may draft a short summary for the doctor. Nothing is sent to it without this.
+    urgent: Mapped[bool] = mapped_column(Boolean, default=False, index=True)   # urgent message or High check-in: doctors see it first
+    reason: Mapped[str | None] = mapped_column(String(16), nullable=True)       # urgent_message | high_checkin | reviewer | None (person asked)
     ai_summary_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_summary_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -150,7 +152,27 @@ class ConsultMessage(Base):
     sender_role: Mapped[str] = mapped_column(String(8))                     # user | doctor
     text: Mapped[str] = mapped_column(Text)
     urgent: Mapped[bool] = mapped_column(Boolean, default=False)
+    flag: Mapped[str | None] = mapped_column(String(8), nullable=True)          # worrying | urgent (explicit) | None; only the doctor sees it
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class DoctorOffer(Base):
+    """IRIS (or a reviewer) offering the person a doctor. Only an offer: nothing is shared and no case exists until the person says yes.
+
+    reason: urgent_message (an explicit message in the chat) | high_checkin (their safety answers set a High floor) | reviewer (a reviewer suggested it).
+    resolution: accepted | dismissed, set when the person answers. An unresolved offer is shown until they do.
+    """
+
+    __tablename__ = "doctor_offers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    reason: Mapped[str] = mapped_column(String(16))
+    message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
 
 class ConsultSignal(Base):

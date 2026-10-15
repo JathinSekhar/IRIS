@@ -245,8 +245,15 @@ export default function Reviewer() {
   const { alerts, refreshKey } = useUrgentAlerts()
   const tabs = [['checkins', 'Check-ins'], ['messages', 'Messages']] as const
   const unopened = alerts?.urgent_unopened ?? 0
+  const doctorWaiting = alerts?.doctor_requests_waiting ?? 0
   return (
     <div>
+      {doctorWaiting > 0 && (
+        <div role="status" className="mb-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-900">
+          <ShieldAlert className="size-5 shrink-0" aria-hidden />
+          {doctorWaiting} urgent doctor request{doctorWaiting > 1 ? 's' : ''} waiting for a doctor to accept
+        </div>
+      )}
       {unopened > 0 && (
         <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
           <span className="flex items-center gap-2 font-medium">

@@ -54,6 +54,7 @@ export interface CheckinResult {
   skipped: boolean
   safety_flag: boolean
   show_crisis_resources: boolean
+  offer_doctor: boolean
   created_at: string
 }
 
@@ -171,6 +172,12 @@ export interface DoctorMe {
   on_duty_changed_at: string | null
 }
 
+export interface DoctorOfferPrompt {
+  id: number
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer'
+  title: string
+  body: string
+}
 export interface Consult {
   id: number
   state: 'open' | 'accepted' | 'in_session' | 'closed' | 'cancelled'
@@ -187,6 +194,7 @@ export interface DoctorOffer {
   created_at: string
   source: string
   urgent: boolean
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
   priority: 'low' | 'medium' | 'high' | null
   is_minor: boolean
   recent_messages: { text: string; created_at: string }[]
@@ -199,6 +207,7 @@ export interface ThreadMessage {
   text: string
   created_at: string
   urgent: boolean
+  flag?: 'worrying' | 'urgent' | null
 }
 export type YesNo = 'yes' | 'no' | 'not_assessed'
 export interface SessionNoteInput {
@@ -292,6 +301,7 @@ export interface UrgentAlerts {
   urgent_unopened: number
   oldest_unopened_seconds: number | null
   latest_urgent_id: number | null
+  doctor_requests_waiting: number
 }
 export interface ReviewEvent {
   id: number

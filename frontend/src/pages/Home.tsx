@@ -1,6 +1,7 @@
 import { CalendarClock, ClipboardCheck, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Card } from '../components/ui'
 
 const fmt = (iso: string | null) =>
@@ -16,6 +17,8 @@ export default function Home() {
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-3xl font-medium text-slate-900">Hi {user.first_name}</h1>
       <p className="mt-2 text-slate-600">This is your private space. Take your time.</p>
+
+      <DoctorOfferCard className="mt-6" />
 
       <Card className="mt-8 flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>

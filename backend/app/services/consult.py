@@ -111,8 +111,11 @@ def add_message(db: Session, case: ConsultCase, sender: User, role: str, text: s
     """Store one message. A person's line is scanned by the rule layer so the doctor sees a flag on a worrying one; a doctor's is stored as written."""
     from . import triage
 
-    urgent = role == "user" and triage.run(text, "none")[0].rule_level != "none"
-    m = ConsultMessage(case_id=case.id, sender_id=sender.id, sender_role=role, text=text, urgent=urgent)
+    flag = None
+    if role == "user":
+        r = triage.run(text, "none")[0]
+        flag = "urgent" if r.message_urgent else ("worrying" if r.rule_level != "none" else None)
+    m = ConsultMessage(case_id=case.id, sender_id=sender.id, sender_role=role, text=text, urgent=flag is not None, flag=flag)
     db.add(m)
     db.commit()
     db.refresh(m)
@@ -165,3 +168,70 @@ def signals_too_fast(db: Session, case_id: int, role: str) -> bool:
     n = db.scalar(select(func.count()).select_from(ConsultSignal).where(
         ConsultSignal.case_id == case_id, ConsultSignal.sender_role == role, ConsultSignal.created_at > since))
     return (n or 0) >= SIGNAL_RATE_PER_MINUTE
+
+
+# ---- offering a doctor (step 6) ------------------------------------------------------------------------------------------------------------------
+# The person always chooses. These lines never promise a doctor or a time; a test checks them.
+OFFER_TEXT = {
+    "urgent_message": ("Would you like to talk to a doctor now?",
+                       "A doctor on the IRIS team can talk with you here. They may not be able to answer straight away, so the numbers above are still "
+                       "the quickest way to reach someone."),
+    "high_checkin": ("Would you like to talk to a doctor?",
+                     "From your check-in answers, it may help to talk with a doctor on the IRIS team. They may not be able to answer straight away, "
+                     "and the helplines are always there."),
+    "reviewer": ("Would you like to talk to a doctor?",
+                 "Someone on our team who read your messages thinks it may help to talk with a doctor. It is your choice, and they may not be able "
+                 "to answer straight away."),
+}
+URGENT_REASONS = ("urgent_message", "high_checkin")
+
+
+def open_offer(db: Session, user_id):
+    from ..models import DoctorOffer
+
+    return db.scalar(select(DoctorOffer).where(DoctorOffer.user_id == user_id, DoctorOffer.resolved_at.is_(None)).order_by(DoctorOffer.id.desc()))
+
+
+def make_offer(db: Session, user_id, reason: str, message_id: int | None = None, created_by=None):
+    """Create an offer unless the person already has a live doctor request or an unanswered offer. Returns the offer that is now showing, or None."""
+    from ..models import AuditLog, DoctorOffer
+
+    if live_case(db, user_id) is not None:
+        return None
+    existing = open_offer(db, user_id)
+    if existing is not None:
+        return existing
+    o = DoctorOffer(user_id=user_id, reason=reason, message_id=message_id, created_by=created_by)
+    db.add(o)
+    db.add(AuditLog(actor_id=created_by or user_id, action=f"offer_doctor_{reason}", target_type="user", target_id=str(user_id)))
+    db.commit()
+    db.refresh(o)
+    return o
+
+
+def resolve_offers(db: Session, user_id, resolution: str) -> None:
+    from ..models import DoctorOffer
+
+    now = datetime.now(timezone.utc)
+    for o in db.scalars(select(DoctorOffer).where(DoctorOffer.user_id == user_id, DoctorOffer.resolved_at.is_(None))).all():
+        o.resolved_at, o.resolution = now, resolution
+    db.commit()
+
+
+def urgent_reason_for(db: Session, user_id) -> str | None:
+    """Why a request from this person should be marked urgent: an explicit message in the last day, or a High floor from their latest check-in."""
+    from datetime import timedelta
+
+    from ..models import Prediction
+
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    explicit = db.scalar(
+        select(Message.id).join(Prediction, Prediction.message_id == Message.id)
+        .where(Message.user_id == user_id, Message.created_at > since, Prediction.message_urgent.is_(True)).limit(1)
+    )
+    if explicit is not None:
+        return "urgent_message"
+    latest = db.scalar(select(CheckIn).where(CheckIn.user_id == user_id, CheckIn.skipped.is_(False)).order_by(CheckIn.created_at.desc(), CheckIn.id.desc()))
+    if latest is not None and ((latest.scores or {}).get("safety") or {}).get("urgency_floor") == "high":
+        return "high_checkin"
+    return None

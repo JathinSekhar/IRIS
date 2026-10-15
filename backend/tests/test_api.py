@@ -224,7 +224,8 @@ def test_submit_returns_no_scores_to_user(client):
     r = client.post("/api/checkin", json={"answers": {"m1": 3, "m2": 3, "s0": 0}})
     assert r.status_code == 201
     body = r.json()
-    assert set(body) == {"id", "skipped", "safety_flag", "show_crisis_resources", "created_at"}
+    assert set(body) == {"id", "skipped", "safety_flag", "show_crisis_resources", "offer_doctor", "created_at"}   # offer_doctor is a yes/no, not a score
+    assert body["offer_doctor"] is False
     assert body["show_crisis_resources"] is False
     assert client.get("/api/auth/me").json()["checkin"]["state"] == "ok"
 
@@ -298,7 +299,7 @@ def test_reviewer_endpoints_are_role_protected_and_audited(client, session_facto
     assert client.get("/api/reviewer/checkins/9999").status_code == 404  # unknown ids are not logged as views
 
     with session_factory() as s:
-        rows = list(s.scalars(select(AuditLog).order_by(AuditLog.id)))
+        rows = list(s.scalars(select(AuditLog).where(AuditLog.actor_id == reviewer_id).order_by(AuditLog.id)))   # the reviewer's own actions
     assert [(a.action, a.target_id) for a in rows] == [
         ("list_queue", "1 rows"),
         ("view_checkin", str(queue[0]["id"])),  # which record was opened, by whom

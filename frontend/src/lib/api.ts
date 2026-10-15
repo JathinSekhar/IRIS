@@ -21,6 +21,7 @@ import type {
   CaseDetail,
   CallSignal,
   CaseSummary,
+  DoctorOfferPrompt,
 } from './types'
 
 export class ApiError extends Error {
@@ -124,7 +125,11 @@ export const api = {
   doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),
   currentConsult: () => request<Consult | null>('/api/consults/current'),
   consultNotice: () => request<{ share_notice: string }>('/api/consults/notice'),
-  requestDoctor: (share: boolean, share_ai = false) => post<Consult>('/api/consults', { share, share_ai }),
+  requestDoctor: (share: boolean, share_ai = false, offer_id: number | null = null) =>
+    post<Consult>('/api/consults', { share, share_ai, offer_id }),
+  doctorOffer: () => request<DoctorOfferPrompt | null>('/api/consults/offer'),
+  dismissOffer: (id: number) => post<void>(`/api/consults/offer/${id}/dismiss`),
+  reviewerOfferDoctor: (messageId: number) => post<{ offered: boolean; reason: string | null }>(`/api/reviewer/messages/${messageId}/offer-doctor`),
   cancelConsult: (id: number) => post<Consult>(`/api/consults/${id}/cancel`),
   doctorOffers: () => request<DoctorOffer[]>('/api/doctor/offers'),
   doctorCases: () => request<DoctorCase[]>('/api/doctor/cases'),

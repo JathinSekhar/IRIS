@@ -48,7 +48,9 @@ def set_availability(body: DoctorAvailabilityIn, doctor: User = Depends(require_
 
 def _offer(db: Session, case: ConsultCase) -> OfferOut:
     s = consult.summary_for_doctor(db, case)
-    return OfferOut(case_id=case.id, first_name=consult.person_first_name(case.user), created_at=case.created_at, source=case.source, **s)
+    s["urgent"] = bool(s["urgent"] or case.urgent)
+    return OfferOut(case_id=case.id, first_name=consult.person_first_name(case.user), created_at=case.created_at, source=case.source,
+                    reason=case.reason, **s)
 
 
 @router.get("/offers", response_model=list[OfferOut])
@@ -116,8 +118,8 @@ def _my_accepted(db: Session, case_id: int, doctor: User) -> ConsultCase:
 
 
 def _thread_out(rows, viewer_id) -> list[ThreadMessageOut]:
-    return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=m.sender_id == viewer_id, text=m.text, created_at=m.created_at, urgent=m.urgent)
-            for m in rows]
+    return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=m.sender_id == viewer_id, text=m.text, created_at=m.created_at, urgent=m.urgent,
+                             flag=m.flag) for m in rows]
 
 
 @router.get("/cases/{case_id}/messages", response_model=list[ThreadMessageOut])

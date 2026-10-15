@@ -43,10 +43,16 @@ def submit(body: CheckinIn, user: User = Depends(get_current_user), db: Session 
         )
     db.add(row)
     db.commit()
+    offered = False
+    if not row.skipped and ((row.scores or {}).get("safety") or {}).get("urgency_floor") == "high":
+        from ..services import consult
+
+        offered = consult.make_offer(db, user.id, "high_checkin") is not None
     return CheckinOut(
         id=row.id,
         skipped=row.skipped,
         safety_flag=row.safety_flag,
         show_crisis_resources=row.safety_flag,
+        offer_doctor=offered,
         created_at=row.created_at,
     )

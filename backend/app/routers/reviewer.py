@@ -140,8 +140,14 @@ def alerts(reviewer: User = Depends(require_reviewer), db: Session = Depends(get
     if unopened:
         c = unopened[0].created_at
         oldest = max(0, int((now - (c if c.tzinfo else c.replace(tzinfo=timezone.utc))).total_seconds()))
+    from sqlalchemy import func
+
+    from ..models import ConsultCase
+    from ..services import consult
+
+    waiting = db.scalar(select(func.count()).select_from(ConsultCase).where(ConsultCase.state == consult.OPEN, ConsultCase.urgent.is_(True))) or 0
     return UrgentAlertsOut(urgent_waiting=len(rows), urgent_unopened=len(unopened), oldest_unopened_seconds=oldest,
-                           latest_urgent_id=max((r.message_id for r in rows), default=None))
+                           latest_urgent_id=max((r.message_id for r in rows), default=None), doctor_requests_waiting=waiting)
 
 
 @router.get("/messages", response_model=list[ReviewerMessageSummary])
@@ -235,3 +241,17 @@ def consult_note(case_id: int, reviewer: User = Depends(require_reviewer), db: S
             "risk_level": n.risk_level, "safety_plan": n.safety_plan, "safety_plan_copy_given": n.safety_plan_copy_given, "impression": n.impression,
             "actions_taken": n.actions_taken, "follow_up": n.follow_up, "follow_up_date": n.follow_up_date, "referral": n.referral,
             "emergency_services_contacted": n.emergency_services_contacted, "created_at": n.created_at}
+
+
+@router.post("/messages/{message_id}/offer-doctor")
+def offer_doctor(message_id: int, reviewer: User = Depends(require_reviewer), db: Session = Depends(get_db)) -> dict:
+    """Suggest a doctor to the person who wrote this message. Only an offer: the person decides, and nothing is shared unless they say yes."""
+    from ..services import consult
+
+    m = db.get(Message, message_id)
+    if m is None:
+        raise HTTPException(404, "Message not found")
+    if consult.live_case(db, m.user_id) is not None:
+        raise HTTPException(409, "This person already has a doctor request.")
+    o = consult.make_offer(db, m.user_id, "reviewer", message_id=m.id, created_by=reviewer.id)
+    return {"offered": o is not None, "reason": o.reason if o else None}

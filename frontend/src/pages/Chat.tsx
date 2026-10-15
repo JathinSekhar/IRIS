@@ -1,5 +1,6 @@
 import { ArrowUp, ChevronDown, Loader2, Phone } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Alert, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { CareStatus, ChatMessage, Helpline } from '../lib/types'
@@ -303,6 +304,10 @@ export default function Chat() {
           {unseen > 0 && <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-brand-600" />}
         </button>
       )}
+
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-4 sm:px-6">
+        <DoctorOfferCard refreshKey={messages?.length ?? 0} className="mt-2" />
+      </div>
 
       {/* The message pill, pinned at the bottom. */}
       <form onSubmit={(e) => void send(e)} className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-2 pt-2 sm:px-6">

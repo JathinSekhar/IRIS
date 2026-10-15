@@ -1,6 +1,7 @@
 import { HeartHandshake, Phone } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { HELPLINES } from '../components/Brand'
+import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Card } from '../components/ui'
 
 export default function Support() {
@@ -14,6 +15,8 @@ export default function Support() {
         That took courage. You do not have to carry this alone, and there are people ready to listen right now. A trained
         member of our care team will also look at your answers and may reach out.
       </p>
+
+      <DoctorOfferCard className="mt-6" />
 
       <p className="mt-8 text-sm font-medium text-slate-900">Talk to someone now</p>
       <ul className="mt-3 space-y-3">

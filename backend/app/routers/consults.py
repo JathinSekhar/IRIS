@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import get_current_user, user_out
-from ..models import AuditLog, ConsultCase, DoctorProfile, User, utcnow
+from ..models import AuditLog, ConsultCase, DoctorOffer, DoctorProfile, User, utcnow
 from ..config import settings
-from ..schemas import ConsultOut, ConsultRequestIn, IceOut, SignalIn, SignalOut, ThreadMessageIn, ThreadMessageOut
+from ..schemas import ConsultOut, ConsultRequestIn, DoctorOfferOut, IceOut, SignalIn, SignalOut, ThreadMessageIn, ThreadMessageOut
 from ..services import consult, triage
 
 router = APIRouter(prefix="/api/consults", tags=["consults"])
@@ -27,6 +27,30 @@ def current(user: User = Depends(get_current_user), db: Session = Depends(get_db
     return _out(db, c) if c else None
 
 
+@router.get("/offer", response_model=DoctorOfferOut | None)
+def current_offer(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> DoctorOfferOut | None:
+    """The doctor offer waiting for this person's answer, if any. None while they already have a live request."""
+    if consult.live_case(db, user.id) is not None:
+        return None
+    o = consult.open_offer(db, user.id)
+    if o is None:
+        return None
+    title, body = consult.OFFER_TEXT[o.reason]
+    return DoctorOfferOut(id=o.id, reason=o.reason, title=title, body=body)
+
+
+@router.post("/offer/{offer_id}/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+def dismiss_offer(offer_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> None:
+    """'Not now'. Nothing is shared. A later urgent message can offer again."""
+    o = db.get(DoctorOffer, offer_id)
+    if o is None or o.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found")
+    if o.resolved_at is None:
+        o.resolved_at, o.resolution = utcnow(), "dismissed"
+        db.add(AuditLog(actor_id=user.id, action="dismiss_doctor_offer", target_type="user", target_id=str(user.id)))
+        db.commit()
+
+
 @router.get("/notice")
 def notice(user: User = Depends(get_current_user)) -> dict:
     """What will be shared, said to the person before they agree."""
@@ -45,10 +69,21 @@ def request_doctor(body: ConsultRequestIn, user: User = Depends(get_current_user
     existing = consult.live_case(db, user.id)
     if existing:
         return _out(db, existing)
-    case = ConsultCase(user_id=user.id, source="user", share_consent=True, ai_summary_consent=body.share_ai)
+    offer = db.get(DoctorOffer, body.offer_id) if body.offer_id else None
+    if offer is not None and (offer.user_id != user.id or offer.resolved_at is not None):
+        offer = None
+    reason = consult.urgent_reason_for(db, user.id)
+    if offer is not None and offer.reason in consult.URGENT_REASONS:
+        reason = offer.reason
+    elif offer is not None and reason is None:
+        reason = offer.reason                                             # a reviewer suggested it: shown to doctors, not marked urgent
+    source = "user" if offer is None else ("reviewer" if offer.reason == "reviewer" else "system")
+    case = ConsultCase(user_id=user.id, source=source, share_consent=True, ai_summary_consent=body.share_ai,
+                       urgent=reason in consult.URGENT_REASONS, reason=reason)
     db.add(case)
     db.add(AuditLog(actor_id=user.id, action="request_doctor", target_type="consult", target_id="new"))
     db.commit()
+    consult.resolve_offers(db, user.id, "accepted")
     db.refresh(case)
     return _out(db, case)
 
@@ -80,7 +115,7 @@ def _owned_accepted(db: Session, case_id: int, user: User) -> ConsultCase:
 
 def _thread_out(rows, viewer_id, show_flag: bool) -> list[ThreadMessageOut]:
     return [ThreadMessageOut(id=m.id, sender_role=m.sender_role, mine=m.sender_id == viewer_id, text=m.text, created_at=m.created_at,
-                             urgent=bool(m.urgent and show_flag)) for m in rows]
+                             urgent=bool(m.urgent and show_flag), flag=m.flag if show_flag else None) for m in rows]
 
 
 @router.get("/{case_id}/messages", response_model=list[ThreadMessageOut])

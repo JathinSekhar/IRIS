@@ -77,8 +77,13 @@ export default function ConsultThread({
             <div className={cx('max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-6', m.mine ? 'bg-brand-800 text-white' : 'bg-slate-100 text-slate-900')}>
               <p className="whitespace-pre-wrap break-words">{m.text}</p>
               <p className={cx('mt-1 flex items-center gap-1.5 text-xs', m.mine ? 'text-white/70' : 'text-slate-500')}>
-                {showFlags && m.urgent && (
-                  <span className="inline-flex items-center gap-1 font-semibold text-red-700">
+                {showFlags && (m.flag === 'urgent' || (m.urgent && !m.flag)) && (
+                  <span className="inline-flex items-center gap-1 rounded bg-red-600 px-1.5 font-semibold text-white">
+                    <AlertTriangle className="size-3.5" aria-hidden /> Urgent
+                  </span>
+                )}
+                {showFlags && m.flag === 'worrying' && (
+                  <span className="inline-flex items-center gap-1 font-semibold text-amber-700">
                     <AlertTriangle className="size-3.5" aria-hidden /> Worrying language
                   </span>
                 )}

@@ -60,6 +60,10 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
     )
     db.add(msg)
     db.commit()
+    if result.message_urgent:
+        from ..services import consult
+
+        consult.make_offer(db, user.id, "urgent_message", message_id=msg.id)
     return _out(msg)
 
 

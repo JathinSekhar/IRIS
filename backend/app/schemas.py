@@ -112,6 +112,7 @@ class CheckinOut(BaseModel):
     skipped: bool
     safety_flag: bool
     show_crisis_resources: bool
+    offer_doctor: bool = False                # a High check-in: the person is offered a doctor (they choose)
     created_at: datetime
 
 
@@ -205,6 +206,16 @@ class DoctorAvailabilityIn(BaseModel):
 class ConsultRequestIn(BaseModel):
     share: bool                               # the person agreed to share recent messages and check-in answers with the doctor who accepts
     share_ai: bool = False                    # optional, separate: an AI tool may draft a short summary for the doctor
+    offer_id: int | None = None               # set when the person is saying yes to an offer IRIS or a reviewer made
+
+
+class DoctorOfferOut(BaseModel):
+    """An offer of a doctor, shown to the person. It never says a doctor is coming: only that they can ask."""
+
+    id: int
+    reason: str
+    title: str
+    body: str
 
 
 class ConsultOut(BaseModel):
@@ -237,6 +248,7 @@ class OfferOut(BaseModel):
     created_at: datetime
     source: str
     urgent: bool
+    reason: str | None = None                 # why it is urgent: urgent_message | high_checkin | reviewer
     priority: str | None = None
     is_minor: bool = False
     recent_messages: list[OfferMessageOut]
@@ -262,6 +274,7 @@ class ThreadMessageOut(BaseModel):
     text: str
     created_at: datetime
     urgent: bool = False                      # only ever true in what a doctor or reviewer sees
+    flag: str | None = None                   # worrying | urgent; only in what a doctor or reviewer sees
 
 
 YesNo = Literal["yes", "no", "not_assessed"]
@@ -436,6 +449,7 @@ class UrgentAlertsOut(BaseModel):
     urgent_unopened: int
     oldest_unopened_seconds: int | None
     latest_urgent_id: int | None
+    doctor_requests_waiting: int = 0          # urgent doctor requests that no doctor has accepted yet
 
 
 class ReviewEventOut(BaseModel):

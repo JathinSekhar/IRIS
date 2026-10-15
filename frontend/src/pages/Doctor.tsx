@@ -24,6 +24,12 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
             <AlertTriangle className="size-3.5" aria-hidden /> Urgent message
           </span>
         )}
+        {o.reason && (
+          <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset',
+            o.reason === 'reviewer' ? 'bg-sky-50 text-sky-800 ring-sky-200' : 'bg-red-50 text-red-800 ring-red-200')}>
+            {o.reason === 'urgent_message' ? 'Urgent message' : o.reason === 'high_checkin' ? 'High check-in' : 'Suggested by a reviewer'}
+          </span>
+        )}
         {o.is_minor && (
           <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
             Under 18
