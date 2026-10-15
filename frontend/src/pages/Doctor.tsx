@@ -75,31 +75,64 @@ function CaseRow({ c }: { c: DoctorCase }) {
     api.caseSummary(c.case_id).then(setSummary).catch(() => undefined)
   }, [c.case_id])
 
+  const time = c.accepted_at ? new Date(c.accepted_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''
   return (
-    <Card className="space-y-3 p-4 text-sm text-slate-700">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-900">{c.first_name}</span>
-          <span className="text-slate-500">accepted {c.accepted_at ? when(c.accepted_at) : ''}</span>
-          {c.urgent && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">
-              <AlertTriangle className="size-3.5" aria-hidden /> Urgent
-            </span>
+    <article
+      className={cx(
+        'relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md',
+        c.urgent ? 'border-red-200' : 'border-slate-200',
+      )}
+    >
+      {c.urgent && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-red-500" />}
+
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className={cx(
+            'grid size-10 shrink-0 place-content-center rounded-full text-sm font-semibold',
+            c.urgent ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800',
           )}
-          {c.reason && <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{REASON_LABEL[c.reason]}</span>}
-          <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
-            waiting ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200' : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200')}>
-            {waiting ? 'Not started yet' : 'In conversation'}
-          </span>
+        >
+          {c.first_name.charAt(0)}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-base font-semibold text-slate-900">{c.first_name}</h3>
+            <span className="text-xs text-slate-500">accepted {time}</span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {c.urgent && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                <AlertTriangle className="size-3" aria-hidden /> Urgent
+              </span>
+            )}
+            {c.reason && (
+              <span className="inline-flex rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                {REASON_LABEL[c.reason]}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <span aria-hidden className={cx('size-1.5 rounded-full', waiting ? 'bg-amber-500' : 'bg-emerald-500')} />
+              {waiting ? 'Not started yet' : 'In conversation'}
+            </span>
+          </div>
         </div>
-        <Link to={`/doctor/cases/${c.case_id}`}
-          className="inline-flex h-9 items-center rounded-lg bg-brand-800 px-3 text-sm font-medium text-white hover:bg-brand-900">
+
+        <Link
+          to={`/doctor/cases/${c.case_id}`}
+          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-lg bg-brand-800 px-3.5 text-sm font-medium text-white hover:bg-brand-900"
+        >
           {waiting ? 'Review and start' : 'Open conversation'}
         </Link>
       </div>
 
-      {summary && <CaseSummaryBrief s={summary} />}
-    </Card>
+      {summary && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <CaseSummaryBrief s={summary} />
+        </div>
+      )}
+    </article>
   )
 }
 
