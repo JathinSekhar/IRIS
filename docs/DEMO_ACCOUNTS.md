@@ -21,6 +21,14 @@ Open **http://localhost:5173**. The three patients are **not** pre-created: you 
 
 Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. Click a name to open the full record (each opening is written to the audit log).
 
+## Doctor (already created)
+
+| Email | Password | Name |
+| --- | --- | --- |
+| `doctor.demo@example.com` | `Demo-Doctor-2026` | Dr. Kavya Menon (fictional; registration `TEST-000000 (not a real registration)`) |
+
+Turn **on duty** on, then: open requests appear (only age, urgency and check-in level until you accept), **Accept**, read the summary, **Start conversation**, chat or video, and **End session** with the session form. A patient asks from **Talk to a doctor**, or says yes when IRIS offers a doctor after an explicit message or a High check-in.
+
 ## Other things worth trying (before or between the three users)
 
 - **Wrong password** at login: you get a generic 'Incorrect email or password' message.

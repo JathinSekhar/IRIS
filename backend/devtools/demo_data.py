@@ -126,6 +126,12 @@ def render_markdown() -> str:
     w(f"| Email | Password |\n| --- | --- |\n| `{REVIEWER['email']}` | `{REVIEWER['password']}` |\n")
     w("Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. "
       "Click a name to open the full record (each opening is written to the audit log).\n")
+    w("## Doctor (already created)\n")
+    w(f"| Email | Password | Name |\n| --- | --- | --- |\n| `{DOCTOR['email']}` | `{DOCTOR['password']}` | {DOCTOR['full_name']} (fictional; "
+      f"registration `{DOCTOR_PROFILE['registration_number']}`) |\n")
+    w("Turn **on duty** on, then: open requests appear (only age, urgency and check-in level until you accept), **Accept**, read the summary, "
+      "**Start conversation**, chat or video, and **End session** with the session form. A patient asks from **Talk to a doctor**, or says yes "
+      "when IRIS offers a doctor after an explicit message or a High check-in.\n")
     w("## Other things worth trying (before or between the three users)\n")
     w("- **Wrong password** at login: you get a generic 'Incorrect email or password' message.\n"
       "- **Skip for now** on the check-in (top right): confirm, and the home page offers 'Start check-in' instead of 'completed'.\n"
