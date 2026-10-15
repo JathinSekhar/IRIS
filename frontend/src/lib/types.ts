@@ -191,6 +191,7 @@ export interface Consult {
 export interface DoctorOffer {
   case_id: number
   first_name: string
+  age: number | null
   created_at: string
   source: string
   urgent: boolean
@@ -279,6 +280,8 @@ export interface DoctorCase {
   case_id: number
   first_name: string
   state: string
+  urgent: boolean
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
   accepted_at: string | null
 }
 

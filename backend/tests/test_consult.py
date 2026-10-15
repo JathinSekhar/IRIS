@@ -67,7 +67,7 @@ def test_asking_twice_returns_the_same_request(env):
         assert a["id"] == b["id"]
 
 
-def test_a_doctor_sees_the_request_with_the_shared_context_and_it_is_audited(env):
+def test_before_accepting_a_doctor_sees_only_what_is_needed_to_decide_and_it_is_audited(env):
     with TestClient(app) as c:
         signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
         send(c, CALM)
@@ -80,8 +80,10 @@ def test_a_doctor_sees_the_request_with_the_shared_context_and_it_is_audited(env
         assert len(offers) == 1
         o = offers[0]
         assert o["first_name"] == "Ananya" and o["urgent"] is True and o["priority"] == "high"
-        assert [m["text"] for m in o["recent_messages"]] == [CALM, SELF_HARM]
-        assert o["checkin"]["baseline_risk"] == "low" and o["checkin"]["phq9"] is not None
+        assert o["recent_messages"] == []                                     # no message text before accepting: the person shared with "the doctor who accepts"
+        assert CALM not in str(o) and SELF_HARM not in str(o)
+        assert o["checkin"]["baseline_risk"] == "low" and o["checkin"]["phq9"] is None and o["checkin"]["gad7"] is None
+        assert o["age"] >= 18
         assert "email" not in str(o).lower() and "phone" not in str(o).lower()
     with env() as s:
         assert "view_offers" in [a.action for a in s.scalars(select(AuditLog))]
@@ -159,3 +161,19 @@ def test_doctors_and_reviewers_cannot_ask_for_a_doctor_and_patients_cannot_use_d
         signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
         assert c.get("/api/doctor/offers").status_code == 403
         assert c.post("/api/doctor/offers/1/accept").status_code == 403
+
+
+
+def test_after_accepting_the_doctor_gets_the_messages_and_the_summary(env):
+    with TestClient(app) as c:
+        signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
+        send(c, SELF_HARM)
+        case_id = ask(c).json()["id"]
+        add_doctor(c, env)
+        c.post("/api/auth/logout")
+        c.post("/api/auth/login", json={"email": dd.DOCTOR["email"], "password": dd.DOCTOR["password"]})
+        assert c.post(f"/api/doctor/offers/{case_id}/accept").status_code == 200
+        mine = c.get("/api/doctor/cases").json()[0]
+        assert mine["case_id"] == case_id and mine["urgent"] is True and mine["reason"] == "urgent_message"
+        summary = c.get(f"/api/doctor/cases/{case_id}/summary").json()
+        assert [m["text"] for m in summary["recent_messages"]] == [SELF_HARM] and summary["checkin"]["phq9"] is not None

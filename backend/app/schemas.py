@@ -243,8 +243,12 @@ class OfferCheckinOut(BaseModel):
 
 
 class OfferOut(BaseModel):
+    """An open request as every on-duty doctor sees it BEFORE accepting. The person agreed to share with "the doctor who accepts", so this carries
+    no message text, no scores and no summary: only what a doctor needs to decide whether to take it. The rest is shown after accepting."""
+
     case_id: int
     first_name: str
+    age: int | None = None
     created_at: datetime
     source: str
     urgent: bool
@@ -415,6 +419,8 @@ class MyCaseOut(BaseModel):
     case_id: int
     first_name: str
     state: str
+    urgent: bool = False
+    reason: str | None = None
     accepted_at: datetime | None = None
 
 

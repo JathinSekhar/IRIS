@@ -1,9 +1,10 @@
-import { AlertTriangle, Stethoscope } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import CaseSummaryCard from '../components/CaseSummaryCard'
 import { Alert, Button, Card, Spinner, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
-import type { DoctorCase, DoctorMe, DoctorOffer } from '../lib/types'
+import type { CaseSummary, DoctorCase, DoctorMe, DoctorOffer } from '../lib/types'
 
 const PRIORITY_STYLE: Record<string, string> = {
   high: 'bg-red-50 text-red-800 ring-red-200',
@@ -42,31 +43,70 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
         )}
       </div>
 
-      {o.recent_messages.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent messages (shared with consent)</p>
-          {o.recent_messages.map((m, i) => (
-            <p key={i} className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800">
-              {m.text}
-              <span className="ml-2 text-xs text-slate-400">{when(m.created_at)}</span>
-            </p>
-          ))}
-        </div>
-      )}
-
-      {o.checkin && (
-        <p className="text-sm text-slate-700">
-          <span className="font-semibold text-slate-900">Latest check-in.</span> Baseline {o.checkin.baseline_risk}
-          {o.checkin.phq9 !== null && <>, PHQ-9 {o.checkin.phq9}</>}
-          {o.checkin.gad7 !== null && <>, GAD-7 {o.checkin.gad7}</>}
-          {o.checkin.safety_flag && <>, safety flag raised</>}.
-        </p>
-      )}
+      <p className="text-sm text-slate-700">
+        {o.age !== null && <>{o.age} years old · </>}
+        {o.checkin ? (
+          <>
+            Check-in: <span className="font-semibold capitalize text-slate-900">{o.checkin.baseline_risk}</span>
+            {o.checkin.safety_flag && <span className="font-semibold text-red-700"> · safety flag raised</span>}
+          </>
+        ) : (
+          'No check-in on file'
+        )}
+      </p>
+      <p className="text-xs text-slate-500">Their messages and full summary open once you accept, as the person agreed.</p>
 
       <div className="flex gap-3">
         <Button onClick={onAccept} loading={busy} disabled={busy}>Accept</Button>
         <Button variant="secondary" onClick={onDecline} disabled={busy}>Pass</Button>
       </div>
+    </Card>
+  )
+}
+
+const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer' }
+
+/** One of the doctor's cases, with its summary inline. A case still waiting to be started opens with the summary showing, because that is the moment to read it. */
+function CaseRow({ c }: { c: DoctorCase }) {
+  const waiting = c.state === 'accepted'
+  const [open, setOpen] = useState(waiting)
+  const [summary, setSummary] = useState<CaseSummary | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (!open || summary) return
+    api.caseSummary(c.case_id).then(setSummary).catch(() => setFailed(true))
+  }, [open, summary, c.case_id])
+
+  return (
+    <Card className="space-y-3 p-4 text-sm text-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-slate-900">{c.first_name}</span>
+          <span className="text-slate-500">accepted {c.accepted_at ? when(c.accepted_at) : ''}</span>
+          {c.urgent && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+              <AlertTriangle className="size-3.5" aria-hidden /> Urgent
+            </span>
+          )}
+          {c.reason && <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{REASON_LABEL[c.reason]}</span>}
+          <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
+            waiting ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200' : 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200')}>
+            {waiting ? 'Not started yet' : 'In conversation'}
+          </span>
+        </div>
+        <Link to={`/doctor/cases/${c.case_id}`}
+          className="inline-flex h-9 items-center rounded-lg bg-brand-800 px-3 text-sm font-medium text-white hover:bg-brand-900">
+          {waiting ? 'Review and start' : 'Open conversation'}
+        </Link>
+      </div>
+
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+        className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+        <ChevronDown className={cx('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
+        {open ? 'Hide summary' : 'Show summary'}
+      </button>
+      {open && (summary ? <CaseSummaryCard s={summary} /> : failed ? <p className="text-slate-500">The summary could not be loaded.</p> : <Spinner />)}
     </Card>
   )
 }
@@ -197,15 +237,7 @@ export default function Doctor() {
             <section className="space-y-3" aria-label="Your cases">
               <h2 className="font-medium text-slate-900">Your cases</h2>
               {cases.filter((c) => c.state === 'accepted' || c.state === 'in_session').map((c) => (
-                <Card key={c.case_id} className="flex items-center justify-between gap-3 p-4 text-sm text-slate-700">
-                  <span>
-                    <span className="font-semibold text-slate-900">{c.first_name}</span>, accepted {c.accepted_at ? when(c.accepted_at) : ''}
-                  </span>
-                  <Link to={`/doctor/cases/${c.case_id}`}
-                    className="inline-flex h-9 items-center rounded-lg bg-brand-800 px-3 text-sm font-medium text-white hover:bg-brand-900">
-                    {c.state === 'accepted' ? 'Review and start' : 'Open conversation'}
-                  </Link>
-                </Card>
+                <CaseRow key={c.case_id} c={c} />
               ))}
             </section>
           )}

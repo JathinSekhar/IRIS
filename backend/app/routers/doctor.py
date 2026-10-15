@@ -47,15 +47,20 @@ def set_availability(body: DoctorAvailabilityIn, doctor: User = Depends(require_
 
 
 def _offer(db: Session, case: ConsultCase) -> OfferOut:
+    """Before accepting: urgency, why, the check-in LEVEL and the safety flag. No message text and no scores (see OfferOut)."""
     s = consult.summary_for_doctor(db, case)
-    s["urgent"] = bool(s["urgent"] or case.urgent)
-    return OfferOut(case_id=case.id, first_name=consult.person_first_name(case.user), created_at=case.created_at, source=case.source,
-                    reason=case.reason, **s)
+    ck = s["checkin"]
+    return OfferOut(
+        case_id=case.id, first_name=consult.person_first_name(case.user), age=age_on(case.user.date_of_birth), created_at=case.created_at,
+        source=case.source, reason=case.reason, urgent=bool(s["urgent"] or case.urgent), priority=s["priority"], is_minor=s["is_minor"],
+        recent_messages=[],
+        checkin=None if ck is None else {"baseline_risk": ck["baseline_risk"], "safety_flag": ck["safety_flag"], "created_at": ck["created_at"]},
+    )
 
 
 @router.get("/offers", response_model=list[OfferOut])
 def offers(doctor: User = Depends(require_doctor), db: Session = Depends(get_db)) -> list[OfferOut]:
-    """Open requests this doctor has not passed on. Empty when off duty. Opening this list is written to the audit log, because it shows messages."""
+    """Open requests this doctor has not passed on. Empty when off duty. No message text is shown here (only after accepting); the list is still audited."""
     if not _profile(db, doctor).on_duty:
         return []
     declined = select(ConsultDecline.case_id).where(ConsultDecline.doctor_id == doctor.id)
@@ -107,7 +112,8 @@ def my_cases(doctor: User = Depends(require_doctor), db: Session = Depends(get_d
         select(ConsultCase).where(ConsultCase.accepted_by == doctor.id, ConsultCase.state.in_((consult.ACCEPTED, consult.IN_SESSION, consult.CLOSED)))
         .order_by(ConsultCase.accepted_at.desc()).limit(40)
     ).all()
-    return [MyCaseOut(case_id=c.id, first_name=consult.person_first_name(c.user), state=c.state, accepted_at=c.accepted_at) for c in rows]
+    return [MyCaseOut(case_id=c.id, first_name=consult.person_first_name(c.user), state=c.state, accepted_at=c.accepted_at, urgent=c.urgent,
+                      reason=c.reason) for c in rows]
 
 
 def _my_accepted(db: Session, case_id: int, doctor: User) -> ConsultCase:
