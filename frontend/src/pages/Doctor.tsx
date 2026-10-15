@@ -21,7 +21,7 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
         <span className="text-sm text-slate-500">asked {when(o.created_at)}</span>
         {o.urgent && (
           <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">
-            <AlertTriangle className="size-3.5" aria-hidden /> Urgent message
+            <AlertTriangle className="size-3.5" aria-hidden /> Urgent
           </span>
         )}
         {o.reason && (
