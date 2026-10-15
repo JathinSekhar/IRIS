@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import CaseSummaryCard from '../components/CaseSummaryCard'
+import CaseSummarySimple from '../components/CaseSummarySimple'
 import ConsultThread from '../components/ConsultThread'
 import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Textarea, cx } from '../components/ui'
@@ -160,231 +160,243 @@ export default function DoctorCaseView() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 py-8">
+    <div className="space-y-4">
       <Link to="/doctor" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
         <ArrowLeft className="size-4" aria-hidden /> Back to cases
       </Link>
-      {detail && (
-        <section
-          aria-label="Who you are speaking with"
-          className={cx('relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm', detail.urgent ? 'border-red-200' : 'border-slate-200')}
-        >
-          {detail.urgent && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-red-500" />}
-          <div className="flex flex-wrap items-start gap-4">
-            <span
-              aria-hidden
-              className={cx(
-                'grid size-12 shrink-0 place-content-center rounded-full text-lg font-semibold',
-                detail.urgent ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800',
-              )}
-            >
-              {detail.full_name.charAt(0)}
-            </span>
 
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display text-2xl font-medium text-slate-900">{detail.full_name}</h1>
-              <p className="mt-0.5 text-sm text-slate-600">
-                {[`${detail.age} years`, summary?.profile.gender, summary?.profile.occupation, summary?.profile.language_name].filter(Boolean).join(' · ')}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {detail.urgent && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
-                    <AlertTriangle className="size-3" aria-hidden /> Urgent
-                  </span>
-                )}
-                {detail.reason && (
-                  <span className="inline-flex rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
-                    {REASON_LABEL[detail.reason]}
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                  <span aria-hidden className={cx('size-1.5 rounded-full', closed ? 'bg-slate-400' : waiting ? 'bg-amber-500' : 'bg-emerald-500')} />
-                  {closed ? 'Closed' : waiting ? 'Not started yet' : 'In conversation'}
-                </span>
-              </div>
-            </div>
-
-            {waiting && (
-              <Button onClick={() => void startConversation()} loading={startBusy} disabled={startBusy} className="shrink-0">
-                Start conversation
-              </Button>
-            )}
-          </div>
-
-          <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
-              <dd className="mt-0.5 text-slate-800">{detail.phone ?? 'Not given'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Emergency contact</dt>
-              <dd className="mt-0.5 text-slate-800">{detail.emergency_contact ?? 'Not given'}</dd>
-            </div>
-          </dl>
-
-          {detail.is_minor && (
-            <p className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span>
-                This person is under 18. A consultation with a minor needs an identified adult family member.
-                {detail.guardian_name ? ` Guardian: ${detail.guardian_name} (${detail.guardian_consent_status ?? 'consent status unknown'}).` : ' No guardian is on record.'}
-              </span>
-            </p>
-          )}
-
+      {/* Wide screens: the conversation in the centre, the person and their summary beside it. Phones: one column. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="order-2 min-w-0 space-y-4 lg:order-1">
           {waiting && (
-            <p className="mt-4 text-sm text-slate-500">
-              {detail.full_name.split(' ')[0]} has been told you accepted and will begin when ready. Read the summary, then start: chat and video open for
-              both of you.
-            </p>
+            <section aria-label="Start the conversation" className="grid place-items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+              <div className="max-w-md space-y-3">
+                <h2 className="font-display text-xl font-medium text-slate-900">Ready when you are</h2>
+                <p className="text-sm text-slate-600">
+                  {detail ? detail.full_name.split(' ')[0] : 'The person'} has been told you accepted and will begin when ready. Read the summary on the right,
+                  then start. Chat and video open for both of you.
+                </p>
+                <Button onClick={() => void startConversation()} loading={startBusy} disabled={startBusy}>
+                  Start conversation
+                </Button>
+              </div>
+            </section>
           )}
-        </section>
-      )}
 
-      {summary && <CaseSummaryCard s={summary} hideHeader />}
+          {inSession && (
+            <VideoCall
+              post={(kind, payload) => api.doctorCallPost(id, kind, payload)}
+              poll={(after) => api.doctorCallPoll(id, after)}
+              otherName={detail?.full_name.split(' ')[0] ?? 'the person'}
+            />
+          )}
 
-      {inSession && (
-        <VideoCall
-          post={(kind, payload) => api.doctorCallPost(id, kind, payload)}
-          poll={(after) => api.doctorCallPoll(id, after)}
-          otherName={detail?.full_name.split(' ')[0] ?? 'the person'}
-        />
-      )}
+          {(inSession || closed) && (
+            <ConsultThread
+              load={() => api.doctorCaseMessages(id)}
+              send={(t) => api.sendDoctorCaseMessage(id, t)}
+              otherName="the person"
+              showFlags
+              active={inSession}
+            />
+          )}
 
-      {(inSession || closed) && (
-        <ConsultThread
-          load={() => api.doctorCaseMessages(id)}
-          send={(t) => api.sendDoctorCaseMessage(id, t)}
-          otherName="the person"
-          showFlags
-          active={inSession}
-        />
-      )}
+          {closed && note && <NoteView n={note} />}
 
-      {closed && note && <NoteView n={note} />}
+          {!closed && !ending && (
+            <Button variant="secondary" onClick={() => setEnding(true)}>
+              End session and complete the form
+            </Button>
+          )}
 
-      {!closed && !ending && (
-        <Button variant="secondary" onClick={() => setEnding(true)}>
-          End session and complete the form
-        </Button>
-      )}
-
-      {!closed && ending && (
-        <Card className="p-5">
-          <form onSubmit={(e) => void submit(e)} className="space-y-5">
-            <div>
-              <h2 className="font-medium text-slate-900">Session form</h2>
-              <p className="text-sm text-slate-600">The person does not see this note. Every risk question needs an answer; "Not assessed" is an answer.</p>
-            </div>
-
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">How did you speak?</span>
-              <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className={selectCls}>
-                <option value="chat">Chat</option>
-                <option value="video">Video</option>
-                <option value="both">Chat and video</option>
-              </select>
-            </label>
-
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">What the person reported (concerns)</span>
-              <Textarea rows={3} value={form.concerns} onChange={(e) => set('concerns', e.target.value)} maxLength={3000} />
-            </label>
-
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">What you observed (optional)</span>
-              <Textarea rows={2} value={form.observations} onChange={(e) => set('observations', e.target.value)} maxLength={3000} />
-            </label>
-
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-medium text-slate-800">Risk assessment</legend>
-              {RISK_QUESTIONS.map((q) => (
-                <div key={q.key} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm text-slate-700">{q.label}</span>
-                  <Seg name={q.label} value={form[q.key]} onChange={(v) => set(q.key, v)} />
+          {!closed && ending && (
+            <Card className="p-5">
+              <form onSubmit={(e) => void submit(e)} className="space-y-5">
+                <div>
+                  <h2 className="font-medium text-slate-900">Session form</h2>
+                  <p className="text-sm text-slate-600">The person does not see this note. Every risk question needs an answer; "Not assessed" is an answer.</p>
                 </div>
-              ))}
-            </fieldset>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Protective factors and reasons for living</span>
-              <Textarea rows={2} value={form.protective_factors} onChange={(e) => set('protective_factors', e.target.value)} maxLength={2000} />
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">How did you speak?</span>
+                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className={selectCls}>
+                    <option value="chat">Chat</option>
+                    <option value="video">Video</option>
+                    <option value="both">Chat and video</option>
+                  </select>
+                </label>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Your overall risk judgement</span>
-              <select value={form.risk_level} onChange={(e) => set('risk_level', e.target.value)} className={selectCls}>
-                <option value="">Choose</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">What the person reported (concerns)</span>
+                  <Textarea rows={3} value={form.concerns} onChange={(e) => set('concerns', e.target.value)} maxLength={3000} />
+                </label>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Safety plan</span>
-              <select value={form.safety_plan} onChange={(e) => set('safety_plan', e.target.value)} className={selectCls}>
-                <option value="">Choose</option>
-                <option value="not_needed">Not needed</option>
-                <option value="created">Created</option>
-                <option value="updated">Updated</option>
-                <option value="reviewed">Reviewed</option>
-              </select>
-            </label>
-            {form.safety_plan !== '' && form.safety_plan !== 'not_needed' && (
-              <label className="flex items-center gap-3 text-sm text-slate-800">
-                <input type="checkbox" checked={form.safety_plan_copy_given} onChange={(e) => set('safety_plan_copy_given', e.target.checked)} className="size-4" />
-                The person received a copy of the safety plan
-              </label>
-            )}
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">What you observed (optional)</span>
+                  <Textarea rows={2} value={form.observations} onChange={(e) => set('observations', e.target.value)} maxLength={3000} />
+                </label>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Clinical impression (optional, in your own words)</span>
-              <Textarea rows={2} value={form.impression} onChange={(e) => set('impression', e.target.value)} maxLength={2000} />
-            </label>
+                <fieldset className="space-y-3">
+                  <legend className="text-sm font-medium text-slate-800">Risk assessment</legend>
+                  {RISK_QUESTIONS.map((q) => (
+                    <div key={q.key} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm text-slate-700">{q.label}</span>
+                      <Seg name={q.label} value={form[q.key]} onChange={(v) => set(q.key, v)} />
+                    </div>
+                  ))}
+                </fieldset>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Actions taken</span>
-              <Textarea rows={3} value={form.actions_taken} onChange={(e) => set('actions_taken', e.target.value)} maxLength={3000} />
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Protective factors and reasons for living</span>
+                  <Textarea rows={2} value={form.protective_factors} onChange={(e) => set('protective_factors', e.target.value)} maxLength={2000} />
+                </label>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Follow-up plan</span>
-              <Textarea rows={2} value={form.follow_up} onChange={(e) => set('follow_up', e.target.value)} maxLength={3000} />
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Your overall risk judgement</span>
+                  <select value={form.risk_level} onChange={(e) => set('risk_level', e.target.value)} className={selectCls}>
+                    <option value="">Choose</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Follow-up date (optional)</span>
-              <input type="date" value={form.follow_up_date} min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => set('follow_up_date', e.target.value)} className={selectCls} />
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Safety plan</span>
+                  <select value={form.safety_plan} onChange={(e) => set('safety_plan', e.target.value)} className={selectCls}>
+                    <option value="">Choose</option>
+                    <option value="not_needed">Not needed</option>
+                    <option value="created">Created</option>
+                    <option value="updated">Updated</option>
+                    <option value="reviewed">Reviewed</option>
+                  </select>
+                </label>
+                {form.safety_plan !== '' && form.safety_plan !== 'not_needed' && (
+                  <label className="flex items-center gap-3 text-sm text-slate-800">
+                    <input type="checkbox" checked={form.safety_plan_copy_given} onChange={(e) => set('safety_plan_copy_given', e.target.checked)} className="size-4" />
+                    The person received a copy of the safety plan
+                  </label>
+                )}
 
-            <label className="block text-sm">
-              <span className="font-medium text-slate-800">Referral (optional)</span>
-              <Textarea rows={2} value={form.referral} onChange={(e) => set('referral', e.target.value)} maxLength={1000} />
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Clinical impression (optional, in your own words)</span>
+                  <Textarea rows={2} value={form.impression} onChange={(e) => set('impression', e.target.value)} maxLength={2000} />
+                </label>
 
-            <label className="flex items-center gap-3 text-sm text-slate-800">
-              <input type="checkbox" checked={form.emergency_services_contacted} onChange={(e) => set('emergency_services_contacted', e.target.checked)} className="size-4" />
-              Emergency services were contacted
-            </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Actions taken</span>
+                  <Textarea rows={3} value={form.actions_taken} onChange={(e) => set('actions_taken', e.target.value)} maxLength={3000} />
+                </label>
 
-            {error && <Alert>{error}</Alert>}
-            <div className="flex gap-3">
-              <Button type="submit" disabled={!ready || busy} loading={busy}>
-                Save and end session
-              </Button>
-              <Button type="button" variant="secondary" onClick={() => setEnding(false)} disabled={busy}>
-                Keep talking
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Follow-up plan</span>
+                  <Textarea rows={2} value={form.follow_up} onChange={(e) => set('follow_up', e.target.value)} maxLength={3000} />
+                </label>
 
-      <p className="text-sm text-slate-500">
-        Helplines for the person: Tele-MANAS 14416, KIRAN 1800-599-0019, emergency 112. Reading this conversation is recorded in the audit log.
-      </p>
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Follow-up date (optional)</span>
+                  <input type="date" value={form.follow_up_date} min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => set('follow_up_date', e.target.value)} className={selectCls} />
+                </label>
+
+                <label className="block text-sm">
+                  <span className="font-medium text-slate-800">Referral (optional)</span>
+                  <Textarea rows={2} value={form.referral} onChange={(e) => set('referral', e.target.value)} maxLength={1000} />
+                </label>
+
+                <label className="flex items-center gap-3 text-sm text-slate-800">
+                  <input type="checkbox" checked={form.emergency_services_contacted} onChange={(e) => set('emergency_services_contacted', e.target.checked)} className="size-4" />
+                  Emergency services were contacted
+                </label>
+
+                {error && <Alert>{error}</Alert>}
+                <div className="flex gap-3">
+                  <Button type="submit" disabled={!ready || busy} loading={busy}>
+                    Save and end session
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setEnding(false)} disabled={busy}>
+                    Keep talking
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          <p className="text-xs text-slate-400">
+            Helplines for the person: Tele-MANAS 14416, KIRAN 1800-599-0019, emergency 112. Reading this conversation is recorded in the audit log.
+          </p>
+        </div>
+
+        <aside className="order-1 space-y-4 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:pr-1">
+          {detail && (
+            <section
+              aria-label="Who you are speaking with"
+              className={cx('relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm', detail.urgent ? 'border-red-200' : 'border-slate-200')}
+            >
+              {detail.urgent && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-red-500" />}
+              <div className="flex flex-wrap items-start gap-4">
+                <span
+                  aria-hidden
+                  className={cx(
+                    'grid size-12 shrink-0 place-content-center rounded-full text-lg font-semibold',
+                    detail.urgent ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800',
+                  )}
+                >
+                  {detail.full_name.charAt(0)}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-display text-2xl font-medium text-slate-900">{detail.full_name}</h1>
+                  <p className="mt-0.5 text-sm text-slate-600">
+                    {[`${detail.age} years`, summary?.profile.gender, summary?.profile.occupation, summary?.profile.language_name].filter(Boolean).join(' · ')}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {detail.urgent && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                        <AlertTriangle className="size-3" aria-hidden /> Urgent
+                      </span>
+                    )}
+                    {detail.reason && (
+                      <span className="inline-flex rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                        {REASON_LABEL[detail.reason]}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                      <span aria-hidden className={cx('size-1.5 rounded-full', closed ? 'bg-slate-400' : waiting ? 'bg-amber-500' : 'bg-emerald-500')} />
+                      {closed ? 'Closed' : waiting ? 'Not started yet' : 'In conversation'}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
+                  <dd className="mt-0.5 text-slate-800">{detail.phone ?? 'Not given'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Emergency contact</dt>
+                  <dd className="mt-0.5 text-slate-800">{detail.emergency_contact ?? 'Not given'}</dd>
+                </div>
+              </dl>
+
+              {detail.is_minor && (
+                <p className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <span>
+                    This person is under 18. A consultation with a minor needs an identified adult family member.
+                    {detail.guardian_name ? ` Guardian: ${detail.guardian_name} (${detail.guardian_consent_status ?? 'consent status unknown'}).` : ' No guardian is on record.'}
+                  </span>
+                </p>
+              )}
+
+            </section>
+          )}
+
+          {summary && <CaseSummarySimple s={summary} />}
+        </aside>
+      </div>
     </div>
   )
 }

@@ -198,3 +198,10 @@ def test_statements_about_what_was_not_mentioned_are_dropped():
     raw = ("The person says they cannot sleep and everything feels pointless. The statement suggests a possible risk, but no explicit mention "
            "of self-harm or suicidal thoughts is provided. There is no sign of a plan.")
     assert case_summary.scrub(raw) == "The person says they cannot sleep and everything feels pointless."
+
+
+def test_sentences_ending_in_a_closing_quote_are_split_so_one_bad_sentence_does_not_drop_everything():
+    raw = ("The person says they “can’t sleep and everything feels pointless.” They also report “I feel like a burden.” "
+           "No other details or risk factors are mentioned.")
+    assert case_summary.scrub(raw) == ("The person says they “can’t sleep and everything feels pointless.” "
+                                      "They also report “I feel like a burden.”")

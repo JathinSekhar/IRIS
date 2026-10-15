@@ -163,7 +163,7 @@ def payload_text(db: Session, case: ConsultCase) -> str:
 
 
 _REASSURING = re.compile(
-    r"\bno\s+(?:\w+\s+){0,2}(?:risks?|concerns?|risk\s+factors?|flags?|warning\s+signs?|red\s+flags?)\b"
+    r"\bno\s+(?:\w+\s+){0,4}(?:risks?|concerns?|risk\s+factors?|flags?|warning\s+signs?|red\s+flags?)\b"
     r"|\bscores?\s+(?:are|is|were|was)\s+(?:low|minimal|normal|fine)\b"
     r"|\bno\s+(?:\w+\s+){0,2}(?:mention|sign|evidence|indication|report)s?\s+of\b"
     r"|\bnothing\s+else\b|\bnot\s+(?:a\s+)?(?:concern|risk)\b|^not\s+stated\.?$",
@@ -174,7 +174,8 @@ _REASSURING = re.compile(
 def scrub(text: str) -> str:
     """Drop sentences that read as reassurance ("no other concerns are mentioned") or are empty filler ("Not stated."). The material may be incomplete,
     so a summary must only say what was written, never what was absent."""
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    # Split after . ! ? and also after a closing quote that follows them (the model often writes: pointless.” Next sentence).
+    sentences = re.split(r"(?<=[.!?])\s+|(?<=[.!?][\"”’)])\s+", text.strip())
     return " ".join(x for x in sentences if x and not _REASSURING.search(x.strip())).strip()
 
 
@@ -185,7 +186,7 @@ def draft_ai(db: Session, case: ConsultCase) -> str | None:
         r = httpx.post(
             f"{settings.groq_base_url}/chat/completions",
             headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-            json={"model": settings.groq_model, "temperature": 0.2, "max_tokens": 700, "reasoning_effort": "low",
+            json={"model": settings.groq_model, "temperature": 0.2, "max_tokens": 1500, "reasoning_effort": "low",
                   "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": payload_text(db, case)}]},
             timeout=max(settings.llm_timeout_seconds, 12.0),
         )
