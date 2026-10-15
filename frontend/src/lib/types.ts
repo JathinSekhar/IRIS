@@ -242,6 +242,8 @@ export interface CaseDetail {
   phone: string | null
   emergency_contact: string | null
   video_used: boolean
+  urgent: boolean
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
 }
 export interface SessionNote extends SessionNoteInput {
   case_id: number

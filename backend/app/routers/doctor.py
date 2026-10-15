@@ -205,7 +205,7 @@ def case_detail(case_id: int, doctor: User = Depends(require_doctor), db: Sessio
     db.commit()
     return CaseDetailOut(case_id=case.id, state=case.state, full_name=u.full_name, age=age, is_minor=age < 18, guardian_name=u.guardian_name,
                          guardian_consent_status=u.guardian_consent_status, phone=u.phone, emergency_contact=u.emergency_contact,
-                         video_used=case.video_used)
+                         video_used=case.video_used, urgent=case.urgent, reason=case.reason)
 
 
 @router.post("/cases/{case_id}/call", response_model=SignalOut, status_code=status.HTTP_201_CREATED)

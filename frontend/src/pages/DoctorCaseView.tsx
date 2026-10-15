@@ -1,13 +1,14 @@
-import { ArrowLeft, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import CaseSummaryCard from '../components/CaseSummaryCard'
 import ConsultThread from '../components/ConsultThread'
 import VideoCall from '../components/VideoCall'
-import { Alert, Button, Card, Textarea } from '../components/ui'
+import { Alert, Button, Card, Textarea, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { CaseDetail, CaseSummary, SessionNote, SessionNoteInput, YesNo } from '../lib/types'
 
+const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer' }
 const RISK_LABEL: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High' }
 const MODE_LABEL: Record<string, string> = { chat: 'Chat', video: 'Video', both: 'Chat and video' }
 const YESNO_LABEL: Record<string, string> = { yes: 'Yes', no: 'No', not_assessed: 'Not assessed' }
@@ -163,17 +164,66 @@ export default function DoctorCaseView() {
       <Link to="/doctor" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
         <ArrowLeft className="size-4" aria-hidden /> Back to cases
       </Link>
-      <h1 className="font-display text-2xl font-medium text-slate-900">Conversation</h1>
-
       {detail && (
-        <Card className="space-y-1.5 p-4 text-sm text-slate-700">
-          <p>
-            <span className="font-semibold text-slate-900">{detail.full_name}</span>, {detail.age} years old
-            {detail.phone && <> · {detail.phone}</>}
-          </p>
-          {detail.emergency_contact && <p><span className="font-semibold text-slate-900">Emergency contact.</span> {detail.emergency_contact}</p>}
+        <section
+          aria-label="Who you are speaking with"
+          className={cx('relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm', detail.urgent ? 'border-red-200' : 'border-slate-200')}
+        >
+          {detail.urgent && <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-red-500" />}
+          <div className="flex flex-wrap items-start gap-4">
+            <span
+              aria-hidden
+              className={cx(
+                'grid size-12 shrink-0 place-content-center rounded-full text-lg font-semibold',
+                detail.urgent ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800',
+              )}
+            >
+              {detail.full_name.charAt(0)}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="font-display text-2xl font-medium text-slate-900">{detail.full_name}</h1>
+              <p className="mt-0.5 text-sm text-slate-600">
+                {[`${detail.age} years`, summary?.profile.gender, summary?.profile.occupation, summary?.profile.language_name].filter(Boolean).join(' · ')}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {detail.urgent && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                    <AlertTriangle className="size-3" aria-hidden /> Urgent
+                  </span>
+                )}
+                {detail.reason && (
+                  <span className="inline-flex rounded-md bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                    {REASON_LABEL[detail.reason]}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <span aria-hidden className={cx('size-1.5 rounded-full', closed ? 'bg-slate-400' : waiting ? 'bg-amber-500' : 'bg-emerald-500')} />
+                  {closed ? 'Closed' : waiting ? 'Not started yet' : 'In conversation'}
+                </span>
+              </div>
+            </div>
+
+            {waiting && (
+              <Button onClick={() => void startConversation()} loading={startBusy} disabled={startBusy} className="shrink-0">
+                Start conversation
+              </Button>
+            )}
+          </div>
+
+          <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
+              <dd className="mt-0.5 text-slate-800">{detail.phone ?? 'Not given'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Emergency contact</dt>
+              <dd className="mt-0.5 text-slate-800">{detail.emergency_contact ?? 'Not given'}</dd>
+            </div>
+          </dl>
+
           {detail.is_minor && (
-            <p className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+            <p className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 This person is under 18. A consultation with a minor needs an identified adult family member.
@@ -181,21 +231,17 @@ export default function DoctorCaseView() {
               </span>
             </p>
           )}
-        </Card>
+
+          {waiting && (
+            <p className="mt-4 text-sm text-slate-500">
+              {detail.full_name.split(' ')[0]} has been told you accepted and will begin when ready. Read the summary, then start: chat and video open for
+              both of you.
+            </p>
+          )}
+        </section>
       )}
 
-      {summary && <CaseSummaryCard s={summary} />}
-
-      {waiting && (
-        <Card className="space-y-3 p-4">
-          <p className="text-sm text-slate-700">
-            The person has been told you accepted and will begin when ready. Read the summary, then start. Chat and video open for both of you.
-          </p>
-          <Button onClick={() => void startConversation()} loading={startBusy} disabled={startBusy}>
-            Start conversation
-          </Button>
-        </Card>
-      )}
+      {summary && <CaseSummaryCard s={summary} hideHeader />}
 
       {inSession && (
         <VideoCall

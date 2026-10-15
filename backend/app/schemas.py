@@ -414,6 +414,8 @@ class CaseDetailOut(BaseModel):
     phone: str | None = None
     emergency_contact: str | None = None
     video_used: bool = False
+    urgent: bool = False
+    reason: str | None = None
 
 
 class MyCaseOut(BaseModel):

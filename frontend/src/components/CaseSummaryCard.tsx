@@ -49,12 +49,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
 /** The doctor's summary of a person, structured so it can be scanned in a few seconds: who, check-in at a glance, what they wrote, then the overview. */
-export default function CaseSummaryCard({ s }: { s: CaseSummary }) {
+export default function CaseSummaryCard({ s, hideHeader = false }: { s: CaseSummary; hideHeader?: boolean }) {
   const p = s.profile
   const ck = s.checkin
   const { chat } = s
   return (
     <Card className="space-y-5 p-5">
+      {!hideHeader && (
+        <>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-display text-lg font-medium text-slate-900">
           {p.first_name}, {p.age}
@@ -64,6 +66,15 @@ export default function CaseSummaryCard({ s }: { s: CaseSummary }) {
         <Chip>{p.language_name ?? p.language}</Chip>
         {p.is_minor && <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">Under 18</span>}
       </div>
+
+        </>
+      )}
+
+      {s.narrative && (
+        <Section title="In short">
+          <p className="text-sm leading-6 text-slate-700">{s.narrative}</p>
+        </Section>
+      )}
 
       <Section title={ck ? `Latest check-in · ${fmt(ck.created_at)}` : 'Check-in'}>
         {ck ? (
