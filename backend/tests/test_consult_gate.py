@@ -192,3 +192,10 @@ def test_the_scores_are_not_sent_to_the_ai_and_more_reassuring_phrasings_are_dro
     assert "PHQ" not in text and "GAD" not in text and "baseline" not in text.lower()
     raw = "They cannot sleep before exams. Their scores are low and there is no safety flag. They feel like a burden."
     assert case_summary.scrub(raw) == "They cannot sleep before exams. They feel like a burden."
+
+
+def test_statements_about_what_was_not_mentioned_are_dropped():
+    raw = ("The person says they cannot sleep and everything feels pointless. The statement suggests a possible risk, but no explicit mention "
+           "of self-harm or suicidal thoughts is provided. There is no sign of a plan.")
+    assert case_summary.scrub(raw) == "The person says they cannot sleep and everything feels pointless. The statement suggests a possible risk, but no explicit mention of self-harm or suicidal thoughts is provided." or \
+        case_summary.scrub(raw) == "The person says they cannot sleep and everything feels pointless."

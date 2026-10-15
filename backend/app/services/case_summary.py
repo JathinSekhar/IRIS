@@ -122,6 +122,7 @@ def payload_text(db: Session, case: ConsultCase) -> str:
 _REASSURING = re.compile(
     r"\bno\s+(?:\w+\s+){0,2}(?:risks?|concerns?|risk\s+factors?|flags?|warning\s+signs?|red\s+flags?)\b"
     r"|\bscores?\s+(?:are|is|were|was)\s+(?:low|minimal|normal|fine)\b"
+    r"|\bno\s+(?:\w+\s+){0,2}(?:mention|sign|evidence|indication|report)s?\s+of\b"
     r"|\bnothing\s+else\b|\bnot\s+(?:a\s+)?(?:concern|risk)\b|^not\s+stated\.?$",
     re.IGNORECASE,
 )
