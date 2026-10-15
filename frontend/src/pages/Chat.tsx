@@ -306,7 +306,7 @@ export default function Chat() {
       )}
 
       <div className="mx-auto w-full max-w-3xl shrink-0 px-4 sm:px-6">
-        <DoctorOfferCard refreshKey={messages?.length ?? 0} className="mt-2" />
+        <DoctorOfferCard refreshKey={messages?.length ?? 0} className="mt-2" compact />
       </div>
 
       {/* The message pill, pinned at the bottom. */}

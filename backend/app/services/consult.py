@@ -21,6 +21,8 @@ STATUS_TRYING = ("We are trying to reach a doctor for you. We cannot say how lon
                  "please call one of the numbers below.")
 STATUS_NONE_ON_DUTY = ("No doctor is available at the moment, and we cannot say when one might be. If you need someone right away, "
                        "please call one of the numbers below. Your request stays open.")
+STATUS_WAITING_LONG = ("No doctor has been able to accept your request yet. We are still trying, but we cannot say when one will. "
+                       "If you need someone now, please call one of the numbers below. You can keep your request open or cancel it.")
 STATUS_ACCEPTED = "A doctor has accepted your request. The conversation will begin when they are ready."
 STATUS_IN_SESSION = "Your doctor has started the conversation."
 STATUS_CANCELLED = "You cancelled this request. You can ask again at any time."
@@ -42,7 +44,21 @@ def status_text(db: Session, case: ConsultCase) -> str:
         return STATUS_CANCELLED
     if case.state == CLOSED:
         return STATUS_CLOSED
+    if waiting_long(case):
+        return STATUS_WAITING_LONG
     return STATUS_TRYING if any_doctor_on_duty(db) else STATUS_NONE_ON_DUTY
+
+
+def waiting_minutes(case: ConsultCase) -> int:
+    created = case.created_at if case.created_at.tzinfo else case.created_at.replace(tzinfo=timezone.utc)
+    return max(0, int((datetime.now(timezone.utc) - created).total_seconds() // 60))
+
+
+def waiting_long(case: ConsultCase) -> bool:
+    """An open request nobody has accepted within the team's goal. The goal is never shown to the person."""
+    from ..config import settings
+
+    return case.state == OPEN and waiting_minutes(case) >= settings.doctor_wait_goal_minutes
 
 
 def live_case(db: Session, user_id) -> ConsultCase | None:

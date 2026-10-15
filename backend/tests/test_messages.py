@@ -383,7 +383,7 @@ def test_reviewers_get_instant_counts_only_alerts_that_are_not_audited_and_close
         urgent = send(c, SELF_HARM)
         make_reviewer(c, env)
         a = c.get("/api/reviewer/alerts").json()
-        assert set(a) == {"urgent_waiting", "urgent_unopened", "oldest_unopened_seconds", "latest_urgent_id", "doctor_requests_waiting"}
+        assert set(a) == {"urgent_waiting", "urgent_unopened", "oldest_unopened_seconds", "latest_urgent_id", "doctor_requests_waiting", "doctor_requests_overdue"}
         assert a["urgent_waiting"] == 1 and a["urgent_unopened"] == 1 and a["latest_urgent_id"] == urgent["id"] and a["oldest_unopened_seconds"] >= 0
         with env() as s:
             before = len(s.scalars(select(AuditLog)).all())

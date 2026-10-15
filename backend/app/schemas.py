@@ -227,6 +227,7 @@ class ConsultOut(BaseModel):
     doctor_specialty: str | None = None
     doctor_registration_number: str | None = None   # shown to the person once a doctor has accepted, as the guidelines expect
     helplines: list[HelplineOut] = []         # always present, so the numbers are in front of them while they wait
+    waiting_long: bool = False                # nobody has accepted within the team's goal: the page says so plainly
 
 
 class OfferMessageOut(BaseModel):
@@ -253,6 +254,8 @@ class OfferOut(BaseModel):
     source: str
     urgent: bool
     reason: str | None = None                 # why it is urgent: urgent_message | high_checkin | reviewer
+    waiting_minutes: int = 0
+    overdue: bool = False                     # waiting longer than the team's goal
     priority: str | None = None
     is_minor: bool = False
     recent_messages: list[OfferMessageOut]
@@ -459,6 +462,7 @@ class UrgentAlertsOut(BaseModel):
     oldest_unopened_seconds: int | None
     latest_urgent_id: int | None
     doctor_requests_waiting: int = 0          # urgent doctor requests that no doctor has accepted yet
+    doctor_requests_overdue: int = 0          # any doctor request nobody has accepted within the team's goal
 
 
 class ReviewEventOut(BaseModel):

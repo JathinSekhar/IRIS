@@ -146,8 +146,11 @@ def alerts(reviewer: User = Depends(require_reviewer), db: Session = Depends(get
     from ..services import consult
 
     waiting = db.scalar(select(func.count()).select_from(ConsultCase).where(ConsultCase.state == consult.OPEN, ConsultCase.urgent.is_(True))) or 0
+    open_cases = db.scalars(select(ConsultCase).where(ConsultCase.state == consult.OPEN)).all()
+    overdue = sum(1 for c in open_cases if consult.waiting_long(c))
     return UrgentAlertsOut(urgent_waiting=len(rows), urgent_unopened=len(unopened), oldest_unopened_seconds=oldest,
-                           latest_urgent_id=max((r.message_id for r in rows), default=None), doctor_requests_waiting=waiting)
+                           latest_urgent_id=max((r.message_id for r in rows), default=None), doctor_requests_waiting=waiting,
+                           doctor_requests_overdue=overdue)
 
 
 @router.get("/messages", response_model=list[ReviewerMessageSummary])

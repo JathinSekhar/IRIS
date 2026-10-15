@@ -31,6 +31,10 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
             {o.reason === 'urgent_message' ? 'Urgent message' : o.reason === 'high_checkin' ? 'High check-in' : 'Suggested by a reviewer'}
           </span>
         )}
+        <span className={cx('inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+          o.overdue ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-slate-50 text-slate-600 ring-slate-200')}>
+          {o.overdue ? `Waiting ${o.waiting_minutes} min` : o.waiting_minutes < 1 ? 'Just now' : `Waiting ${o.waiting_minutes} min`}
+        </span>
         {o.is_minor && (
           <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
             Under 18

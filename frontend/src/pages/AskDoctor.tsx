@@ -143,7 +143,7 @@ export default function AskDoctor() {
         <>
           <Card className="space-y-3 p-6">
             <p className="font-semibold text-slate-900">
-              {current.state === 'accepted' ? (current.doctor_name ? `${current.doctor_name} has accepted` : 'A doctor has accepted') : 'Your request is open'}
+              {current.state === 'accepted' ? (current.doctor_name ? `${current.doctor_name} has accepted` : 'A doctor has accepted') : current.waiting_long ? 'Still looking for a doctor' : 'Your request is open'}
             </p>
             <p className="text-slate-700">{current.status_text}</p>
             {current.state === 'accepted' && current.doctor_registration_number && (

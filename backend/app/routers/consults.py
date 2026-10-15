@@ -17,7 +17,8 @@ def _out(db: Session, c: ConsultCase) -> ConsultOut:
     return ConsultOut(id=c.id, state=c.state, status_text=consult.status_text(db, c), created_at=c.created_at,
                       doctor_name=c.doctor.full_name if c.state in consult.WITH_DOCTOR and c.doctor else None,
                       doctor_specialty=prof.specialty if prof else None,
-                      doctor_registration_number=prof.registration_number if prof else None, helplines=helplines)
+                      doctor_registration_number=prof.registration_number if prof else None, helplines=helplines,
+                      waiting_long=consult.waiting_long(c))
 
 
 @router.get("/current", response_model=ConsultOut | None)

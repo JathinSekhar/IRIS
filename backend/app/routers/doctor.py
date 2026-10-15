@@ -53,6 +53,7 @@ def _offer(db: Session, case: ConsultCase) -> OfferOut:
     return OfferOut(
         case_id=case.id, first_name=consult.person_first_name(case.user), age=age_on(case.user.date_of_birth), created_at=case.created_at,
         source=case.source, reason=case.reason, urgent=bool(s["urgent"] or case.urgent), priority=s["priority"], is_minor=s["is_minor"],
+        waiting_minutes=consult.waiting_minutes(case), overdue=consult.waiting_long(case),
         recent_messages=[],
         checkin=None if ck is None else {"baseline_risk": ck["baseline_risk"], "safety_flag": ck["safety_flag"], "created_at": ck["created_at"]},
     )

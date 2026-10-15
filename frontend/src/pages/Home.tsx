@@ -1,4 +1,5 @@
 import { CalendarClock, ClipboardCheck, MessageCircle } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import DoctorOfferCard from '../components/DoctorOfferCard'
@@ -9,6 +10,7 @@ const fmt = (iso: string | null) =>
 
 export default function Home() {
   const { user } = useAuth()
+  const [offered, setOffered] = useState(false)
   if (!user) return null
   const { checkin } = user
   const completed = checkin.state === 'ok' || checkin.state === 'due'
@@ -18,8 +20,9 @@ export default function Home() {
       <h1 className="font-display text-3xl font-medium text-slate-900">Hi {user.first_name}</h1>
       <p className="mt-2 text-slate-600">This is your private space. Take your time.</p>
 
-      <DoctorOfferCard className="mt-6" />
+      <DoctorOfferCard className="mt-6" onPresence={setOffered} />
 
+      {!offered && (
       <Card className="mt-8 flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-medium text-slate-900">Talk to a doctor</h2>
@@ -30,6 +33,7 @@ export default function Home() {
           Ask for a doctor
         </Link>
       </Card>
+      )}
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Card className="p-6">

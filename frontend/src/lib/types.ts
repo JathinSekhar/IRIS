@@ -187,6 +187,7 @@ export interface Consult {
   doctor_specialty: string | null
   doctor_registration_number: string | null
   helplines: Helpline[]
+  waiting_long: boolean
 }
 export interface DoctorOffer {
   case_id: number
@@ -196,6 +197,8 @@ export interface DoctorOffer {
   source: string
   urgent: boolean
   reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
+  waiting_minutes: number
+  overdue: boolean
   priority: 'low' | 'medium' | 'high' | null
   is_minor: boolean
   recent_messages: { text: string; created_at: string }[]
@@ -308,6 +311,7 @@ export interface UrgentAlerts {
   oldest_unopened_seconds: number | null
   latest_urgent_id: number | null
   doctor_requests_waiting: number
+  doctor_requests_overdue: number
 }
 export interface ReviewEvent {
   id: number

@@ -246,12 +246,20 @@ export default function Reviewer() {
   const tabs = [['checkins', 'Check-ins'], ['messages', 'Messages']] as const
   const unopened = alerts?.urgent_unopened ?? 0
   const doctorWaiting = alerts?.doctor_requests_waiting ?? 0
+  const doctorOverdue = alerts?.doctor_requests_overdue ?? 0
   return (
     <div>
       {doctorWaiting > 0 && (
         <div role="status" className="mb-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-900">
           <ShieldAlert className="size-5 shrink-0" aria-hidden />
           {doctorWaiting} urgent doctor request{doctorWaiting > 1 ? 's' : ''} waiting for a doctor to accept
+        </div>
+      )}
+      {doctorOverdue > 0 && (
+        <div role="alert" className="mb-3 flex items-center gap-2 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-900">
+          <ShieldAlert className="size-5 shrink-0" aria-hidden />
+          {doctorOverdue} doctor request{doctorOverdue > 1 ? 's have' : ' has'} waited longer than the goal with nobody accepting. Consider contacting
+          the person or finding a doctor.
         </div>
       )}
       {unopened > 0 && (
