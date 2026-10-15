@@ -389,6 +389,7 @@ class CaseSummaryOut(BaseModel):
     profile: SummaryProfileOut
     checkin: SummaryCheckinOut | None = None
     bullets: list[str]
+    narrative: str = ""                       # a short written profile from the check-in and the chat (rules, not AI)
     chat: SummaryChatOut = SummaryChatOut()
     recent_messages: list[OfferMessageOut]
     ai_allowed: bool

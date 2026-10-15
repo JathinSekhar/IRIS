@@ -40,6 +40,48 @@ def _latest_checkin(db: Session, user_id) -> CheckIn | None:
     return db.scalar(select(CheckIn).where(CheckIn.user_id == user_id, CheckIn.skipped.is_(False)).order_by(CheckIn.created_at.desc(), CheckIn.id.desc()))
 
 
+def _band(b: str | None) -> str:
+    return (b or "").replace("_", " ") or "unknown"
+
+
+def narrative(u, age: int, ck, phq: dict, gad: dict, safety: dict, msgs: list, chat: dict) -> str:
+    """A few plain sentences about the person, built only from their profile, their check-in answers and how they have used the chat.
+    Rules, not a model: it is always available, never leaves the server, and never says anything the data does not show."""
+    first = u.full_name.split()[0]
+    about = [str(age)] + [x.lower() for x in (u.gender, u.occupation) if x]
+    parts = [f"{first} ({', '.join(about)}{', under 18' if age < 18 else ''})."]
+
+    if ck is not None:
+        when = ck.created_at.strftime("%d %b").lstrip("0")
+        line = f"In the check-in on {when} they reported {_band(phq.get('band'))} low mood and {_band(gad.get('band'))} anxiety"
+        floor = safety.get("urgency_floor")
+        if ck.safety_flag or floor in ("medium", "high"):
+            line += f", and their safety answers raised a {floor if floor in ('medium', 'high') else ''} flag".replace("a  flag", "a flag")
+        parts.append(line + ".")
+        if ck.free_text and ck.free_text.strip():
+            text = ck.free_text.strip()
+            ell = "\u2026" if len(text) > 180 else ""
+            parts.append(f"In their own words: \u201c{text[:180]}{ell}\u201d")
+    else:
+        parts.append("They have not completed a check-in.")
+
+    if msgs:
+        days = {m.created_at.date() for m in msgs}
+        line = f"In the chat they have written {len(msgs)} message{'s' if len(msgs) != 1 else ''}"
+        if len(days) > 1:
+            line += f" over {len(days)} days"
+        if chat["concerning"]:
+            line += f", {chat['concerning']} with worrying language"
+            if chat["explicit"]:
+                line += f" ({chat['explicit']} explicit)"
+        if chat["topics"]:
+            line += ", mostly about " + " and ".join([", ".join(chat["topics"][:-1]), chat["topics"][-1]] if len(chat["topics"]) > 1 else chat["topics"])
+        parts.append(line + ".")
+    else:
+        parts.append("They have not written to IRIS yet.")
+    return " ".join(parts)
+
+
 def build(db: Session, case: ConsultCase) -> dict:
     u = case.user
     age = age_on(u.date_of_birth)
@@ -93,6 +135,7 @@ def build(db: Session, case: ConsultCase) -> dict:
             "gad7": gad.get("score"), "gad7_band": gad.get("band"), "safety_flag": ck.safety_flag, "urgency_floor": safety.get("urgency_floor"),
         },
         "bullets": bullets,
+        "narrative": narrative(u, age, ck, phq, gad, safety, msgs, chat),
         "chat": chat,
         "recent_messages": [{"text": m.text, "created_at": m.created_at} for m in msgs[-6:]],
     }

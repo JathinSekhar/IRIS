@@ -267,6 +267,7 @@ export interface CaseSummary {
     urgency_floor: string | null
   } | null
   bullets: string[]
+  narrative: string
   chat: { count: number; concerning: number; explicit: number; topics: string[]; latest: string | null }
   recent_messages: { text: string; created_at: string }[]
   ai_allowed: boolean

@@ -1,7 +1,7 @@
-import { AlertTriangle, ChevronDown, Stethoscope } from 'lucide-react'
+import { AlertTriangle, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import CaseSummaryCard from '../components/CaseSummaryCard'
+import CaseSummaryBrief from '../components/CaseSummaryBrief'
 import { Alert, Button, Card, Spinner, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { CaseSummary, DoctorCase, DoctorMe, DoctorOffer } from '../lib/types'
@@ -66,17 +66,14 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
 
 const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer' }
 
-/** One of the doctor's cases, with its summary inline. A case still waiting to be started opens with the summary showing, because that is the moment to read it. */
+/** One of the doctor's cases with a short summary. The full summary is on the case page. */
 function CaseRow({ c }: { c: DoctorCase }) {
   const waiting = c.state === 'accepted'
-  const [open, setOpen] = useState(waiting)
   const [summary, setSummary] = useState<CaseSummary | null>(null)
-  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!open || summary) return
-    api.caseSummary(c.case_id).then(setSummary).catch(() => setFailed(true))
-  }, [open, summary, c.case_id])
+    api.caseSummary(c.case_id).then(setSummary).catch(() => undefined)
+  }, [c.case_id])
 
   return (
     <Card className="space-y-3 p-4 text-sm text-slate-700">
@@ -101,12 +98,7 @@ function CaseRow({ c }: { c: DoctorCase }) {
         </Link>
       </div>
 
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-        className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-        <ChevronDown className={cx('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
-        {open ? 'Hide summary' : 'Show summary'}
-      </button>
-      {open && (summary ? <CaseSummaryCard s={summary} /> : failed ? <p className="text-slate-500">The summary could not be loaded.</p> : <Spinner />)}
+      {summary && <CaseSummaryBrief s={summary} />}
     </Card>
   )
 }
@@ -236,7 +228,7 @@ export default function Doctor() {
           {cases.some((c) => c.state === 'accepted' || c.state === 'in_session') && (
             <section className="space-y-3" aria-label="Your cases">
               <h2 className="font-medium text-slate-900">Your cases</h2>
-              {cases.filter((c) => c.state === 'accepted' || c.state === 'in_session').map((c) => (
+              {cases.filter((c) => c.state === 'accepted' || c.state === 'in_session').sort((a, b) => Number(b.urgent) - Number(a.urgent)).map((c) => (
                 <CaseRow key={c.case_id} c={c} />
               ))}
             </section>
