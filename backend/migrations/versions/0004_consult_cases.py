@@ -56,7 +56,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("resolved_at", sa.DateTime(timezone=True)),
         sa.Column("resolution", sa.String(12)),
-        sa.CheckConstraint("reason in ('urgent_message', 'high_checkin', 'reviewer')", name="doctor_offers_reason_check"),
+        sa.CheckConstraint("reason in ('urgent_message', 'high_checkin', 'reviewer', 'self_help')", name="doctor_offers_reason_check"),
         sa.CheckConstraint("resolution is null or resolution in ('accepted', 'dismissed')", name="doctor_offers_resolution_check"),
     )
     op.create_index("ix_doctor_offers_user_id", "doctor_offers", ["user_id"])

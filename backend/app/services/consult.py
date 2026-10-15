@@ -195,6 +195,9 @@ OFFER_TEXT = {
     "high_checkin": ("Would you like to talk to a doctor?",
                      "From your check-in answers, it may help to talk with a doctor on the IRIS team. They may not be able to answer straight away, "
                      "and the helplines are always there."),
+    "self_help": ("Would you like to talk to a doctor?",
+                  "If the suggestions did not help, a doctor on the IRIS team can talk with you here. They may not be able to answer straight "
+                  "away, and the helplines are always there."),
     "reviewer": ("Would you like to talk to a doctor?",
                  "Someone on our team who read your messages thinks it may help to talk with a doctor. It is your choice, and they may not be able "
                  "to answer straight away."),

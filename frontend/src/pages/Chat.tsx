@@ -65,7 +65,36 @@ function Bullets({ items }: { items: string[] }) {
 }
 
 /** IRIS's reply: plain text, no box. One idea is shown; the rest wait behind "More ideas". Helplines are never hidden. */
-function Reply({ m, first }: { m: ChatMessage; first: boolean }) {
+/** Stepped care: after IRIS's suggestions, the person says whether they helped. "Not really" brings up the offer of a doctor (they still choose). */
+function DidThisHelp({ m, onRated }: { m: ChatMessage; onRated: (updated: ChatMessage) => void }) {
+  const [busy, setBusy] = useState(false)
+  if (!m.can_rate) return null
+  if (m.helpful === true) return <p className="text-sm text-slate-500">Glad it helped. You can come back any time.</p>
+  if (m.helpful === false) return <p className="text-sm text-slate-500">Thank you for telling us. You can talk to a doctor below.</p>
+  async function rate(helpful: boolean) {
+    setBusy(true)
+    try {
+      onRated(await api.rateMessage(m.id, helpful))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+      <span>Did this help?</span>
+      <button type="button" disabled={busy} onClick={() => void rate(true)}
+        className="rounded-full border border-slate-300 px-3 py-1 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+        Yes
+      </button>
+      <button type="button" disabled={busy} onClick={() => void rate(false)}
+        className="rounded-full border border-slate-300 px-3 py-1 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+        Not really
+      </button>
+    </div>
+  )
+}
+
+function Reply({ m, first, onRated }: { m: ChatMessage; first: boolean; onRated: (updated: ChatMessage) => void }) {
   const r = m.reply
   const [more, setMore] = useState(false)
   const talked = Boolean(r.companion)          // an AI-written conversational line replaces the fixed opening; the ideas wait behind "More ideas"
@@ -114,6 +143,8 @@ function Reply({ m, first }: { m: ChatMessage; first: boolean }) {
           </button>
         )}
 
+        <DidThisHelp m={m} onRated={onRated} />
+
         {r.layout === 'support' && r.reach_out.length > 0 && <Bullets items={r.reach_out} />}
         {r.layout === 'celebrate' && r.reach_out[0] && <p className="text-sm text-slate-500">{r.reach_out[0]}</p>}
       </div>
@@ -137,6 +168,7 @@ function Reply({ m, first }: { m: ChatMessage; first: boolean }) {
 
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
+  const [offerKey, setOfferKey] = useState(0)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -278,7 +310,7 @@ export default function Chat() {
                 <div className="flex justify-end">
                   <p className="max-w-[80%] whitespace-pre-wrap break-words rounded-3xl bg-slate-100 px-5 py-2.5 text-[15px] leading-7 text-slate-900">{m.text}</p>
                 </div>
-                <Reply m={m} first={i === 0} />
+                <Reply m={m} first={i === 0} onRated={(u) => { setMessages((prev) => (prev ?? []).map((x) => (x.id === u.id ? u : x))); setOfferKey((k) => k + 1) }} />
               </div>
             ))}
             {sending && (
@@ -306,7 +338,7 @@ export default function Chat() {
       )}
 
       <div className="mx-auto w-full max-w-3xl shrink-0 px-4 sm:px-6">
-        <DoctorOfferCard refreshKey={messages?.length ?? 0} className="mt-2" compact />
+        <DoctorOfferCard refreshKey={(messages?.length ?? 0) * 1000 + offerKey} className="mt-2" compact />
       </div>
 
       {/* The message pill, pinned at the bottom. */}

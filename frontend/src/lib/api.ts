@@ -120,6 +120,7 @@ export const api = {
   reviewerQueue: () => request<ReviewerCheckinSummary[]>('/api/reviewer/checkins'),
   reviewerCheckin: (id: number) => request<ReviewerCheckin>(`/api/reviewer/checkins/${id}`),
   sendMessage: (text: string) => post<ChatMessage>('/api/messages', { text }),
+  rateMessage: (id: number, helpful: boolean) => post<ChatMessage>(`/api/messages/${id}/feedback`, { helpful }),
   messages: () => request<ChatMessage[]>('/api/messages'),
   doctorMe: () => request<DoctorMe>('/api/doctor/me'),
   doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),

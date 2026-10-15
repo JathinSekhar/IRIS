@@ -241,6 +241,8 @@ class Message(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    # "Did this help?" on an ordinary reply: True = yes, False = not really (IRIS then offers a doctor), None = not answered.
+    helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     user: Mapped[User] = relationship()
     prediction: Mapped["Prediction"] = relationship(back_populates="message", uselist=False, cascade="all, delete-orphan")

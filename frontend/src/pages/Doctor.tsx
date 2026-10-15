@@ -28,7 +28,7 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
         {o.reason && (
           <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset',
             o.reason === 'reviewer' ? 'bg-sky-50 text-sky-800 ring-sky-200' : 'bg-red-50 text-red-800 ring-red-200')}>
-            {o.reason === 'urgent_message' ? 'Urgent message' : o.reason === 'high_checkin' ? 'High check-in' : 'Suggested by a reviewer'}
+            {REASON_LABEL[o.reason] ?? o.reason}
           </span>
         )}
         <span className={cx('inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
@@ -68,7 +68,7 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
   )
 }
 
-const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer' }
+const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer', self_help: "Suggestions didn't help" }
 
 /** One of the doctor's cases with a short summary. The full summary is on the case page. */
 function CaseRow({ c }: { c: DoctorCase }) {

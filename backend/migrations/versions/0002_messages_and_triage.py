@@ -27,6 +27,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Uuid(), sa.ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("helpful", sa.Boolean()),
         sa.CheckConstraint("char_length(text) <= 5000", name="messages_text_length_check"),
     )
     op.create_index("ix_messages_user_id", "messages", ["user_id"])

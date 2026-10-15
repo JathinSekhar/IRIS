@@ -8,7 +8,7 @@ import { Alert, Button, Card, Textarea, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
 import type { CaseDetail, CaseSummary, SessionNote, SessionNoteInput, YesNo } from '../lib/types'
 
-const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer' }
+const REASON_LABEL: Record<string, string> = { urgent_message: 'Urgent message', high_checkin: 'High check-in', reviewer: 'Suggested by a reviewer', self_help: "Suggestions didn't help" }
 const RISK_LABEL: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High' }
 const MODE_LABEL: Record<string, string> = { chat: 'Chat', video: 'Video', both: 'Chat and video' }
 const YESNO_LABEL: Record<string, string> = { yes: 'Yes', no: 'No', not_assessed: 'Not assessed' }

@@ -85,7 +85,7 @@ def test_the_reply_is_supportive_and_shows_no_scores_labels_or_claims_of_safety(
     with TestClient(app) as c:
         signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
         body = send(c, CALM)
-        assert set(body) == {"id", "text", "created_at", "reply", "care_status", "status_text"}
+        assert set(body) == {"id", "text", "created_at", "reply", "care_status", "status_text", "can_rate", "helpful"}   # can_rate/helpful: a yes/no, not a score
         assert set(body["reply"]) == {"layout", "helplines", "intro", "listening", "self_help", "reach_out", "crisis_lead", "crisis_lines",
                                       "show_crisis_resources", "emergency_footer", "closing", "a_person_may_reach_out", "companion"}
         assert body["care_status"] == "waiting" and body["reply"]["layout"] == "tips" and body["reply"]["helplines"] == []

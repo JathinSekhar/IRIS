@@ -8,7 +8,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import CheckIn, Message, Prediction, User
-from ..schemas import MessageIn, MessageOut, SupportReplyOut
+from ..schemas import FeedbackIn, MessageIn, MessageOut, SupportReplyOut
 from ..services import companion, triage
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
@@ -18,7 +18,15 @@ def _out(m: Message) -> MessageOut:
     p = m.prediction
     cs = triage.care_status(p.status, p.first_opened_at)
     return MessageOut(id=m.id, text=m.text, created_at=m.created_at, reply=SupportReplyOut(**p.reply), care_status=cs,
-                      status_text=triage.support.status_line(cs, p.message_urgent))
+                      status_text=triage.support.status_line(cs, p.message_urgent), can_rate=can_rate(m), helpful=m.helpful)
+
+
+def can_rate(m: Message) -> bool:
+    """Only an ordinary reply that offered suggestions or a conversational line. Never a worrying or urgent message: those already offer
+    helplines and a doctor directly, and must not ask the person to rate them."""
+    p = m.prediction
+    reply = p.reply or {}
+    return p.rule_level == "none" and not p.message_urgent and reply.get("layout") == "tips" and bool(reply.get("self_help") or reply.get("companion"))
 
 
 @router.post("", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
@@ -80,3 +88,20 @@ def history(limit: int = Query(100, ge=1, le=200), user: User = Depends(get_curr
     """The signed-in person's own conversation, oldest first. Nobody else's messages are ever returned."""
     rows = db.scalars(select(Message).where(Message.user_id == user.id).order_by(Message.id.desc()).limit(limit)).all()
     return [_out(m) for m in reversed(rows)]
+
+
+@router.post("/{message_id}/feedback", response_model=MessageOut)
+def feedback(message_id: int, body: FeedbackIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> MessageOut:
+    """'Did this help?' on an ordinary reply. 'Not really' offers a doctor (the person still chooses; nothing is shared until they say yes)."""
+    m = db.get(Message, message_id)
+    if m is None or m.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found")
+    if not can_rate(m):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This reply cannot be rated.")
+    m.helpful = body.helpful
+    db.commit()
+    if body.helpful is False:
+        from ..services import consult
+
+        consult.make_offer(db, user.id, "self_help", message_id=m.id)
+    return _out(m)

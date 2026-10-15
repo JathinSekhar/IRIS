@@ -160,6 +160,8 @@ export interface ChatMessage {
   reply: SupportReply
   care_status: CareStatus
   status_text: string
+  can_rate: boolean
+  helpful: boolean | null
 }
 
 // --- doctor ---------------------------------------------------------------------------------------------------------------------------------
@@ -174,7 +176,7 @@ export interface DoctorMe {
 
 export interface DoctorOfferPrompt {
   id: number
-  reason: 'urgent_message' | 'high_checkin' | 'reviewer'
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | 'self_help'
   title: string
   body: string
 }
@@ -196,7 +198,7 @@ export interface DoctorOffer {
   created_at: string
   source: string
   urgent: boolean
-  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | 'self_help' | null
   waiting_minutes: number
   overdue: boolean
   priority: 'low' | 'medium' | 'high' | null
@@ -246,7 +248,7 @@ export interface CaseDetail {
   emergency_contact: string | null
   video_used: boolean
   urgent: boolean
-  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | 'self_help' | null
 }
 export interface SessionNote extends SessionNoteInput {
   case_id: number
@@ -287,7 +289,7 @@ export interface DoctorCase {
   first_name: string
   state: string
   urgent: boolean
-  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | null
+  reason: 'urgent_message' | 'high_checkin' | 'reviewer' | 'self_help' | null
   accepted_at: string | null
 }
 

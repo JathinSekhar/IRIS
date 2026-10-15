@@ -437,6 +437,12 @@ class MessageOut(BaseModel):
     reply: SupportReplyOut
     care_status: str                          # waiting | being_read | reviewed: what is really true about whether a person has opened it
     status_text: str                          # the reviewed sentence for that state
+    can_rate: bool = False                    # an ordinary reply with suggestions: "Did this help?" is shown
+    helpful: bool | None = None               # the person's answer, if any
+
+
+class FeedbackIn(BaseModel):
+    helpful: bool
 
 
 class ReviewerMessageSummary(BaseModel):
