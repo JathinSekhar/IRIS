@@ -27,7 +27,7 @@ function OfferCard({ o, busy, onAccept, onDecline }: { o: DoctorOffer; busy: boo
         )}
         {o.reason && (
           <span className={cx('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset',
-            o.reason === 'reviewer' ? 'bg-sky-50 text-sky-800 ring-sky-200' : 'bg-red-50 text-red-800 ring-red-200')}>
+            o.urgent ? 'bg-red-50 text-red-800 ring-red-200' : 'bg-slate-50 text-slate-700 ring-slate-200')}>
             {REASON_LABEL[o.reason] ?? o.reason}
           </span>
         )}

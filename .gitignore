@@ -26,3 +26,5 @@ ml/data/gold/*.csv
 ml/data/gold/batches/
 ml/data/gold/annotations/
 ml/artifacts/
+
+demo_video/
