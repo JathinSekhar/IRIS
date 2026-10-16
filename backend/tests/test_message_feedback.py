@@ -68,3 +68,10 @@ def test_the_self_help_offer_text_makes_no_promise():
     import re
     title, body = consult.OFFER_TEXT["self_help"]
     assert not re.search(r"\b(?:will (?:be|call|come|join|reach)|soon|shortly|minutes?|hours?|within|promise|guarantee)\b", f"{title} {body}", re.I)
+
+
+def test_a_person_with_a_high_check_in_is_never_asked_to_rate(env):
+    with TestClient(app) as c:
+        signup(c, dd.HIGH.signup, dd.HIGH.answers)
+        m = send(c, CALM)
+        assert m["reply"]["helplines"] and m["can_rate"] is False

@@ -26,6 +26,8 @@ def can_rate(m: Message) -> bool:
     helplines and a doctor directly, and must not ask the person to rate them."""
     p = m.prediction
     reply = p.reply or {}
+    if reply.get("helplines"):                     # anything flagged (a rule, or a medium/high check-in floor) gets helplines and a doctor, not a rating
+        return False
     return p.rule_level == "none" and not p.message_urgent and reply.get("layout") == "tips" and bool(reply.get("self_help") or reply.get("companion"))
 
 
