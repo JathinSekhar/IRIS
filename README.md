@@ -12,6 +12,12 @@ judgement; the system never closes a case. The reply wording is an **AI-assisted
 It also has **Talk to a doctor**: a person can ask for a clinician (or IRIS offers one after an explicit message or a High check-in), a doctor
 accepts, reads a summary, starts a chat or video, and closes with a session form. IRIS never says a doctor is coming until one has accepted.
 
+## Demo: How IRIS Works
+
+Watch the project walkthrough to see the IRIS workflow, including the user journey and key system features:
+
+[▶ Watch the IRIS demo video](https://drive.google.com/file/d/1Iu8onwozyphqGxL-57EQYhCANAXLBK-R/view?usp=sharing)
+
 **Start here:** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) (one page), then [docs/DOCTOR_FEATURE.md](docs/DOCTOR_FEATURE.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/TRIAGE_INTEGRATION_SPEC.md](docs/TRIAGE_INTEGRATION_SPEC.md). Sandbox logins:
 [docs/DEMO_ACCOUNTS.md](docs/DEMO_ACCOUNTS.md).
@@ -42,7 +48,7 @@ Requires Python 3.10+ and Node 20+.
 # 1. Backend  (http://127.0.0.1:8000, API docs at /docs)
 cd backend
 python -m venv .venv
-.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
+.venv\\Scripts\\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head              # creates the tables, RLS rules and audit log in Supabase (0002-0006 add the chat and doctor tables: review them first)
 uvicorn app.main:app --reload
@@ -69,19 +75,19 @@ cd frontend && npm run build  # type-check and production build
 backend/app/
   auth_service.py             Supabase Auth client behind a small interface (faked in tests)
   services/questionnaire.py   clinical intake definition + answer validation (single source of truth)
-  services/scoring.py         PHQ-9, GAD-7 and baseline risk (pure functions, unit-tested)
-  services/safety.py          self-harm assessment: C-SSRS tiers and the urgency floor
-  services/consult.py         doctor requests: honest status text, offers, the one-doctor-wins claim
-  services/case_summary.py    the doctor's summary (rules) and the optional AI overview
-  services/companion.py       optional conversational reply for ordinary chat messages (Groq), output checked
-  routers/                    auth, check-in, messages, reviewer, consults (person), doctor (with audit log)
+  services/scoring.py          PHQ-9, GAD-7 and baseline risk (pure functions, unit-tested)
+  services/safety.py           self-harm assessment: C-SSRS tiers and the urgency floor
+  services/consult.py          doctor requests: honest status text, offers, the one-doctor-wins claim
+  services/case_summary.py     the doctor's summary (rules) and the optional AI overview
+  services/companion.py        optional conversational reply for ordinary chat messages (Groq), output checked
+  routers/                     auth, check-in, messages, reviewer, consults (person), doctor (with audit log)
   models.py  schemas.py  deps.py
-backend/migrations/           Alembic: schema, foreign key to auth.users, RLS, privileges
+backend/migrations/            Alembic: schema, foreign key to auth.users, RLS, privileges
 backend/tests/
 frontend/src/
-  pages/                      Login, Register, ForgotPassword, ResetPassword, Consent, CheckIn, Support, Home, Chat, Reviewer,
-                              AskDoctor, Doctor, DoctorCaseView
-  lib/                        typed API client (silent session refresh), questionnaire helpers
+  pages/                       Login, Register, ForgotPassword, ResetPassword, Consent, CheckIn, Support, Home, Chat, Reviewer,
+                               AskDoctor, Doctor, DoctorCaseView
+  lib/                         typed API client (silent session refresh), questionnaire helpers
 ```
 
 ## Known limitations (deliberate, for this milestone)
