@@ -28,6 +28,11 @@ MUST_BE_HIGH = [
     "The means are ready and tonight I am going to do it",
     "I have the pills all ready and I will go through with it",
     "By the time you read this it will all be over",
+    # found by the chat probe (2026-11-26): the plan refers back to pills named earlier
+    "I have saved up pills and I am going to take them all tonight",
+    "I bought paracetamol and I will swallow all of them",
+    "got my sleeping tablets here, gonna take them all at once",
+    "i'm gonna kill my$elf",
 ]
 
 # Ideation, self-harm, euphemisms, third-party risk: must be flagged at least REVIEW.
@@ -66,6 +71,14 @@ MUST_BE_FLAGGED = [
     "I will not be here anymore after this week",
     "I feel hopeless and I have been thinking about ending my life",       # found by the demo walkthrough: "ending" was missed
     "I keep thinking about ending my own life",
+    # found by the chat probe (2026-11-26)
+    "k1ll mys3lf",
+    "I want to k*ll mys*lf",
+    "everything feels pointless and I don't see a way out",
+    "there is no way out for me",
+    "I feel trapped with no way out",
+    "I have been saving my sleeping pills",
+    "I stockpiled painkillers",
 ]
 
 # Everyday language that must NOT be flagged.
@@ -98,6 +111,16 @@ MUST_BE_NONE = [
     "I am going to do it tonight, the cake for the party is ready",
     "I have been thinking about ending things with my boyfriend, we argue too much",
     "I ended up finishing the exam early",
+    # near the patterns added after the chat probe
+    "I need to take my meds before class",
+    "I am going to take my tablets with water after lunch",
+    "I picked up pills for my grandmother",
+    "I keep my pills in a box",
+    "I am saving up for medicine for my dad",
+    "I collected my medication from the pharmacy",
+    "I can't see a way out of this building, the doors are locked",
+    "there is no way out of this exam hall until 5",
+    "my mom keeps her pills in the kitchen",
 ]
 
 

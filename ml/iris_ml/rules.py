@@ -33,13 +33,15 @@ def _fz(word: str) -> str:
 
 KILL = _fz("kill") + r"(?:ing|ed)?"
 SUICIDE = r"s+u+" + _V + r"+c+" + _V + r"+d+(?:" + _V + r"+|" + r"[a@4]+l+)"
-MYSELF = r"(?:my\s*self)"
+MYSELF = r"(?:my\s*[s$5]+" + _V + r"+l+f)"
 THIRD = r"(?:him\s*self|her\s*self|them\s*selves)"
 ENDLIFE = (r"(?:end\s+(?:it\s+all|it|my\s+(?:own\s+)?life|things)|ending\s+(?:my\s+(?:own\s+)?life|it\s+all)"
            r"|take\s+my\s+(?:own\s+)?life|commit\s+" + SUICIDE + r")")
 TIME = r"(?:tonight|today|tomorrow|right\s+now|this\s+(?:weekend|evening|morning|afternoon)|in\s+an\s+hour|later\s+today)"
 INTENT_LEAD = r"(?:going\s+to|gonna|about\s+to|plan(?:ning)?\s+(?:to|on)|intend(?:ing)?\s+to|decided\s+to|will)"
 METHODS = r"(?:pills|tablets|rope|gun|knife|blade|razor|poison|noose)"
+PILLS = r"(?:pills|tablets|meds|medication|medicine|painkillers|paracetamol)"
+SWALLOW = r"(?:take|swallow|down|pop)"
 DEATH = r"(?:" + KILL + r"\s+" + MYSELF + r"|" + ENDLIFE + r"|d+i+e+|de+a+d+|" + SUICIDE + r")"
 
 # (name, level, pattern). Order does not matter; the highest level wins.
@@ -65,11 +67,21 @@ _RULES: list[tuple[str, str, str]] = [
     ("decided_to_die", "high", r"\b(?:decided|deciding|planning|plan|plans|going)\s+(?:to|on)\s+(?:d+i+e+|dying)\b(?!\s+(?:of|from|laughing|inside))|\bi'?ve\s+decided\s+to\s+d+i+e+\b"),
     ("take_all_pills", "high",
      r"(?:going\s+to|gonna|about\s+to|will|want\s+to|plan(?:ning)?\s+to)\s+(?:take|swallow|drink)\s+(?:all|every\s+one)\s+(?:of\s+)?(?:my|the|these)\s+(?:pills|tablets|meds|medication|medicine)"),
+    # "I have saved up pills and I am going to take them all tonight": the pills are named first, the plan refers back to them.
+    ("pills_all_at_once", "high",
+     PILLS + r".{0,80}" + INTENT_LEAD + r"\s+" + SWALLOW + r"\s+(?:(?:them|those|these|it)\s+(?:all|at\s+once|together)|all(?:\s+of)?\s+(?:them|those|these))"),
     ("means_ready", "high",
      r"\b(?:the\s+)?(?:means|method|pills|tablets|rope|gun|blade|poison)\s+(?:is\s+|are\s+)?(?:all\s+)?(?:ready|prepared|set|in\s+place)\b"
      r".{0,80}\b(?:do\s+it|go\s+through\s+with\s+it|end\s+it|finish\s+it)\b"),
     ("note_phrase", "high", r"by\s+the\s+time\s+you\s+(?:read|see|get)\s+this"),
     # ---- review: ideation / self-harm / euphemisms / third party
+    ("stockpiling_pills", "review",
+     r"\b(?:sav(?:ed|ing)|stockpil(?:ed|ing)|hoard(?:ed|ing))\s+(?:up\s+)?(?:\w+\s+){0,2}" + PILLS + r"\b"
+     r"(?!\s+(?:for|from)\s+(?:my|the|her|his)\s+(?:mom|mother|dad|father|grandma|grandmother|grandpa|grandfather|pharmacy))"),
+    ("no_way_out", "review",
+     r"(?:(?:don'?t|do\s+not|can'?t|cannot|couldn'?t)\s+see\s+(?:a|any)\s+way\s+out|\bthere(?:'s|\s+is)\s+no\s+way\s+out\b"
+     r"|\b(?:feel|feeling)\s+(?:so\s+)?trapped\s+with\s+no\s+(?:way\s+out|escape))"
+     r"(?!\s+of\s+(?:the|this|that)\s+(?:building|room|hall|car|parking|traffic|class|lecture|exam|meeting|queue|maze))"),
     ("goodbye_message", "review", r"\b(?:goodbye|good\s*bye|farewell)\s+(?:everyone|everybody|all|world|guys|my\s+(?:friends|family))\b"),
     ("burden_self", "review", r"\b(?:i'?m|i\s+am|i\s+feel\s+like|feel\s+like)\s+(?:a\s+|such\s+a\s+|just\s+a\s+)?(?:burden|waste\s+of\s+space)"),
     ("hate_my_life", "review", r"\bi\s+hate\s+my\s+(?:own\s+)?life\b|\b(?:tired|sick|done)\s+of\s+(?:living|being\s+alive|life)\b|\blife\s+is\s+(?:not|n'?t)\s+worth\s+living\b|\bwhat'?s\s+the\s+point\s+(?:of|in)\s+(?:anything|living|life|it\s+all)\b|\bwhat\s+is\s+the\s+point\s+of\s+(?:anything|living|life|it\s+all)\b"),
