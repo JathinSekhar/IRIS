@@ -51,18 +51,22 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
     )
     floor, known = triage.baseline_floor(latest.scores if latest else None)
     result, plan = triage.run(body.text, floor)
+    rules_found = result.rule_level                                    # stored as is: the reviewer must see what the rules really found
     reply_json = {**triage.reply_json(plan), "companion": None}
     if companion.eligible(result, floor):
         earlier = db.scalars(select(Message).where(Message.user_id == user.id).order_by(Message.id.desc()).limit(companion.HISTORY_TURNS)).all()
         history = [(m.text, (m.prediction.reply or {}).get("companion")) for m in reversed(earlier) if m.prediction]
-        said = companion.reply(body.text, history)
-        if said:
+        said, worried = companion.reply(body.text, history)
+        if worried:                                                    # the model's words point to risk the rules missed: flag it, never show them
+            result, plan = triage.flag_for_review(body.text, result, companion.GUARD_REASON)
+            reply_json = {**triage.reply_json(plan), "companion": None}
+        elif said:
             reply_json["companion"] = said
 
     msg = Message(user_id=user.id, text=body.text)
     msg.prediction = Prediction(
         model_version=triage.MODEL_VERSION, policy_version=triage.POLICY_VERSION,
-        rule_level=result.rule_level, rule_hits=_hits(result.reasons), baseline_floor=floor, baseline_known=known,
+        rule_level=rules_found, rule_hits=_hits(result.reasons), baseline_floor=floor, baseline_known=known,
         checkin_id=latest.id if latest else None, probabilities=None, model_urgency=result.model_urgency,
         initial_urgency=result.urgency, urgency=result.urgency, message_urgent=result.message_urgent, route=result.route, needs_human=True,
         risk_score=result.risk_score, reasons=list(result.reasons), reply=reply_json,

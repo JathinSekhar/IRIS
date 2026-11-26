@@ -42,6 +42,16 @@ def run(text: str, floor: str) -> tuple[TriageResult, support.SupportPlan]:
     return result, support.plan_support(text, result)
 
 
+def flag_for_review(text: str, result: TriageResult, reason: str) -> tuple[TriageResult, support.SupportPlan]:
+    """Treat a message as flagged (review level, at least Medium) for a reason outside the rule layer, and plan the flagged reply: fixed wording and helplines."""
+    from dataclasses import replace
+
+    urgency = "medium" if result.urgency == "low" else result.urgency
+    flagged = replace(result, urgency=urgency, rule_level="review" if result.rule_level == "none" else result.rule_level, route="human_reviewer",
+                      needs_human=True, risk_score=max(result.risk_score, 1.0), reasons=result.reasons + (reason,))
+    return flagged, support.plan_support(text, flagged)
+
+
 def reply_json(plan: support.SupportPlan) -> dict:
     """Only what the person may see. No urgency label, score, topic code or reason."""
     return {

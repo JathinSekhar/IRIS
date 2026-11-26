@@ -19,8 +19,12 @@ import httpx
 from ..config import settings
 from . import triage
 
+CONCERN_WORD = "CONCERN"
 SYSTEM_PROMPT = (
     "You are the listening voice of IRIS, a student wellbeing support space. A person on the team reads every message later.\n"
+    f"FIRST, before anything else: if the person's message could be about suicide, self-harm, wanting to die, not wanting to live, ending everything, "
+    f"or giving up on life, in any language, slang or mix of languages (for example Hindi or Hinglish), even indirectly, answer with only the word "
+    f"{CONCERN_WORD} and nothing else. When in doubt, answer {CONCERN_WORD}. Otherwise write the reply below.\n"
     "Write a short, warm reply in plain language: two or three sentences, at most 60 words.\n"
     "First reflect back, in your own words, what the person said or seems to be feeling. Then ask ONE gentle, open follow-up question that helps them say more.\n"
     "Rules you must follow:\n"
@@ -39,6 +43,16 @@ _FORBIDDEN = re.compile(
     r"help is (?:on|coming)|within|minutes?|hours?|soon|112|14416|helpline|emergency|i am a|i'?m a (?:doctor|counsel|therap|human))\b",
     re.IGNORECASE,
 )
+# The guard: if the model's own words talk about self-harm, death or pills, the person most likely wrote something the rule layer missed (other
+# languages, unusual phrasing). The reply is then never shown; the message is treated as flagged instead (fixed wording, helplines, Medium priority).
+_CONCERN = re.compile(
+    r"\b(?:suicid\w*|self[\s-]*harm\w*|overdos\w*|(?:harm|hurt|kill|end)(?:ing)?\s+yourself|(?:end(?:ing)?|take|taking)\s+your\s+(?:own\s+)?life"
+    r"|die|dying|death|dead|pills?|tablets?|no\s+(?:desire|will|wish|reason)\s+to\s+(?:keep\s+going|go\s+on|live|be\s+alive|be\s+here)"
+    r"|(?:not\s+)?want(?:ing)?\s+to\s+(?:live|be\s+alive|be\s+here|wake\s+up)\s+any\s*more|giv(?:e|ing)\s+up\s+on\s+(?:life|living))\b",
+    re.IGNORECASE,
+)
+GUARD_REASON = ("AI reply guard: the rules found nothing, but the AI judged this message may be about suicide or self-harm (or its draft mentioned "
+                "self-harm, death or pills), so no AI reply was shown and the message was flagged for review")
 _EMOJI = re.compile("[\U0001F000-\U0001FFFF☀-➿⬀-⯿]")
 _DIGITS = re.compile(r"\d")
 MAX_CHARS = 420
@@ -83,8 +97,16 @@ def _messages(text: str, history: list[tuple[str, str | None]]) -> list[dict]:
     return msgs
 
 
-def reply(text: str, history: list[tuple[str, str | None]]) -> str | None:
-    """One conversational reply, or None. `history` is earlier (what they said, what IRIS said back or None), oldest first. Sends the text only."""
+def concern(raw: str) -> bool:
+    """True when the model answered CONCERN (it judged the message may be about suicide or self-harm), or its words talk about self-harm, death or pills.
+    A model judgement can only RAISE a message to review; it never lowers or clears one."""
+    raw = raw or ""
+    return raw.strip().strip("\"'*[]").upper().startswith(CONCERN_WORD) or bool(_CONCERN.search(raw))
+
+
+def reply(text: str, history: list[tuple[str, str | None]]) -> tuple[str | None, bool]:
+    """(the reply to show or None, concern). `history` is earlier (what they said, what IRIS said back or None), oldest first. Sends the text only.
+    With concern=True the reply is always None: the caller must flag the message instead of showing ordinary wording."""
     try:
         r = httpx.post(
             f"{settings.groq_base_url}/chat/completions",
@@ -93,6 +115,9 @@ def reply(text: str, history: list[tuple[str, str | None]]) -> str | None:
             timeout=settings.llm_timeout_seconds,
         )
         r.raise_for_status()
-        return acceptable(r.json()["choices"][0]["message"]["content"])
+        raw = r.json()["choices"][0]["message"]["content"] or ""
     except Exception:                                                    # noqa: BLE001 - any failure means "use the fixed wording"
-        return None
+        return None, False
+    if concern(raw):
+        return None, True
+    return acceptable(raw), False

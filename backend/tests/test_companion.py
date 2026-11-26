@@ -8,7 +8,7 @@ from app.config import settings
 from app.main import app
 from app.services import companion
 from devtools import demo_data as dd
-from tests.test_messages import CALM, REVIEW_LEVEL, SELF_HARM, env, send, signup  # noqa: F401
+from tests.test_messages import CALM, REVIEW_LEVEL, SELF_HARM, env, make_reviewer, send, signup  # noqa: F401
 
 LINE = "That sounds like a lot of pressure with exams so close. What part of it feels heaviest right now?"
 
@@ -21,7 +21,7 @@ def on(monkeypatch):
 
     def fake(text, history):
         calls.append((text, list(history)))
-        return LINE
+        return LINE, False
 
     monkeypatch.setattr(companion, "reply", fake)
     return calls
@@ -95,7 +95,75 @@ def test_a_model_failure_returns_none(monkeypatch):
         raise TimeoutError("slow")
 
     monkeypatch.setattr(companion.httpx, "post", boom)
-    assert companion.reply("hello", []) is None
+    assert companion.reply("hello", []) == (None, False)
+
+
+# --- the guard: the model's own words about self-harm, death or pills mean the rules missed something -------------------------------------------
+
+# Replies the model really wrote in the chat probe (2026-11-26) to messages the rule layer missed.
+WORRIED = [
+    "You’ve shared that you’re feeling overwhelmed enough to consider taking all the pills you have. What thoughts or feelings are coming up for you?",
+    "You’ve shared that you’re feeling extremely exhausted and that you’ve even typed something suggesting you might harm yourself.",
+    "It sounds like you’re feeling like you have no desire to keep going right now. What thoughts or feelings are coming up for you?",
+    "It sounds like you have been thinking about death a lot lately. What has been on your mind?",
+    "CONCERN",                                  # the model's own judgement (see SYSTEM_PROMPT)
+    "concern.",
+]
+ORDINARY = [
+    LINE,
+    "Hi there! It’s nice to hear from you. What’s on your mind today?",
+    "That’s wonderful to hear that your exams went so well! What do you think helped you feel confident today?",
+    "It sounds like the tight finances and rent worries are weighing on you a lot right now. What’s been the most challenging part?",
+    "That is an understandable concern before results day. What would help you feel a little more ready?",
+    "It sounds like you’re feeling isolated and wish you had more connection with people at college. What would feel meaningful to you?",
+]
+
+
+@pytest.mark.parametrize("raw", WORRIED)
+def test_the_guard_sees_worrying_model_words(raw):
+    assert companion.concern(raw)
+
+
+@pytest.mark.parametrize("raw", ORDINARY)
+def test_the_guard_leaves_ordinary_replies_alone(raw):
+    assert not companion.concern(raw)
+
+
+class _Groq:
+    def __init__(self, content):
+        self.content = content
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"choices": [{"message": {"content": self.content}}]}
+
+
+def test_a_worrying_model_reply_is_never_shown_and_the_message_is_flagged(env, monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "groq_api_key", "test-key-not-real")
+    monkeypatch.setattr(companion.httpx, "post", lambda *a, **k: _Groq(WORRIED[2]))
+    with TestClient(app) as c:
+        signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
+        m = send(c, "mujhe ab jeena nahi hai")                  # Hinglish: the rule layer misses it
+        r = m["reply"]
+        assert r["companion"] is None and "desire" not in str(r)
+        assert r["helplines"] and r["layout"] == "support" and not m["can_rate"]
+        make_reviewer(c, env)
+        d = c.get(f"/api/reviewer/messages/{m['id']}").json()
+        assert d["priority"] == "medium" and companion.GUARD_REASON in d["reasons"]
+        assert d["rule_level"] == "none" and d["rule_hits"] == []          # the rules did not fire, and the record says so
+
+
+def test_an_ordinary_model_reply_is_shown(env, monkeypatch):
+    monkeypatch.setattr(settings, "llm_enabled", True)
+    monkeypatch.setattr(settings, "groq_api_key", "test-key-not-real")
+    monkeypatch.setattr(companion.httpx, "post", lambda *a, **k: _Groq(LINE))
+    with TestClient(app) as c:
+        signup(c, dd.NORMAL.signup, dd.NORMAL.answers)
+        m = send(c, "exams are stressing me out")
+        assert m["reply"]["companion"] == LINE and not m["reply"]["helplines"]
 
 
 def test_the_key_is_not_in_the_repo_files():
