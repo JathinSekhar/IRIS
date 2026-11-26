@@ -18,8 +18,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function Button({ variant = 'primary', loading, block, className, children, disabled, ...rest }: ButtonProps) {
   const styles = {
-    primary: 'bg-brand-800 text-white hover:bg-brand-900 shadow-sm',
-    secondary: 'bg-white text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50',
+    primary: 'bg-brand-800 text-white shadow-sm hover:bg-brand-900 hover:shadow',
+    secondary: 'bg-white text-slate-800 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400',
     ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   }[variant]
   return (
@@ -27,7 +27,8 @@ export function Button({ variant = 'primary', loading, block, className, childre
       {...rest}
       disabled={disabled || loading}
       className={cx(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-medium transition-colors',
+        'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 text-sm font-medium transition-[color,background-color,box-shadow,transform] duration-150',
+        'active:translate-y-px disabled:active:translate-y-0',
         'disabled:cursor-not-allowed disabled:opacity-60',
         styles,
         block && 'w-full',
@@ -51,7 +52,8 @@ export function TextLink({ className, ...rest }: ButtonHTMLAttributes<HTMLButton
 
 const inputBase =
   'block w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 shadow-sm ' +
-  'placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/25'
+  'transition-[border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-400 ' +
+  'focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/25'
 
 interface FieldProps {
   label: string
@@ -119,7 +121,11 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx('rounded-xl border border-slate-200 bg-white shadow-sm', className)}>{children}</div>
+  return (
+    <div className={cx('rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgb(15_23_42/0.04),0_2px_8px_-2px_rgb(15_23_42/0.06)]', className)}>
+      {children}
+    </div>
+  )
 }
 
 export { cx }

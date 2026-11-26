@@ -23,6 +23,16 @@
   }
   body {
     @apply bg-slate-50 font-sans text-slate-800 antialiased;
+    background-image: radial-gradient(ellipse 80% 320px at 50% -80px, rgb(213 241 236 / 0.55), transparent);
+    background-repeat: no-repeat;
+  }
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-brand-700);
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-600;

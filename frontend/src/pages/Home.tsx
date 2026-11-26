@@ -37,7 +37,9 @@ export default function Home() {
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Card className="p-6">
-          <MessageCircle className="size-6 text-brand-700" aria-hidden />
+          <span className="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+            <MessageCircle className="size-5" aria-hidden />
+          </span>
           <h2 className="mt-4 font-medium text-slate-900">Talk to IRIS</h2>
           <p className="mt-1.5 text-sm text-slate-600">
             Share what is on your mind. IRIS understands how urgent it is and brings in a person when needed.
@@ -49,7 +51,9 @@ export default function Home() {
         </Card>
 
         <Card className="p-6">
-          <ClipboardCheck className="size-6 text-brand-700" aria-hidden />
+          <span className="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+            <ClipboardCheck className="size-5" aria-hidden />
+          </span>
           <h2 className="mt-4 font-medium text-slate-900">Health check-in</h2>
           {completed ? (
             <p className="mt-1.5 text-sm text-slate-600">

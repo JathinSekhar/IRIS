@@ -89,7 +89,7 @@ export function AppLayout() {
   return (
     <div className={chat ? 'flex h-dvh flex-col overflow-hidden' : 'flex min-h-dvh flex-col'}>
       {!staff && <CrisisStrip />}
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link to="/" aria-label="IRIS home">
             <Logo />
@@ -119,10 +119,11 @@ export function AppLayout() {
         </div>
       </header>
       <main
+        key={chat ? undefined : pathname}
         className={
           chat
             ? 'flex min-h-0 w-full flex-1 flex-col'
-            : focused ? 'mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:py-12' : 'mx-auto w-full max-w-6xl flex-1 px-5 py-8'
+            : focused ? 'q-enter mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:py-12' : 'q-enter mx-auto w-full max-w-6xl flex-1 px-5 py-8'
         }
       >
         <Outlet />
