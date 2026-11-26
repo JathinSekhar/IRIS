@@ -1,6 +1,6 @@
 import { HeartHandshake, Phone } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { HELPLINES } from '../components/Brand'
+import { HELPLINES } from '../lib/helplines'
 import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Card } from '../components/ui'
 
@@ -34,7 +34,8 @@ export default function Support() {
         ))}
       </ul>
       <p className="mt-4 text-sm text-slate-600">
-        If you are in immediate danger, call <strong>112</strong> or go to the nearest emergency room.
+        If you are in immediate danger, call <strong>112</strong> or go to the nearest emergency room.{' '}
+        <Link to="/emergency" className="font-semibold text-brand-700 underline underline-offset-2">More emergency help</Link>
       </p>
 
       <Link to="/" className="mt-8 inline-flex h-11 items-center rounded-lg px-1 text-sm font-medium text-brand-700 underline-offset-4 hover:underline">

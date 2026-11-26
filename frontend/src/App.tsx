@@ -16,11 +16,14 @@ const Reviewer = lazy(() => import('./pages/Reviewer'))
 const Doctor = lazy(() => import('./pages/Doctor'))
 const AskDoctor = lazy(() => import('./pages/AskDoctor'))
 const DoctorCaseView = lazy(() => import('./pages/DoctorCaseView'))
+const Emergency = lazy(() => import('./pages/Emergency'))
 
 export default function App() {
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>
+        {/* Open to everyone, signed in or not: a person in crisis is never sent to a login screen. */}
+        <Route path="/emergency" element={<Emergency />} />
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

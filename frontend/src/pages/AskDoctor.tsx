@@ -1,6 +1,7 @@
 import { Phone, Stethoscope } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ALL_HELPLINES } from '../lib/helplines'
 import ConsultThread from '../components/ConsultThread'
 import VideoCall from '../components/VideoCall'
 import { Alert, Button, Card, Spinner } from '../components/ui'
@@ -10,11 +11,7 @@ import type { Consult } from '../lib/types'
 const SHARE_FALLBACK =
   'If you ask to talk to a doctor, the doctor who accepts can read your recent messages here and your check-in answers, so you do not have to repeat yourself. You can cancel your request at any time.'
 
-const HELPLINES: Consult['helplines'] = [
-  { name: 'Tele-MANAS', detail: '24x7, free, confidential', number: '14416', tel: '14416' },
-  { name: 'KIRAN', detail: 'Mental health helpline', number: '1800-599-0019', tel: '18005990019' },
-  { name: 'In immediate danger', detail: 'Emergency services', number: '112', tel: '112' },
-]
+const HELPLINES: Consult['helplines'] = ALL_HELPLINES
 
 function Helplines({ lines }: { lines: Consult['helplines'] }) {
   return (

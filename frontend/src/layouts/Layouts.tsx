@@ -94,21 +94,26 @@ export function AppLayout() {
           <Link to="/" aria-label="IRIS home">
             <Logo />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 sm:gap-4">
             <span className="hidden text-sm text-slate-600 sm:inline">
               {user.role === 'reviewer' ? 'Reviewer · ' : user.role === 'doctor' ? 'Doctor · ' : ''}
               {user.full_name}
             </span>
+            {user.role === 'user' && (
+              <Link to="/emergency" className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 sm:px-2.5">
+                Emergency<span className="hidden sm:inline"> help</span>
+              </Link>
+            )}
             {user.role === 'user' && pathname !== '/talk-to-a-doctor' && (
-              <Link to="/talk-to-a-doctor" className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50">
-                Talk to a doctor
+              <Link to="/talk-to-a-doctor" className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 sm:px-2.5">
+                <span className="hidden sm:inline">Talk to a </span>Doctor
               </Link>
             )}
             <button
               onClick={() => void logout()}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:px-2.5"
             >
-              <LogOut className="size-4" aria-hidden /> Log out
+              <LogOut className="size-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Log out</span>
             </button>
           </div>
         </div>

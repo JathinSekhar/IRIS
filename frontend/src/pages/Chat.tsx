@@ -1,5 +1,6 @@
 import { ArrowUp, ChevronDown, Loader2, Phone } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { Link } from 'react-router-dom'
 import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Alert, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
@@ -374,6 +375,8 @@ export default function Chat() {
         </div>
         <p className="mt-2 px-2 text-center text-[11px] leading-4 text-slate-500">
           {EMERGENCY_LINE} <a href="tel:112" className="font-semibold text-brand-800 hover:underline">Call 112</a>
+          {' · '}
+          <Link to="/emergency" className="font-semibold text-brand-800 hover:underline">Emergency help</Link>
         </p>
         <p className="px-2 pb-1 text-center text-[11px] leading-4 text-slate-400">
           Prototype: the wording is a draft that a clinician has not reviewed yet. Not for real use.

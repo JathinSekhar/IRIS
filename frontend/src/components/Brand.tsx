@@ -1,4 +1,5 @@
 import { Phone } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -15,11 +16,6 @@ export function Logo({ light = false }: { light?: boolean }) {
   )
 }
 
-export const HELPLINES = [
-  { name: 'Tele-MANAS', detail: '24x7, free, confidential', number: '14416', tel: '14416' },
-  { name: 'KIRAN', detail: 'Mental health rehabilitation helpline', number: '1800-599-0019', tel: '18005990019' },
-] as const
-
 export function CrisisStrip() {
   return (
     <p className="flex items-center justify-center gap-2 bg-slate-900 px-4 py-2 text-center text-xs text-slate-200">
@@ -29,7 +25,10 @@ export function CrisisStrip() {
         <a href="tel:14416" className="font-semibold text-white underline underline-offset-2">
           Tele-MANAS 14416
         </a>{' '}
-        (free, 24x7).
+        (free, 24x7).{' '}
+        <Link to="/emergency" className="font-semibold text-white underline underline-offset-2">
+          Emergency help
+        </Link>
       </span>
     </p>
   )
