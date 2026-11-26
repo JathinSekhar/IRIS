@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IRIS Poster</title>
+<style>
+  @page { size: 297mm 420mm; margin: 0; }
+  :root {
+    --ink: #0f172a; --body: #334155; --muted: #64748b; --line: #e2e8f0;
+    --brand: #134e4a; --brand2: #0f766e; --tint: #f0fdfa; --red: #b91c1c; --redtint: #fef2f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 297mm; height: 420mm; background: #fff; }
+  body { font-family: "Segoe UI", Inter, Arial, sans-serif; color: var(--body); font-size: 9.4pt; line-height: 1.32;
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .poster { width: 297mm; height: 420mm; display: flex; flex-direction: column; overflow: hidden; }
+
+  header { background: linear-gradient(120deg, #0f3b3a, var(--brand) 60%, var(--brand2)); color: #fff; padding: 6.5mm 10mm 5.5mm; }
+  .top { display: flex; align-items: center; gap: 9mm; }
+  .logo { width: 20mm; height: 20mm; border-radius: 6mm; background: rgba(255,255,255,.14); display: grid; place-items: center; flex: none; }
+  .event { font-size: 11pt; letter-spacing: .14em; text-transform: uppercase; opacity: .85; font-weight: 600; }
+  h1 { font-size: 33pt; line-height: 1.05; font-weight: 800; margin: 1.5mm 0 2mm; letter-spacing: -.01em; }
+  .tag { font-size: 12.5pt; opacity: .95; }
+  .team { margin-top: 4mm; display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 4mm; }
+  .team > div { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); border-radius: 3mm; padding: 2.4mm 4mm; font-size: 9.6pt; }
+  .team b { display: block; font-size: 8.5pt; letter-spacing: .1em; text-transform: uppercase; opacity: .8; margin-bottom: 1mm; font-weight: 700; }
+  .ph { background: #fde68a; color: #713f12; padding: 0 1.5mm; border-radius: 1mm; font-weight: 600; }
+  .team table { border-collapse: collapse; width: 100%; } .team tr { display: inline-table; width: 48%; margin-right: 2%; }
+  .team td { padding: .4mm 0; } .team td + td { text-align: right; }
+
+  main { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; padding: 5mm 9mm 0; min-height: 0; }
+  .col { display: flex; flex-direction: column; gap: 4mm; min-height: 0; }
+  section { border: 1px solid var(--line); border-radius: 3.5mm; padding: 3.2mm 4mm; background: #fff; }
+  h2 { font-size: 13pt; color: var(--brand); font-weight: 800; display: flex; align-items: center; gap: 2.5mm; margin-bottom: 1.6mm; }
+  h2 .n { width: 7mm; height: 7mm; border-radius: 50%; background: var(--brand); color: #fff; font-size: 10pt; display: grid; place-items: center; flex: none; }
+  h3 { font-size: 10.6pt; color: var(--ink); margin: 2.4mm 0 1mm; }
+  p + p { margin-top: 1.6mm; }
+  ul { padding-left: 4.5mm; } li { margin: .9mm 0; } li::marker { color: var(--brand2); }
+  b, strong { color: var(--ink); }
+  .note { font-size: 8.6pt; color: var(--muted); margin-top: 1.6mm; }
+  .chips { display: flex; flex-wrap: wrap; gap: 1.4mm; margin-top: 1mm; }
+  .chip { background: var(--tint); border: 1px solid #99f6e4; color: var(--brand); border-radius: 10mm; padding: .5mm 2.4mm; font-size: 8.8pt; font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+  .tech { font-size: 9.4pt; } .tech td { padding: .8mm 0; vertical-align: top; border-bottom: 1px solid var(--line); } .tech td:first-child { font-weight: 700; color: var(--ink); width: 23mm; }
+  .tech table { width: 100%; border-collapse: collapse; }
+  figure { margin-top: 2mm; } figure img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 2mm; }
+  figcaption { font-size: 8.4pt; color: var(--muted); margin-top: 1mm; }
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+  .shots figure { margin: 0; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; margin-top: 2mm; }
+  .role { background: var(--tint); border-radius: 2.5mm; padding: 2.2mm; font-size: 9pt; }
+  .role b { display: block; color: var(--brand); font-size: 10pt; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; margin-top: 2mm; }
+  .stat { border: 1px solid var(--line); border-radius: 2.5mm; padding: 2mm; text-align: center; }
+  .stat .v { font-size: 15pt; font-weight: 800; color: var(--brand); line-height: 1.1; }
+  .stat .l { font-size: 8.3pt; color: var(--muted); }
+  .callout { background: var(--redtint); border-left: 1.2mm solid var(--red); border-radius: 1.5mm; padding: 2mm 3mm; font-size: 9.2pt; margin-top: 2mm; }
+  .refs { font-size: 8.2pt; line-height: 1.3; } .refs ol { padding-left: 4.5mm; } .refs li { margin: .6mm 0; }
+
+  .bottom { padding: 4mm 9mm 0; } .refs ol { columns: 2; column-gap: 7mm; } .refs li { break-inside: avoid; }
+  footer { margin-top: auto; padding: 2.5mm 9mm; font-size: 8.6pt; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="poster">
+
+<header>
+  <div class="top">
+    <div class="logo">
+      <svg width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.6" fill="#5eead4" stroke="none"/></svg>
+    </div>
+    <div>
+      <div class="event">SAMYAK-2026 &middot; Project Poster</div>
+      <h1>IRIS: Intent and Risk Intelligence System</h1>
+      <div class="tag">Safety-first mental-health support for students: supportive chat, human review of every message, and a path to a doctor</div>
+    </div>
+  </div>
+  <div class="team">
+    <div>
+      <b>Team</b>
+      <table>
+        <tr><td><span class="ph">Student name 1</span></td><td><span class="ph">Roll no.</span></td></tr>
+        <tr><td><span class="ph">Student name 2</span></td><td><span class="ph">Roll no.</span></td></tr>
+        <tr><td><span class="ph">Student name 3</span></td><td><span class="ph">Roll no.</span></td></tr>
+        <tr><td><span class="ph">Student name 4</span></td><td><span class="ph">Roll no.</span></td></tr>
+      </table>
+    </div>
+    <div><b>Department</b><span class="ph">Department name</span><br><span class="ph">College / University</span></div>
+    <div><b>Faculty guide</b><span class="ph">Guide name</span><br><span class="ph">Designation</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- Column 1 -->
+  <div class="col">
+    <section>
+      <h2><span class="n">1</span>Abstract</h2>
+      <p><b>IRIS</b> is a web platform where a student can check in, chat, and ask to talk to a doctor. Explainable <b>safety rules</b> and a <b>check-in safety floor</b> (PHQ-9, GAD-7 and C-SSRS questions) set each message's priority and show helplines at once when a message is worrying. <b>A trained person reads every message</b>; no machine-learning model decides on its own. With the student's consent, a doctor can chat or video-call them.</p>
+    </section>
+
+    <section>
+      <h2><span class="n">2</span>Problem statement</h2>
+      <ul>
+        <li>Students often do not reach out; distress in everyday text is easy to miss.</li>
+        <li>Automated risk scores are not reliable enough to clear a case alone.</li>
+        <li>Chatbots can give unsafe replies or false promises ("help is on the way").</li>
+        <li>Counsellors need priorities and context, not a flood of unsorted messages.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="n">3</span>Objectives</h2>
+      <ul>
+        <li>A <b>simple, private chat</b> with supportive replies and practical steps.</li>
+        <li>Detect worrying and urgent language with <b>explainable rules</b>; show helplines immediately.</li>
+        <li>Put <b>every message in front of a reviewer</b>, sorted by priority.</li>
+        <li>Let a student <b>talk to a doctor</b> by chat or video, with consent first.</li>
+        <li>Measure honestly whether ML ranking helps, with no clinical-accuracy claim.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="n">4</span>Proposed methodology</h2>
+      <ul>
+        <li><b>Check-in</b> at sign-up sets a <b>safety floor</b> for all later messages.</li>
+        <li><b>Rule layer</b> sorts each message: explicit, worrying, or nothing worrying.</li>
+        <li><b>Stepped care:</b> ordinary messages get an AI-assisted reply and tips; "Did this help? Not really" offers a doctor.</li>
+        <li><b>Doctor request:</b> offered on an urgent message, a high check-in, a reviewer's suggestion, or when tips did not help. Before accepting, the doctor sees only age, urgency, reason and check-in level. IRIS <b>never promises a time</b>.</li>
+        <li><b>Doctor session:</b> auto case summary, chat or video, then a structured risk note and safety plan.</li>
+        <li><b>ML study:</b> 21 models and 4 ensembles on public Reddit C-SSRS data.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Column 2 -->
+  <div class="col">
+    <section>
+      <h2><span class="n">5</span>Technologies and tools</h2>
+      <div class="tech"><table>
+        <tr><td>Frontend</td><td>React 19, TypeScript, Tailwind CSS 4, Vite</td></tr>
+        <tr><td>Backend</td><td>Python FastAPI, SQLAlchemy, Alembic, Pydantic</td></tr>
+        <tr><td>Data / auth</td><td>Supabase (PostgreSQL, Auth, row-level security)</td></tr>
+        <tr><td>AI (optional)</td><td>Groq API, gpt-oss-120b, output filtered, labelled as AI</td></tr>
+        <tr><td>Calls</td><td>WebRTC peer-to-peer, server signalling</td></tr>
+        <tr><td>ML</td><td>scikit-learn, sentence-transformers, DistilRoBERTa (Colab T4)</td></tr>
+        <tr><td>Testing</td><td>pytest, Playwright</td></tr>
+      </table></div>
+    </section>
+    <section>
+      <h2><span class="n">6</span>System architecture</h2>
+      <svg viewBox="0 0 360 214" width="100%" style="display:block;margin-top:1mm" font-family="Segoe UI, Arial, sans-serif">
+        <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#64748b"/></marker></defs>
+        <g font-size="9" text-anchor="middle">
+          <!-- clients -->
+          <rect x="4" y="4" width="352" height="40" rx="7" fill="#f0fdfa" stroke="#14b8a6"/>
+          <text x="180" y="16" font-weight="700" fill="#134e4a" font-size="9.5">React web app (browser)</text>
+          <rect x="14" y="22" width="76" height="16" rx="4" fill="#fff" stroke="#99f6e4"/><text x="52" y="33">Student</text>
+          <rect x="98" y="22" width="76" height="16" rx="4" fill="#fff" stroke="#99f6e4"/><text x="136" y="33">Reviewer</text>
+          <rect x="182" y="22" width="76" height="16" rx="4" fill="#fff" stroke="#99f6e4"/><text x="220" y="33">Doctor</text>
+          <rect x="266" y="22" width="80" height="16" rx="4" fill="#fff" stroke="#99f6e4"/><text x="306" y="33">Admin</text>
+          <line x1="180" y1="44" x2="180" y2="60" stroke="#64748b" marker-end="url(#a)"/>
+          <text x="232" y="55" font-size="8" fill="#64748b">HTTPS / JSON (REST)</text>
+          <!-- api -->
+          <rect x="4" y="62" width="352" height="92" rx="7" fill="#fff" stroke="#134e4a" stroke-width="1.3"/>
+          <text x="180" y="75" font-weight="700" fill="#134e4a" font-size="9.5">FastAPI backend</text>
+          <rect x="12" y="82" width="80" height="30" rx="4" fill="#fef2f2" stroke="#fca5a5"/><text x="52" y="95" font-weight="700">Safety rules</text><text x="52" y="106" font-size="7.6">+ check-in floor</text>
+          <rect x="98" y="82" width="80" height="30" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="138" y="95" font-weight="700">Support replies</text><text x="138" y="106" font-size="7.6">wording + AI filter</text>
+          <rect x="184" y="82" width="80" height="30" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="224" y="95" font-weight="700">Review queue</text><text x="224" y="106" font-size="7.6">priority + alerts</text>
+          <rect x="270" y="82" width="78" height="30" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="309" y="95" font-weight="700">Doctor consults</text><text x="309" y="106" font-size="7.6">offers, chat, notes</text>
+          <rect x="12" y="118" width="122" height="28" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="73" y="130" font-weight="700">Case summary</text><text x="73" y="140" font-size="7.6">rules narrative + AI draft</text>
+          <rect x="140" y="118" width="100" height="28" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="190" y="130" font-weight="700">Consent + audit log</text><text x="190" y="140" font-size="7.6">every read recorded</text>
+          <rect x="246" y="118" width="102" height="28" rx="4" fill="#f8fafc" stroke="#cbd5e1"/><text x="297" y="130" font-weight="700">Call signalling</text><text x="297" y="140" font-size="7.6">WebRTC offer / answer</text>
+          <!-- externals -->
+          <line x1="70" y1="154" x2="70" y2="172" stroke="#64748b" marker-end="url(#a)"/>
+          <line x1="180" y1="154" x2="180" y2="172" stroke="#64748b" marker-end="url(#a)"/>
+          <line x1="292" y1="154" x2="292" y2="172" stroke="#64748b" marker-end="url(#a)"/>
+          <rect x="8" y="174" width="124" height="34" rx="6" fill="#f0fdfa" stroke="#14b8a6"/><text x="70" y="188" font-weight="700" fill="#134e4a">Supabase</text><text x="70" y="200" font-size="7.6">PostgreSQL + Auth + RLS</text>
+          <rect x="140" y="174" width="80" height="34" rx="6" fill="#f0fdfa" stroke="#14b8a6"/><text x="180" y="188" font-weight="700" fill="#134e4a">Groq LLM</text><text x="180" y="200" font-size="7.6">optional, filtered</text>
+          <rect x="228" y="174" width="128" height="34" rx="6" fill="#f0fdfa" stroke="#14b8a6"/><text x="292" y="188" font-weight="700" fill="#134e4a">Peer-to-peer video</text><text x="292" y="200" font-size="7.6">browser to browser (STUN)</text>
+        </g>
+      </svg>
+      <p class="note">Block diagram. The ML study (<code>ml/</code>) runs offline and does not decide anything in the live app.</p>
+      <figure>
+        <img src="../diagrams/2_message_handling.png" alt="Flowchart of how a message is handled">
+        <figcaption>Flowchart: how each message is handled. Rules only set priority; a person reads every message.</figcaption>
+      </figure>
+      <h3>Three roles</h3>
+      <div class="roles">
+        <div class="role"><b>Student</b>Check-in, chat, helplines, ask for a doctor.</div>
+        <div class="role"><b>Reviewer</b>Reads every message by priority; can offer a doctor.</div>
+        <div class="role"><b>Doctor</b>Accepts a request, chats or video-calls, writes the note.</div>
+      </div>
+    </section>
+
+    
+  </div>
+
+  <!-- Column 3 -->
+  <div class="col">
+    <section>
+      <h2><span class="n">7</span>Implementation and results</h2>
+      <div class="shots">
+        <figure><img src="shots/1_chat_low_risk.png" alt=""><figcaption>(a) Low risk: AI-assisted reply and "Did this help?"</figcaption></figure>
+        <figure><img src="shots/2_chat_urgent.png" alt=""><figcaption>(b) Urgent message: helplines and a doctor offer</figcaption></figure>
+        <figure><img src="shots/3_reviewer.png" alt=""><figcaption>(c) Reviewer queue with urgent alerts</figcaption></figure>
+        <figure><img src="shots/5_doctor_case.png" alt=""><figcaption>(d) Doctor chat with the case summary</figcaption></figure>
+      </div>
+      <p class="note">Screenshots from the local sandbox, fictional people.</p>
+      
+
+      <h3>Can ML help reviewers find high-risk users first?</h3>
+      <svg viewBox="0 0 360 150" width="100%" font-family="Segoe UI, Arial, sans-serif" style="display:block">
+        <g font-size="8.2" fill="#334155">
+          <!-- axis: 0..100% across x 112..350 -->
+          <line x1="112" y1="6" x2="112" y2="128" stroke="#cbd5e1"/>
+          <g id="bars">
+            <text x="108" y="17" text-anchor="end">TF-IDF baseline</text><rect x="112" y="9" width="121.4" height="11" rx="2" fill="#5eead4"/><text x="237" y="18">51%</text>
+            <text x="108" y="33" text-anchor="end">MPNet + LR</text><rect x="112" y="25" width="116.6" height="11" rx="2" fill="#5eead4"/><text x="232" y="34">49%</text>
+            <text x="108" y="49" text-anchor="end">DistilRoBERTa</text><rect x="112" y="41" width="116.6" height="11" rx="2" fill="#2dd4bf"/><text x="232" y="50">49%</text>
+            <text x="108" y="65" text-anchor="end">+ synthetic data</text><rect x="112" y="57" width="123.8" height="11" rx="2" fill="#2dd4bf"/><text x="239" y="66">52%</text>
+            <text x="108" y="81" text-anchor="end">Ordinal head</text><rect x="112" y="73" width="119" height="11" rx="2" fill="#2dd4bf"/><text x="235" y="82">50%</text>
+            <text x="108" y="97" text-anchor="end">Pre-specified ensemble</text><rect x="112" y="89" width="119" height="11" rx="2" fill="#0f766e"/><text x="235" y="98">50%</text>
+            <text x="108" y="113" text-anchor="end">Best exploratory ens.</text><rect x="112" y="105" width="130.9" height="11" rx="2" fill="#0f766e"/><text x="246" y="114">55%</text>
+          </g>
+          <line x1="183.4" y1="4" x2="183.4" y2="122" stroke="#64748b" stroke-dasharray="3 2"/>
+          <line x1="338.1" y1="4" x2="338.1" y2="122" stroke="#b91c1c" stroke-dasharray="3 2"/>
+          <text x="183.4" y="132" text-anchor="middle" fill="#64748b">random reading 30%</text>
+          <text x="338.1" y="132" text-anchor="middle" fill="#b91c1c">target 95%</text>
+          <text x="180" y="146" text-anchor="middle" font-size="7.4" fill="#64748b">High-risk users found when reviewers read the top 30% (424 users, 103 High)</text>
+        </g>
+      </svg>
+      <ul style="font-size:9.6pt">
+        <li>Every model family landed at <b>AUROC 0.68 to 0.74</b>, from TF-IDF to a fine-tuned transformer.</li>
+        <li>Models beat random reading (30%) but are <b>far from the 95% target</b>, so IRIS keeps a person reading every message.</li>
+      </ul>
+
+      <div class="stats">
+        <div class="stat"><div class="v">232</div><div class="l">backend tests passing</div></div>
+        <div class="stat"><div class="v">589</div><div class="l">ML tests passing</div></div>
+        <div class="stat"><div class="v">43/58</div><div class="l">wording scenarios as intended*</div></div>
+      </div>
+      <p class="note">* Of 58 scenarios: 43 as intended, 13 need a clinician's decision, 2 known gaps.</p>
+    </section>
+    <section>
+    <h2><span class="n">8</span>Conclusion and future scope</h2>
+    <div>
+      <div>
+        <h3 style="margin-top:0">Conclusion</h3>
+        <ul>
+          <li>Working prototype: three roles, consent, audit log, doctor chat and video.</li>
+          <li>Safety comes from rules, a check-in floor and human review, not an ML score.</li>
+                  </ul>
+      </div>
+      <div>
+        <h3>Future scope</h3>
+        <ul>
+          <li>Clinician review of all wording; a gold dataset labelled by independent annotators.</li>
+          <li>Hinglish and slang detection; Indian languages.</li>
+          <li>TURN server for calls, encryption at rest, mobile app.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout"><b>Not for real use yet.</b> IRIS is a student prototype. It does not diagnose, and its wording has not been reviewed by a clinician. In a crisis in India, call Tele-MANAS 14416 or 112.</div>
+  </section>
+  </div>
+</main>
+
+<div class="bottom">
+  
+  <section class="refs">
+    <h2><span class="n">9</span>References</h2>
+    <ol>
+      <li>Kroenke K, Spitzer RL, Williams JBW. The PHQ-9: validity of a brief depression severity measure. <i>J Gen Intern Med</i>. 2001;16(9):606-613.</li>
+      <li>Spitzer RL, Kroenke K, Williams JBW, Löwe B. A brief measure for assessing generalized anxiety disorder: the GAD-7. <i>Arch Intern Med</i>. 2006;166(10):1092-1097.</li>
+      <li>Posner K, et al. The Columbia-Suicide Severity Rating Scale. <i>Am J Psychiatry</i>. 2011;168(12):1266-1277.</li>
+      <li>Gaur M, Alambo A, Sain JP, et al. Knowledge-aware assessment of severity of suicide risk for early intervention. <i>The Web Conference (WWW)</i>, 2019. Dataset: Zenodo, doi:10.5281/zenodo.2667859 (CC BY 4.0).</li>
+      <li>Liu S, et al. Towards emotional support dialog systems (ESConv). <i>ACL</i>, 2021.</li>
+      <li>Sanh V, et al. DistilBERT, a distilled version of BERT. arXiv:1910.01108, 2019. Liu Y, et al. RoBERTa. arXiv:1907.11692, 2019.</li>
+      <li>Board of Governors in supersession of the Medical Council of India. <i>Telemedicine Practice Guidelines</i>, 2020.</li>
+      <li>Documentation: FastAPI, React, Supabase, WebRTC (MDN).</li>
+    </ol>
+  </section>
+</div>
+
+<footer>
+  <span>IRIS &middot; github.com/JathinSekhar/IRIS</span>
+  <span>Screenshots and diagrams: our own work. Datasets used under their licences and cited above.</span>
+</footer>
+
+</div>
+</body>
+</html>
