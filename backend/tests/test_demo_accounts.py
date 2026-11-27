@@ -56,7 +56,7 @@ def test_every_demo_answer_is_valid_and_none_is_silently_dropped(user):
     assert not any(r[2] == "(skip)" for r in rows)                        # the sheet answers every question that is asked
 
 
-@pytest.mark.parametrize("user", dd.USERS, ids=lambda u: u.key)
+@pytest.mark.parametrize("user", dd.USERS + dd.READY_USERS, ids=lambda u: u.key)
 def test_each_demo_user_produces_the_documented_outcome(user, env):
     with TestClient(app) as c:
         signup(c, user.signup)
@@ -108,9 +108,9 @@ def test_demo_users_can_log_in_again_and_wrong_passwords_are_refused(env):
 
 def test_demo_accounts_are_distinct_and_look_fictional():
     staff = dd.REVIEWERS + [a for a, _ in dd.DOCTORS]
-    emails = [u.signup["email"] for u in dd.USERS] + [s["email"] for s in staff]
-    assert len(set(emails)) == len(emails) == 8 and all(e.endswith("@example.com") for e in emails)
-    assert all(len(u.signup["password"]) >= 8 for u in dd.USERS) and all(len(s["password"]) >= 8 for s in staff)
+    emails = [u.signup["email"] for u in dd.USERS + dd.READY_USERS] + [s["email"] for s in staff]
+    assert len(set(emails)) == len(emails) == 11 and all(e.endswith("@example.com") for e in emails)
+    assert all(len(u.signup["password"]) >= 8 for u in dd.USERS + dd.READY_USERS) and all(len(s["password"]) >= 8 for s in staff)
     assert all("not a real registration" in p["registration_number"] for _, p in dd.DOCTORS)
 
 

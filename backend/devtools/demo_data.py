@@ -8,7 +8,7 @@ Supabase accounts and the passwords are for the sandbox only.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from app.services.questionnaire import BY_ID, QUESTIONS, is_visible
@@ -98,6 +98,20 @@ HIGH = DemoUser(
 
 USERS = [NORMAL, MEDIUM, HIGH]
 
+# Ready-made patients: signed up and checked in on every sandbox start, so a demo can open the reviewer queue straight away.
+# Same answers (and so the same scores) as the three above, but different fictional people, so the hand sign-ups still work.
+READY_USERS = [
+    replace(NORMAL, key="ready_low", title="Ready-made, low risk",
+            signup={**NORMAL.signup, "full_name": "Sneha Kulkarni", "email": "sneha.ready@example.com", "password": "Demo-ReadyLow-2026",
+                    "phone": "+91 90000 00004", "emergency_contact": "Anil Kulkarni, +91 90000 10004"}),
+    replace(MEDIUM, key="ready_medium", title="Ready-made, medium risk",
+            signup={**MEDIUM.signup, "full_name": "Rahul Joshi", "email": "rahul.ready@example.com", "password": "Demo-ReadyMedium-2026",
+                    "phone": "+91 90000 00005", "emergency_contact": "Pooja Joshi, +91 90000 10005"}),
+    replace(HIGH, key="ready_high", title="Ready-made, high risk",
+            signup={**HIGH.signup, "full_name": "Vivek Sharma", "email": "vivek.ready@example.com", "password": "Demo-ReadyHigh-2026",
+                    "phone": "+91 90000 00006", "emergency_contact": "Sunita Sharma, +91 90000 10006"}),
+]
+
 
 # --- rendering --------------------------------------------------------------------------------------------------------------------
 
@@ -135,8 +149,15 @@ def render_markdown() -> str:
     w("The sandbox uses a **stand-in login and a throwaway database**. It never touches Supabase, needs no email, and every restart "
       "wipes it clean (only the staff accounts are re-created). Start both servers:\n")
     w("```bash\ncd backend && .venv\\Scripts\\python -m devtools.demo_server      # API on http://127.0.0.1:8000\ncd frontend && npm run dev                          # website on http://localhost:5173\n```\n")
-    w("Open **http://localhost:5173**. The three patients are **not** pre-created: you sign them up by hand with the details below, "
-      "then log out and log in again to test login. The reviewers and doctors already exist.\n")
+    w("Open **http://localhost:5173**. The three patients further down are **not** pre-created: you sign them up by hand with the details below, "
+      "then log out and log in again to test login. The reviewers, the doctors and three ready-made patients already exist.\n")
+    w("## Ready-made patients (already signed up and checked in)\n")
+    w("Use these to skip the sign-up and check-in: log in and you are on the home page, and the reviewer queue already holds their check-ins. "
+      "Their answers are the same as the hand-tested patient of the same risk, so the scores are the same.\n")
+    w("| Risk | Email | Password | Name | Check-in result |\n| --- | --- | --- | --- | --- |\n" + "".join(
+        f"| {u.expected['baseline_risk'].capitalize()} | `{u.signup['email']}` | `{u.signup['password']}` | {u.signup['full_name']} (fictional) | "
+        f"PHQ-9 {u.expected['phq9']}, GAD-7 {u.expected['gad7']}, safety tier {u.expected['safety_tier']}{', escalated' if u.expected['escalated'] else ''} |\n"
+        for u in READY_USERS))
     w("## Reviewers (already created)\n")
     w("| Email | Password | Name |\n| --- | --- | --- |\n" + "".join(f"| `{r['email']}` | `{r['password']}` | {r['full_name']} (fictional) |\n" for r in REVIEWERS))
     w("Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. "
@@ -176,7 +197,7 @@ def render_markdown() -> str:
             w(f"- {line}")
         w(f"- **Reviewer view:** baseline risk **{e['baseline_risk'].upper()}**, depression (PHQ-9) **{e['phq9']} / 27 ({e['phq9_band'].replace('_', ' ')})**, "
           f"anxiety (GAD-7) **{e['gad7']} / 21 ({e['gad7_band']})**, suicide-risk screen tier **{e['safety_tier']}**"
-          f"{', **escalated**, minimum urgency high' if e['escalated'] else ''}. Position in the queue when all three are done: **{e['queue_position']}**.\n")
+          f"{', **escalated**, minimum urgency high' if e['escalated'] else ''}. Position among the three you sign up, once all three are done: **{e['queue_position']}**.\n")
     return "\n".join(L) + "\n"
 
 

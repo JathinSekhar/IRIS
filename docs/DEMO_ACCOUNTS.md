@@ -11,7 +11,17 @@ cd backend && .venv\Scripts\python -m devtools.demo_server      # API on http://
 cd frontend && npm run dev                          # website on http://localhost:5173
 ```
 
-Open **http://localhost:5173**. The three patients are **not** pre-created: you sign them up by hand with the details below, then log out and log in again to test login. The reviewers and doctors already exist.
+Open **http://localhost:5173**. The three patients further down are **not** pre-created: you sign them up by hand with the details below, then log out and log in again to test login. The reviewers, the doctors and three ready-made patients already exist.
+
+## Ready-made patients (already signed up and checked in)
+
+Use these to skip the sign-up and check-in: log in and you are on the home page, and the reviewer queue already holds their check-ins. Their answers are the same as the hand-tested patient of the same risk, so the scores are the same.
+
+| Risk | Email | Password | Name | Check-in result |
+| --- | --- | --- | --- | --- |
+| Low | `sneha.ready@example.com` | `Demo-ReadyLow-2026` | Sneha Kulkarni (fictional) | PHQ-9 2, GAD-7 2, safety tier 0 |
+| Medium | `rahul.ready@example.com` | `Demo-ReadyMedium-2026` | Rahul Joshi (fictional) | PHQ-9 12, GAD-7 11, safety tier 0 |
+| High | `vivek.ready@example.com` | `Demo-ReadyHigh-2026` | Vivek Sharma (fictional) | PHQ-9 23, GAD-7 17, safety tier 3, escalated |
 
 ## Reviewers (already created)
 
@@ -98,7 +108,7 @@ Answer exactly as shown. 'Frequency' questions have four buttons: Not at all, Se
 
 - After the last question the app opens the home page: 'Hi Ananya', check-in completed, next one due in 14 days.
 - No crisis or helpline page appears.
-- **Reviewer view:** baseline risk **LOW**, depression (PHQ-9) **2 / 27 (minimal)**, anxiety (GAD-7) **2 / 21 (minimal)**, suicide-risk screen tier **0**. Position in the queue when all three are done: **3**.
+- **Reviewer view:** baseline risk **LOW**, depression (PHQ-9) **2 / 27 (minimal)**, anxiety (GAD-7) **2 / 21 (minimal)**, suicide-risk screen tier **0**. Position among the three you sign up, once all three are done: **3**.
 
 ## Medium risk: Rohit Verma
 
@@ -157,7 +167,7 @@ Answer exactly as shown. 'Frequency' questions have four buttons: Not at all, Se
 
 - The app opens the home page (no helpline page), because no self-harm thoughts were reported.
 - The reviewer, not you, sees the Medium baseline.
-- **Reviewer view:** baseline risk **MEDIUM**, depression (PHQ-9) **12 / 27 (moderate)**, anxiety (GAD-7) **11 / 21 (moderate)**, suicide-risk screen tier **0**. Position in the queue when all three are done: **2**.
+- **Reviewer view:** baseline risk **MEDIUM**, depression (PHQ-9) **12 / 27 (moderate)**, anxiety (GAD-7) **11 / 21 (moderate)**, suicide-risk screen tier **0**. Position among the three you sign up, once all three are done: **2**.
 
 ## High risk: Arjun Mehta
 
@@ -223,5 +233,5 @@ Answer exactly as shown. 'Frequency' questions have four buttons: Not at all, Se
 - When you answer the self-harm question, a box with 112, Tele-MANAS 14416 and KIRAN appears straight away.
 - Extra safety questions appear one by one (31 -> 34 questions in total).
 - After the last question the app opens the support page with the helplines, not the home page.
-- **Reviewer view:** baseline risk **HIGH**, depression (PHQ-9) **23 / 27 (severe)**, anxiety (GAD-7) **17 / 21 (severe)**, suicide-risk screen tier **3**, **escalated**, minimum urgency high. Position in the queue when all three are done: **1**.
+- **Reviewer view:** baseline risk **HIGH**, depression (PHQ-9) **23 / 27 (severe)**, anxiety (GAD-7) **17 / 21 (severe)**, suicide-risk screen tier **3**, **escalated**, minimum urgency high. Position among the three you sign up, once all three are done: **1**.
 

@@ -30,7 +30,7 @@ from app import db  # noqa: E402
 from app.auth_service import get_auth_service  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
-from devtools.demo_data import DOCTOR, DOCTORS, REVIEWER, REVIEWERS  # noqa: E402
+from devtools.demo_data import DOCTOR, DOCTORS, READY_USERS, REVIEWER, REVIEWERS  # noqa: E402
 from devtools.fake_auth import FakeAuth  # noqa: E402
 
 if not db.IS_SQLITE or "demo.db" not in str(db.DATABASE_URL):
@@ -161,6 +161,20 @@ def seed_doctor(account: dict, profile: dict) -> None:
         s.commit()
 
 
+def seed_patient(user) -> None:
+    """A ready-made patient: sign up, consent and check in through the real API, exactly as a person would."""
+    from fastapi.testclient import TestClient
+    from app.config import settings
+    with TestClient(app) as c:
+        if ACCESS_PASSWORD:
+            c.cookies.set(ACCESS_COOKIE, ACCESS_TOKEN)   # in the jar, not a fixed header, so the login cookie is sent too
+        for path, body in (("/api/auth/register", user.signup), ("/api/consent", {"version": settings.consent_version}),
+                           ("/api/checkin", {"answers": user.answers})):
+            r = c.post(path, json=body)
+            if r.status_code not in (200, 201):
+                raise SystemExit(f"could not create {user.signup['email']}: {path} {r.status_code} {r.text}")
+
+
 if __name__ == "__main__":
     for suffix in ("", "-journal", "-wal", "-shm"):
         Path(str(DB_FILE) + suffix).unlink(missing_ok=True)
@@ -168,7 +182,9 @@ if __name__ == "__main__":
         seed_reviewer(account)
     for account, profile in DOCTORS:
         seed_doctor(account, profile)
-    print("Sandbox ready.", len(REVIEWERS), "reviewers and", len(DOCTORS), "doctors (logins in docs/DEMO_ACCOUNTS.md); first reviewer:",
+    for user in READY_USERS:
+        seed_patient(user)
+    print("Sandbox ready.", len(REVIEWERS), "reviewers,", len(DOCTORS), "doctors and", len(READY_USERS), "ready-made patients (logins in docs/DEMO_ACCOUNTS.md); first reviewer:",
           REVIEWER["email"], "| first doctor:", DOCTOR["email"], flush=True)
     host, port = os.environ.get("IRIS_DEMO_HOST", "127.0.0.1"), int(os.environ.get("PORT", "8000"))
     if WEB_DIR:
