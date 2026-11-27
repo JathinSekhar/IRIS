@@ -37,6 +37,10 @@ DOCTOR = {"full_name": "Dr. Sameer Khan", "email": "sameer.demo@example.com", "p
 DOCTOR_PROFILE = {"specialty": "Psychiatry (test account)", "registration_number": "TEST-000111 (not a real registration)",
                   "languages": ["English", "Hindi", "Telugu"]}
 
+AMAN = {"full_name": "Aman Gupta", "email": "aman.demo@example.com", "password": "Aman-Demo-2026", "date_of_birth": "2003-01-19",
+        "gender": "Male", "occupation": "Student", "language": "en"}
+AMAN_LINE = "mujhe ab jeena nahi hai"
+
 PRIYA_ANSWERS = {**dd.NORMAL.answers, "a1": "Exams are next week and I can't focus.", "a3": [0]}
 RAHUL_ANSWERS = {**dd.HIGH.answers, "a1": "I feel hopeless and nothing seems worth it any more."}
 
@@ -118,6 +122,14 @@ def api_client(email: str, password: str) -> httpx.Client:
     c = httpx.Client(base_url=API, timeout=30)
     assert c.post("/api/auth/login", json={"email": email, "password": password}).status_code == 200
     return c
+
+
+def setup_aman() -> None:
+    """Aman signs up, agrees and completes a low-risk check-in off camera, so the video shows only what matters: his message."""
+    with httpx.Client(base_url=API, timeout=30) as c:
+        assert c.post("/api/auth/register", json=AMAN).status_code == 201
+        assert c.post("/api/consent", json={"version": "2026-10"}).status_code == 200
+        assert c.post("/api/checkin", json={"answers": dd.NORMAL.answers}).status_code == 201
 
 
 def setup_doctor() -> None:
@@ -233,11 +245,12 @@ def fill_note(page: Page, note: dict) -> None:
 # ----------------------------------------------------------------------------------------------------------------------------------- story
 def run() -> Path:
     setup_doctor()
+    setup_aman()
     OUT.mkdir(exist_ok=True)
     raw = OUT / "raw"
     shutil.rmtree(raw, ignore_errors=True)
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        browser = pw.chromium.launch(headless=os.environ.get("IRIS_DEMO_HEADED") != "1")   # IRIS_DEMO_HEADED=1: watch it live while it records
         ctx = browser.new_context(viewport={"width": 1280, "height": 720}, record_video_dir=str(raw), record_video_size={"width": 1280, "height": 720})
         ctx.add_init_script(OVERLAY)
         page = ctx.new_page()
@@ -271,6 +284,15 @@ def run() -> Path:
         click(page, page.get_by_role("region", name="Talk to a doctor").get_by_role("checkbox").first, pause=0.6)
         click(page, page.get_by_role("button", name="Yes, find a doctor"), pause=2.0)
         say(page, "IRIS never promises help it cannot guarantee. The helplines are always there.", 4.5)
+        say(page, "Emergency help is one tap away on every page, even without signing in.", 3)
+        click(page, page.get_by_role("link", name=re.compile("^Emergency")).first, pause=1.5)
+        say(page, "112 first, simple steps for immediate danger, and the helplines.", 4)
+        page.mouse.wheel(0, 650)
+        page.wait_for_timeout(1000)
+        click(page, page.get_by_role("button", name="Breathe with me"), pause=0.5)
+        say(page, "A calm breathing guide for moments that feel overwhelming.", 5)
+        click(page, page.get_by_role("button", name="Stop"), pause=0.5)
+        click(page, page.get_by_role("link", name="Back to IRIS"), pause=1.5)
         logout(page)
 
         # ---- Rahul, high risk
@@ -294,11 +316,25 @@ def run() -> Path:
         type_into(page, box, "I can't sleep and everything feels pointless.", delay=32)
         box.press("Enter")
         page.wait_for_timeout(4000)
-        say(page, "A careful reply with helplines. Never a quick tip.", 3.5)
+        say(page, "His check-in was High, so the helplines stay in view and the team reads his messages first.", 4.5)
         click(page, page.get_by_role("region", name="Talk to a doctor").get_by_role("checkbox").first, pause=0.6)
         say(page, "Rahul agrees to share, and asks for a doctor.", 2)
         click(page, page.get_by_role("button", name="Yes, find a doctor"), pause=2.0)
         say(page, "His request is marked urgent. He is told the truth while he waits.", 4)
+        logout(page)
+
+        # ---- Aman, Hinglish
+        card(page, "Aman", "Not every student writes in English", 3)
+        login(page, AMAN["email"], AMAN["password"])
+        page.goto(f"{WEB}/chat")
+        say(page, "Aman writes in Hinglish: \"I don't want to live any more.\"", 3)
+        box = page.get_by_placeholder("Write here")
+        type_into(page, box, AMAN_LINE, delay=45)
+        box.press("Enter")
+        page.get_by_text("Tele-MANAS").first.wait_for(timeout=30000)
+        page.wait_for_timeout(800)
+        say(page, "The safety rules miss it, but an AI check catches it: no chatty reply, the helplines instead.", 5)
+        say(page, "The AI can only raise a message to a person. It never clears one.", 3.5)
         logout(page)
 
         # ---- reviewer
@@ -308,6 +344,10 @@ def run() -> Path:
         click(page, page.get_by_role("tab", name=re.compile("Messages")) if page.get_by_role("tab", name=re.compile("Messages")).count()
               else page.get_by_role("button", name=re.compile("^Messages")), pause=1.5)
         say(page, "Every message waits in a queue, sorted by priority. Software never closes a case.", 4.5)
+        click(page, page.get_by_role("button", name=re.compile("Aman Gupta")), pause=2.0)
+        page.get_by_text("AI reply guard").first.scroll_into_view_if_needed()
+        page.wait_for_timeout(800)
+        say(page, "Aman's message: the rules found nothing, and the record says exactly why it was flagged.", 5)
         logout(page)
 
         # ---- doctor

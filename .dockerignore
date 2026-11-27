@@ -1,0 +1,20 @@
+# Secrets never go into an image
+**/.env
+**/.env.*
+# Local environments, builds and data
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+backend/devtools/demo.db*
+backend/iris.db*
+demo_video
+*.zip
+.git
+.claude
+ml/data
+ml/reports
+ml/colab
+ml/docs
+docs

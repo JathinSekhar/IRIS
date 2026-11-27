@@ -1,4 +1,4 @@
-import { HeartHandshake, LogOut, ShieldCheck, Stethoscope, UserCheck, type LucideIcon } from 'lucide-react'
+import { HeartHandshake, LogOut, Phone, ShieldCheck, Stethoscope, UserCheck, type LucideIcon } from 'lucide-react'
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { homeFor, useAuth } from '../auth/AuthContext'
 import { CrisisStrip, Logo } from '../components/Brand'
@@ -94,26 +94,42 @@ export function AppLayout() {
           <Link to="/" aria-label="IRIS home">
             <Logo />
           </Link>
-          <div className="flex items-center gap-1 sm:gap-4">
-            <span className="hidden text-sm text-slate-600 sm:inline">
-              {user.role === 'reviewer' ? 'Reviewer · ' : user.role === 'doctor' ? 'Doctor · ' : ''}
-              {user.full_name}
-            </span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* What you can do */}
             {user.role === 'user' && (
-              <Link to="/emergency" className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 sm:px-2.5">
+              <Link
+                to="/emergency"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100"
+              >
+                <Phone className="size-3.5" aria-hidden />
                 Emergency<span className="hidden sm:inline"> help</span>
               </Link>
             )}
             {user.role === 'user' && pathname !== '/talk-to-a-doctor' && (
-              <Link to="/talk-to-a-doctor" className="whitespace-nowrap rounded-lg px-2 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 sm:px-2.5">
-                <span className="hidden sm:inline">Talk to a </span>Doctor
+              <Link to="/talk-to-a-doctor" className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50">
+                <span className="hidden sm:inline">Talk to a doctor</span>
+                <span className="sm:hidden">Doctor</span>
               </Link>
             )}
+            {/* Who you are */}
+            {user.role === 'user' && <span aria-hidden className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />}
+            <span className="hidden items-center gap-2 sm:inline-flex">
+              <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-800">
+                {/* the first real name, not a title such as "Dr." */}
+                {(user.full_name.split(/\s+/).find((w) => !w.endsWith('.')) ?? user.full_name).charAt(0).toUpperCase()}
+              </span>
+              <span className="text-sm leading-tight">
+                <span className="block font-medium text-slate-900">{user.full_name}</span>
+                {user.role !== 'user' && <span className="block text-xs text-slate-500">{user.role === 'reviewer' ? 'Reviewer' : 'Doctor'}</span>}
+              </span>
+            </span>
             <button
               onClick={() => void logout()}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:px-2.5"
+              aria-label="Log out"
+              title="Log out"
+              className="grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             >
-              <LogOut className="size-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Log out</span>
+              <LogOut className="size-[18px]" aria-hidden />
             </button>
           </div>
         </div>
