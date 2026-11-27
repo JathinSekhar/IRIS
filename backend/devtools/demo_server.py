@@ -165,7 +165,7 @@ def seed_patient(user) -> None:
     """A ready-made patient: sign up, consent and check in through the real API, exactly as a person would."""
     from fastapi.testclient import TestClient
     from app.config import settings
-    with TestClient(app) as c:
+    with TestClient(app, base_url="https://testserver") as c:   # https: online the login cookie is Secure and plain http drops it
         if ACCESS_PASSWORD:
             c.cookies.set(ACCESS_COOKIE, ACCESS_TOKEN)   # in the jar, not a fixed header, so the login cookie is sent too
         for path, body in (("/api/auth/register", user.signup), ("/api/consent", {"version": settings.consent_version}),
