@@ -2,7 +2,7 @@ import { HeartHandshake, LogOut, Phone, ShieldCheck, Stethoscope, UserCheck, typ
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { homeFor, useAuth } from '../auth/AuthContext'
 import { CrisisStrip, Logo } from '../components/Brand'
-import { Spinner } from '../components/ui'
+import { cx, Spinner } from '../components/ui'
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: ShieldCheck, title: 'Confidential', text: 'Only trained reviewers can see what you share.' },
@@ -113,16 +113,33 @@ export function AppLayout() {
             )}
             {/* Who you are */}
             {user.role === 'user' && <span aria-hidden className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />}
-            <span className="hidden items-center gap-2 sm:inline-flex">
-              <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-800">
-                {/* the first real name, not a title such as "Dr." */}
-                {(user.full_name.split(/\s+/).find((w) => !w.endsWith('.')) ?? user.full_name).charAt(0).toUpperCase()}
-              </span>
-              <span className="text-sm leading-tight">
-                <span className="block font-medium text-slate-900">{user.full_name}</span>
-                {user.role !== 'user' && <span className="block text-xs text-slate-500">{user.role === 'reviewer' ? 'Reviewer' : 'Doctor'}</span>}
-              </span>
-            </span>
+            {(() => {
+              const who = (
+                <>
+                  <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-800">
+                    {/* the first real name, not a title such as "Dr." */}
+                    {(user.full_name.split(/\s+/).find((w) => !w.endsWith('.')) ?? user.full_name).charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden text-sm leading-tight sm:block">
+                    <span className="block font-medium text-slate-900">{user.full_name}</span>
+                    {user.role !== 'user' && <span className="block text-xs text-slate-500">{user.role === 'reviewer' ? 'Reviewer' : 'Doctor'}</span>}
+                  </span>
+                </>
+              )
+              // A person opens their profile from here (on a phone, the initial alone). Staff pages have no profile page.
+              return user.role === 'user' ? (
+                <Link
+                  to="/profile"
+                  aria-label="Your profile"
+                  aria-current={pathname === '/profile' ? 'page' : undefined}
+                  className={cx('inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-1 hover:bg-slate-100 sm:pr-3', pathname === '/profile' && 'bg-slate-100')}
+                >
+                  {who}
+                </Link>
+              ) : (
+                <span className="hidden items-center gap-2 sm:inline-flex">{who}</span>
+              )
+            })()}
             <button
               onClick={() => void logout()}
               aria-label="Log out"

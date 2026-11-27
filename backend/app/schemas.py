@@ -97,6 +97,48 @@ class UserOut(BaseModel):
     checkin: CheckinStatus
 
 
+class ProfileOut(BaseModel):
+    """The person's own details, shown on their profile page."""
+    full_name: str
+    email: str
+    date_of_birth: date
+    age: int
+    gender: str | None
+    occupation: str | None
+    language: str
+    phone: str | None
+    emergency_contact: str | None
+    is_minor: bool
+    guardian_name: str | None
+    guardian_email: str | None
+    guardian_consent_status: str | None
+    member_since: datetime
+    consent_accepted_at: datetime | None
+
+
+class ProfileIn(BaseModel):
+    """What a person may change themselves. Email (sign-in) and date of birth (the under-18 guardian rules) are fixed here, and the role never is."""
+    full_name: str = Field(min_length=1, max_length=120)
+    gender: str | None = Field(default=None, max_length=32)
+    occupation: str | None = Field(default=None, max_length=32)
+    language: str = Field(default="en", min_length=2, max_length=16)
+    phone: str | None = Field(default=None, max_length=32)
+    emergency_contact: str | None = Field(default=None, max_length=200)
+
+    @field_validator("full_name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if not v:
+            raise ValueError("Name is required")
+        return v
+
+    @field_validator("gender", "occupation", "phone", "emergency_contact")
+    @classmethod
+    def _blank_is_none(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v is not None else None
+
+
 class ConsentIn(BaseModel):
     version: str
 
@@ -216,6 +258,22 @@ class DoctorOfferOut(BaseModel):
     reason: str
     title: str
     body: str
+
+
+class ConsultHistoryOut(BaseModel):
+    """One of the person's own doctor requests, for their history. Deliberately no session note, risk answers, urgency or reason:
+    the clinical record and the triage flags are never shown to the person."""
+    id: int
+    state: str                                # open | accepted | in_session | closed | cancelled
+    requested_at: datetime
+    accepted_at: datetime | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    doctor_name: str | None = None            # only once a doctor has accepted
+    doctor_specialty: str | None = None
+    doctor_registration_number: str | None = None
+    video_used: bool = False
+    message_count: int = 0
 
 
 class ConsultOut(BaseModel):

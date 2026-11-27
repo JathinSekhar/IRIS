@@ -19,21 +19,23 @@ const EMERGENCY_LINE = 'IRIS is not an emergency service. If you need help right
 /** Tap-to-call. The numbers come from the server (the reviewed list), never from this file. */
 function HelpCard({ lead, lines, strong }: { lead: string; lines: Helpline[]; strong?: boolean }) {
   return (
-    <div className={cx('rounded-2xl p-4', strong ? 'bg-brand-50 ring-2 ring-brand-700' : 'bg-brand-50/70 ring-1 ring-brand-200')}>
-      <p className="mb-3 text-sm font-medium text-brand-900">{lead}</p>
-      <ul className="space-y-2">
+    <div className={cx('rounded-2xl p-3', strong ? 'bg-brand-50 ring-2 ring-brand-700' : 'bg-brand-50/60 ring-1 ring-brand-100')}>
+      <p className="mb-2 px-1 text-sm font-medium text-brand-900">{lead}</p>
+      <ul className="grid gap-2 sm:grid-cols-3">
         {lines.map((h) => (
           <li key={h.tel}>
             <a
               href={`tel:${h.tel}`}
-              className="flex items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5 ring-1 ring-brand-200 hover:bg-brand-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+              title={`${h.name}: ${h.detail}`}
+              aria-label={`Call ${h.name}, ${h.number}. ${h.detail}`}
+              className="flex items-center gap-2.5 rounded-xl bg-white px-2.5 py-2 ring-1 ring-brand-200 transition-colors hover:bg-brand-50 hover:ring-brand-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
             >
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-slate-900">{h.name}</span>
-                <span className="block text-xs text-slate-500">{h.detail}</span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-800 text-white">
+                <Phone className="size-3.5" aria-hidden />
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-sm font-semibold text-white">
-                <Phone className="size-3.5" aria-hidden /> {h.number}
+              <span className="min-w-0 leading-tight">
+                <span className="block text-sm font-semibold text-slate-900">{h.number}</span>
+                <span className="block truncate text-xs text-slate-500">{h.name}</span>
               </span>
             </a>
           </li>

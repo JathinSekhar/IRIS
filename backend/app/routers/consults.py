@@ -5,7 +5,7 @@ from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import AuditLog, ConsultCase, DoctorOffer, DoctorProfile, User, utcnow
 from ..config import settings
-from ..schemas import ConsultOut, ConsultRequestIn, DoctorOfferOut, IceOut, SignalIn, SignalOut, ThreadMessageIn, ThreadMessageOut
+from ..schemas import ConsultHistoryOut, ConsultOut, ConsultRequestIn, DoctorOfferOut, IceOut, SignalIn, SignalOut, ThreadMessageIn, ThreadMessageOut
 from ..services import consult, triage
 
 router = APIRouter(prefix="/api/consults", tags=["consults"])
@@ -19,6 +19,26 @@ def _out(db: Session, c: ConsultCase) -> ConsultOut:
                       doctor_specialty=prof.specialty if prof else None,
                       doctor_registration_number=prof.registration_number if prof else None, helplines=helplines,
                       waiting_long=consult.waiting_long(c))
+
+
+@router.get("/history", response_model=list[ConsultHistoryOut])
+def history(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[ConsultHistoryOut]:
+    """The signed-in person's own doctor requests, newest first. Never anyone else's, and never the doctor's session note."""
+    from sqlalchemy import func, select
+
+    from ..models import ConsultMessage
+
+    rows = db.scalars(select(ConsultCase).where(ConsultCase.user_id == user.id).order_by(ConsultCase.created_at.desc(), ConsultCase.id.desc()).limit(50)).all()
+    counts = dict(db.execute(select(ConsultMessage.case_id, func.count()).where(ConsultMessage.case_id.in_([c.id for c in rows]))
+                             .group_by(ConsultMessage.case_id)).all()) if rows else {}
+    out = []
+    for c in rows:
+        prof = db.get(DoctorProfile, c.accepted_by) if c.accepted_by else None
+        out.append(ConsultHistoryOut(
+            id=c.id, state=c.state, requested_at=c.created_at, accepted_at=c.accepted_at, started_at=c.started_at, ended_at=c.closed_at,
+            doctor_name=c.doctor.full_name if c.doctor else None, doctor_specialty=prof.specialty if prof else None,
+            doctor_registration_number=prof.registration_number if prof else None, video_used=c.video_used, message_count=counts.get(c.id, 0)))
+    return out
 
 
 @router.get("/current", response_model=ConsultOut | None)

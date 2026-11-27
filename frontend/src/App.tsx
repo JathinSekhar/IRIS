@@ -17,6 +17,7 @@ const Doctor = lazy(() => import('./pages/Doctor'))
 const AskDoctor = lazy(() => import('./pages/AskDoctor'))
 const DoctorCaseView = lazy(() => import('./pages/DoctorCaseView'))
 const Emergency = lazy(() => import('./pages/Emergency'))
+const Profile = lazy(() => import('./pages/Profile'))
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/doctor" element={<Doctor />} />
           <Route path="/doctor/cases/:id" element={<DoctorCaseView />} />
           <Route path="/talk-to-a-doctor" element={<AskDoctor />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Home />} />
         </Route>
       </Routes>

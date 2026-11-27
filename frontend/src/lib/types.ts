@@ -49,6 +49,37 @@ export interface User {
   consent_accepted: boolean
   checkin: CheckinStatus
 }
+export interface Profile {
+  full_name: string
+  email: string
+  date_of_birth: string
+  age: number
+  gender: string | null
+  occupation: string | null
+  language: string
+  phone: string | null
+  emergency_contact: string | null
+  is_minor: boolean
+  guardian_name: string | null
+  guardian_email: string | null
+  guardian_consent_status: string | null
+  member_since: string
+  consent_accepted_at: string | null
+}
+export interface ConsultHistory {
+  id: number
+  state: 'open' | 'accepted' | 'in_session' | 'closed' | 'cancelled'
+  requested_at: string
+  accepted_at: string | null
+  started_at: string | null
+  ended_at: string | null
+  doctor_name: string | null
+  doctor_specialty: string | null
+  doctor_registration_number: string | null
+  video_used: boolean
+  message_count: number
+}
+export type ProfileInput = Pick<Profile, 'full_name' | 'gender' | 'occupation' | 'language' | 'phone' | 'emergency_contact'>
 export interface CheckinResult {
   id: number
   skipped: boolean

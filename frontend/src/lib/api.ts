@@ -22,6 +22,9 @@ import type {
   CallSignal,
   CaseSummary,
   DoctorOfferPrompt,
+  Profile,
+  ProfileInput,
+  ConsultHistory,
 } from './types'
 
 export class ApiError extends Error {
@@ -113,6 +116,9 @@ export const api = {
   forgotPassword: (email: string) => post<void>('/api/auth/forgot-password', { email }),
   resetPassword: (access_token: string, password: string) =>
     post<void>('/api/auth/reset-password', { access_token, password }),
+  profile: () => request<Profile>('/api/profile'),
+  consultHistory: () => request<ConsultHistory[]>('/api/consults/history'),
+  updateProfile: (data: ProfileInput) => post<Profile>('/api/profile', data),
   acceptConsent: (version: string) => post<User>('/api/consent', { version }),
   questionnaire: () => request<Questionnaire>('/api/checkin/questionnaire'),
   submitCheckin: (answers: Answers) => post<CheckinResult>('/api/checkin', { answers }),

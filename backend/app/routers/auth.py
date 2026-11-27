@@ -6,7 +6,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import age_on, get_current_user, get_or_create_user, user_out
 from ..models import Consent, User
-from ..schemas import ConsentIn, ForgotIn, LoginIn, RegisterIn, RegisterOut, ResetIn, UserOut
+from ..schemas import ConsentIn, ForgotIn, LoginIn, ProfileIn, ProfileOut, RegisterIn, RegisterOut, ResetIn, UserOut
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -119,3 +119,30 @@ def accept_consent(body: ConsentIn, user: User = Depends(get_current_user), db: 
     db.add(Consent(user_id=user.id, version=body.version))
     db.commit()
     return user_out(db, user)
+
+
+def _profile_out(db: Session, user: User) -> ProfileOut:
+    from sqlalchemy import select
+
+    accepted = db.scalar(select(Consent.accepted_at).where(Consent.user_id == user.id, Consent.version == settings.consent_version)
+                         .order_by(Consent.accepted_at.desc()).limit(1))
+    age = age_on(user.date_of_birth)
+    return ProfileOut(full_name=user.full_name, email=user.email, date_of_birth=user.date_of_birth, age=age, gender=user.gender,
+                      occupation=user.occupation, language=user.language, phone=user.phone, emergency_contact=user.emergency_contact,
+                      is_minor=age < 18, guardian_name=user.guardian_name, guardian_email=user.guardian_email,
+                      guardian_consent_status=user.guardian_consent_status, member_since=user.created_at, consent_accepted_at=accepted)
+
+
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> ProfileOut:
+    """The signed-in person's own details. Nobody else's profile is ever returned."""
+    return _profile_out(db, user)
+
+
+@router.post("/profile", response_model=ProfileOut)
+def update_profile(body: ProfileIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> ProfileOut:
+    """Change your own details. Only the fields in ProfileIn can change: never the email, date of birth, guardian details or role."""
+    for field, value in body.model_dump().items():
+        setattr(user, field, value)
+    db.commit()
+    return _profile_out(db, user)
