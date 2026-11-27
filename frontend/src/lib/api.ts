@@ -25,6 +25,7 @@ import type {
   Profile,
   ProfileInput,
   ConsultHistory,
+  Conversation,
 } from './types'
 
 export class ApiError extends Error {
@@ -134,9 +135,12 @@ export const api = {
   skipCheckin: () => post<CheckinResult>('/api/checkin', { skipped: true }),
   reviewerQueue: () => request<ReviewerCheckinSummary[]>('/api/reviewer/checkins'),
   reviewerCheckin: (id: number) => request<ReviewerCheckin>(`/api/reviewer/checkins/${id}`),
-  sendMessage: (text: string) => post<ChatMessage>('/api/messages', { text }),
+  sendMessage: (text: string, conversation_id?: string) =>
+    post<ChatMessage>('/api/messages', conversation_id && conversation_id !== 'earlier' ? { text, conversation_id } : { text }),
   rateMessage: (id: number, helpful: boolean) => post<ChatMessage>(`/api/messages/${id}/feedback`, { helpful }),
-  messages: () => request<ChatMessage[]>('/api/messages'),
+  messages: (conversation?: string) =>
+    request<ChatMessage[]>(conversation ? `/api/messages?conversation=${encodeURIComponent(conversation)}` : '/api/messages'),
+  conversations: () => request<Conversation[]>('/api/messages/conversations'),
   doctorMe: () => request<DoctorMe>('/api/doctor/me'),
   doctorAvailability: (on_duty: boolean) => post<DoctorMe>('/api/doctor/availability', { on_duty }),
   currentConsult: () => request<Consult | null>('/api/consults/current'),

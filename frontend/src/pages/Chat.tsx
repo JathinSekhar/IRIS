@@ -1,10 +1,10 @@
-import { ArrowUp, ChevronDown, Loader2, Phone } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { ArrowUp, ChevronDown, Loader2, MessagesSquare, PanelLeftClose, PanelLeftOpen, Phone, SquarePen, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import DoctorOfferCard from '../components/DoctorOfferCard'
 import { Alert, cx } from '../components/ui'
 import { api, ApiError } from '../lib/api'
-import type { CareStatus, ChatMessage, Helpline } from '../lib/types'
+import type { CareStatus, ChatMessage, Conversation, Helpline } from '../lib/types'
 
 const MAX = 5000
 const POLL_MS = 8000
@@ -169,8 +169,72 @@ function Reply({ m, first, onRated }: { m: ChatMessage; first: boolean; onRated:
 // The page
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
+/** A new chat's id. crypto.randomUUID exists on https and localhost; the fallback keeps plain-http previews working. */
+function newChatId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
+const whenShort = (iso: string) => {
+  const d = new Date(iso)
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
+/** New chat and the person's past chats. Only their own chats are ever listed. */
+function ChatList({ chats, current, onPick, onNew, onMinimize }: {
+  chats: Conversation[]; current: string | null; onPick: (id: string) => void; onNew: () => void; onMinimize?: () => void
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 p-3">
+        <button type="button" onClick={onNew}
+          className="group flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-800 text-sm font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-px hover:bg-brand-900 hover:shadow-md active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2">
+          <SquarePen className="size-4 transition-transform duration-200 group-hover:-rotate-12" aria-hidden /> New chat
+        </button>
+        {onMinimize && (
+          <button type="button" onClick={onMinimize} aria-label="Minimize chats" title="Minimize chats"
+            className="grid size-10 shrink-0 place-items-center rounded-xl text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600">
+            <PanelLeftClose className="size-5" aria-hidden />
+          </button>
+        )}
+      </div>
+      <p className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Past chats</p>
+      <nav aria-label="Past chats" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {chats.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Your chats will appear here.</p>}
+        <ul className="space-y-0.5">
+          {chats.map((c) => (
+            <li key={c.id} className="q-enter">
+              <button type="button" onClick={() => onPick(c.id)} aria-current={c.id === current ? 'true' : undefined}
+                className={cx('relative w-full rounded-lg py-2 pl-4 pr-3 text-left transition-[background-color,transform] duration-150 hover:translate-x-0.5 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600',
+                  c.id === current && 'bg-brand-50 hover:bg-brand-50')}>
+                <span aria-hidden className={cx('absolute inset-y-2 left-1 w-1 origin-center rounded-full bg-brand-600 transition-transform duration-200',
+                  c.id === current ? 'scale-y-100' : 'scale-y-0')} />
+                <span className="block truncate text-sm font-medium text-slate-900">{c.id === 'earlier' ? 'Earlier messages' : c.title || 'Chat'}</span>
+                <span className="block text-xs text-slate-500">{whenShort(c.last_at)} · {c.count} message{c.count === 1 ? '' : 's'}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  )
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
+  const [params, setParams] = useSearchParams()
+  const chatId = params.get('c')
+  const [chats, setChats] = useState<Conversation[]>([])
+  const [listOpen, setListOpen] = useState(false)           // the chat list on a phone
+  const [minimized, setMinimized] = useState(() => localStorage.getItem('iris.chats.minimized') === '1')   // the sidebar on a laptop
+  useEffect(() => { localStorage.setItem('iris.chats.minimized', minimized ? '1' : '0') }, [minimized])
+  const current = useRef<string | null>(chatId)            // the open chat, for replies that arrive after the person switched chats
+  useEffect(() => { current.current = chatId }, [chatId])
   const [offerKey, setOfferKey] = useState(0)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -185,21 +249,43 @@ export default function Chat() {
   const justSent = useRef(false)
   const prevLen = useRef(0)
 
+  const loadChats = useCallback(() => api.conversations().then((list) => { setChats(list); return list }), [])
+
+  // First visit without a chat in the address: open the latest chat, or start a new one.
   useEffect(() => {
+    if (chatId) return
+    loadChats()
+      .then((list) => setParams({ c: list[0]?.id ?? newChatId() }, { replace: true }))
+      .catch(() => setParams({ c: newChatId() }, { replace: true }))
+  }, [chatId, loadChats, setParams])
+
+  // Open the chosen chat. A brand-new chat simply has no messages yet.
+  useEffect(() => {
+    if (!chatId) return
+    setMessages(null)
+    prevLen.current = 0
+    setError('')
+    void loadChats().catch(() => undefined)
     api
-      .messages()
-      .then(setMessages)
+      .messages(chatId)
+      .then((m) => { if (current.current === chatId) setMessages(m) })
       .catch((e) => {
         setMessages([])
         setError(e instanceof ApiError ? e.message : 'Could not load your messages.')
       })
-  }, [])
+  }, [chatId, loadChats])
+
+  function openChat(id: string) {
+    setListOpen(false)
+    if (id !== chatId) setParams({ c: id })
+  }
 
   // Keep the status lines honest: refresh quietly so "a person is reading this now" appears as soon as it is true. This never moves the scroll position.
   useEffect(() => {
     const id = window.setInterval(() => {
       if (busy.current || document.hidden) return
-      api.messages().then((m) => !busy.current && setMessages(m)).catch(() => undefined)
+      const id = current.current
+      if (id) api.messages(id).then((m) => { if (!busy.current && current.current === id) setMessages(m) }).catch(() => undefined)
     }, POLL_MS)
     return () => window.clearInterval(id)
   }, [])
@@ -263,9 +349,10 @@ export default function Chat() {
     justSent.current = true
     setError('')
     try {
-      const m = await api.sendMessage(t)
+      const m = await api.sendMessage(t, chatId ?? undefined)
       setMessages((prev) => [...(prev ?? []), m])
       setText('')
+      void loadChats().catch(() => undefined)
     } catch (err) {
       justSent.current = false
       if (err instanceof ApiError && err.status === 403 && /consent/i.test(err.message)) {
@@ -287,17 +374,66 @@ export default function Chat() {
     }
   }
 
+  const chatList = <ChatList chats={chats} current={chatId} onPick={openChat} onNew={() => openChat(newChatId())} />
+  // The chat list sits beside the conversation on a laptop, and opens as a panel on a phone.
+  const shell = (body: ReactNode) => (
+    <div className="flex min-h-0 flex-1">
+      <aside className={cx('hidden shrink-0 overflow-hidden border-r border-slate-200 bg-slate-50/70 transition-[width] duration-200 ease-out lg:block',
+        minimized ? 'w-16' : 'w-72')}>
+        {minimized ? (
+          <div className="flex flex-col items-center gap-2 py-3">
+            <button type="button" onClick={() => setMinimized(false)} aria-label="Show chats" title="Show chats"
+              className="grid size-10 place-items-center rounded-xl text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600">
+              <PanelLeftOpen className="size-5" aria-hidden />
+            </button>
+            <button type="button" onClick={() => openChat(newChatId())} aria-label="New chat" title="New chat"
+              className="grid size-10 place-items-center rounded-xl bg-brand-800 text-white shadow-sm transition-[background-color,transform] duration-150 hover:-translate-y-px hover:bg-brand-900 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2">
+              <SquarePen className="size-4" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <div className="h-full w-72">
+            <ChatList chats={chats} current={chatId} onPick={openChat} onNew={() => openChat(newChatId())} onMinimize={() => setMinimized(true)} />
+          </div>
+        )}
+      </aside>
+      {listOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Chats">
+          <button type="button" aria-label="Close chats" className="fade-in absolute inset-0 bg-slate-900/30" onClick={() => setListOpen(false)} />
+          <div className="slide-in-left absolute inset-y-0 left-0 w-80 max-w-[85%] bg-white shadow-xl">
+            <button type="button" onClick={() => setListOpen(false)} aria-label="Close chats"
+              className="absolute right-2 top-2 grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100"><X className="size-5" aria-hidden /></button>
+            <div className="h-full pt-10">{chatList}</div>
+          </div>
+        </div>
+      )}
+      <div className="relative flex min-h-0 flex-1 flex-col bg-white">
+        <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 lg:hidden">
+          <button type="button" onClick={() => setListOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">
+            <MessagesSquare className="size-4" aria-hidden /> Chats
+          </button>
+          <button type="button" onClick={() => openChat(newChatId())}
+            className="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+            <SquarePen className="size-4" aria-hidden /> New chat
+          </button>
+        </div>
+        {body}
+      </div>
+    </div>
+  )
+
   if (!messages) {
-    return (
+    return shell(
       <div role="status" className="grid min-h-[40vh] flex-1 place-items-center text-slate-500">
         <Loader2 className="size-6 animate-spin" aria-hidden />
         <span className="sr-only">Loading your conversation</span>
-      </div>
+      </div>,
     )
   }
 
   const empty = messages.length === 0
-  return (
+  return shell(
     <div className="relative flex min-h-0 flex-1 flex-col bg-white">
       {/* The conversation. The scrollbar sits at the window edge; the text stays in a centred column. */}
       <div ref={list} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-label="Conversation">
@@ -385,6 +521,6 @@ export default function Chat() {
           {text.length > MAX - 400 && <span className="ml-2 text-amber-700">{text.length}/{MAX}</span>}
         </p>
       </form>
-    </div>
+    </div>,
   )
 }

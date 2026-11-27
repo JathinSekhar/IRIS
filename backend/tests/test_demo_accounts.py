@@ -107,9 +107,11 @@ def test_demo_users_can_log_in_again_and_wrong_passwords_are_refused(env):
 
 
 def test_demo_accounts_are_distinct_and_look_fictional():
-    emails = [u.signup["email"] for u in dd.USERS] + [dd.REVIEWER["email"]]
-    assert len(set(emails)) == 4 and all(e.endswith("@example.com") for e in emails)
-    assert all(len(u.signup["password"]) >= 8 for u in dd.USERS) and len(dd.REVIEWER["password"]) >= 8
+    staff = dd.REVIEWERS + [a for a, _ in dd.DOCTORS]
+    emails = [u.signup["email"] for u in dd.USERS] + [s["email"] for s in staff]
+    assert len(set(emails)) == len(emails) == 8 and all(e.endswith("@example.com") for e in emails)
+    assert all(len(u.signup["password"]) >= 8 for u in dd.USERS) and all(len(s["password"]) >= 8 for s in staff)
+    assert all("not a real registration" in p["registration_number"] for _, p in dd.DOCTORS)
 
 
 def test_the_published_instructions_match_the_data():

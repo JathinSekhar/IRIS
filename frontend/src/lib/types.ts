@@ -66,6 +66,14 @@ export interface Profile {
   member_since: string
   consent_accepted_at: string | null
 }
+/** One of the person's chats, for "Past chats". id "earlier" = messages from before chats existed. */
+export interface Conversation {
+  id: string
+  title: string
+  started_at: string
+  last_at: string
+  count: number
+}
 export interface ConsultHistory {
   id: number
   state: 'open' | 'accepted' | 'in_session' | 'closed' | 'cancelled'
@@ -186,6 +194,7 @@ export interface SupportReply {
 export type CareStatus = 'waiting' | 'being_read' | 'reviewed'
 export interface ChatMessage {
   id: number
+  conversation_id: string | null
   text: string
   created_at: string
   reply: SupportReply

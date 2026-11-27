@@ -240,6 +240,8 @@ class Message(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
     text: Mapped[str] = mapped_column(Text)
+    # Which chat it belongs to ("New chat" starts another). A UUID made by the browser; None = a message from before chats existed.
+    conversation_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     # "Did this help?" on an ordinary reply: True = yes, False = not really (IRIS then offers a doctor), None = not answered.
     helpful: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

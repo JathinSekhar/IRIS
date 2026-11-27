@@ -30,7 +30,7 @@ from app import db  # noqa: E402
 from app.auth_service import get_auth_service  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
-from devtools.demo_data import DOCTOR, DOCTOR_PROFILE, REVIEWER  # noqa: E402
+from devtools.demo_data import DOCTOR, DOCTORS, REVIEWER, REVIEWERS  # noqa: E402
 from devtools.fake_auth import FakeAuth  # noqa: E402
 
 if not db.IS_SQLITE or "demo.db" not in str(db.DATABASE_URL):
@@ -133,40 +133,43 @@ if WEB_DIR:
 app.dependency_overrides[get_auth_service] = lambda: fake
 
 
-def seed_reviewer() -> None:
-    """Create the reviewer through the normal sign-up path, then promote the profile (the role lives only in our database)."""
+def seed_reviewer(account: dict = REVIEWER) -> None:
+    """Create a reviewer through the normal sign-up path, then promote the profile (the role lives only in our database)."""
     from fastapi.testclient import TestClient
     with TestClient(app, headers=_SETUP_HEADERS) as c:
-        r = c.post("/api/auth/register", json=REVIEWER)
+        r = c.post("/api/auth/register", json=account)
         if r.status_code != 201:
             raise SystemExit(f"could not create the reviewer: {r.status_code} {r.text}")
     with db.SessionLocal() as s:
-        user = s.scalar(select(User).where(User.email == REVIEWER["email"]))
+        user = s.scalar(select(User).where(User.email == account["email"]))
         user.role = "reviewer"
         s.commit()
 
 
-def seed_doctor() -> None:
-    """The same path for the test doctor: sign up normally, then the backend sets the role and the profile."""
+def seed_doctor(account: dict, profile: dict) -> None:
+    """The same path for a test doctor: sign up normally, then the backend sets the role and the profile."""
     from fastapi.testclient import TestClient
     from app.models import DoctorProfile
     with TestClient(app, headers=_SETUP_HEADERS) as c:
-        r = c.post("/api/auth/register", json=DOCTOR)
+        r = c.post("/api/auth/register", json=account)
         if r.status_code != 201:
             raise SystemExit(f"could not create the doctor: {r.status_code} {r.text}")
     with db.SessionLocal() as s:
-        user = s.scalar(select(User).where(User.email == DOCTOR["email"]))
+        user = s.scalar(select(User).where(User.email == account["email"]))
         user.role = "doctor"
-        s.add(DoctorProfile(user_id=user.id, **DOCTOR_PROFILE))
+        s.add(DoctorProfile(user_id=user.id, **profile))
         s.commit()
 
 
 if __name__ == "__main__":
     for suffix in ("", "-journal", "-wal", "-shm"):
         Path(str(DB_FILE) + suffix).unlink(missing_ok=True)
-    seed_reviewer()
-    seed_doctor()
-    print("Sandbox ready. Reviewer:", REVIEWER["email"], "| Doctor:", DOCTOR["email"], "(passwords in docs/DEMO_ACCOUNTS.md)", flush=True)
+    for account in REVIEWERS:
+        seed_reviewer(account)
+    for account, profile in DOCTORS:
+        seed_doctor(account, profile)
+    print("Sandbox ready.", len(REVIEWERS), "reviewers and", len(DOCTORS), "doctors (logins in docs/DEMO_ACCOUNTS.md); first reviewer:",
+          REVIEWER["email"], "| first doctor:", DOCTOR["email"], flush=True)
     host, port = os.environ.get("IRIS_DEMO_HOST", "127.0.0.1"), int(os.environ.get("PORT", "8000"))
     if WEB_DIR:
         print(f"Website and API on http://{host}:{port}" + ("  (access password on)" if ACCESS_PASSWORD else "  (NO access password)"), flush=True)

@@ -191,8 +191,12 @@ RegisterOut.model_rebuild()
 
 # --- messages (the chat) and the reviewer's view of them ---------------------------------------------------------------------------------
 
+CHAT_ID = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+
 class MessageIn(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
+    conversation_id: str | None = Field(default=None, pattern=CHAT_ID)    # the chat this message belongs to
 
     @field_validator("text")
     @classmethod
@@ -488,8 +492,18 @@ class MyCaseOut(BaseModel):
     accepted_at: datetime | None = None
 
 
+class ConversationOut(BaseModel):
+    """One of the person's own chats, for the "Past chats" list. The title is the start of its first message."""
+    id: str                                   # the chat's id, or "earlier" for messages from before chats existed
+    title: str
+    started_at: datetime
+    last_at: datetime
+    count: int
+
+
 class MessageOut(BaseModel):
     id: int
+    conversation_id: str | None = None
     text: str
     created_at: datetime
     reply: SupportReplyOut

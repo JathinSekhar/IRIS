@@ -32,7 +32,8 @@ export function Logo({ light = false }: { light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <LogoMark className="size-8 drop-shadow-[0_2px_4px_rgba(20,58,60,0.25)]" />
-      <span className={`font-display text-xl font-semibold tracking-[0.04em] ${light ? 'text-white' : 'text-[#163f41]'}`}>
+      {/* On the narrowest phones the mark alone carries the brand, so the header's buttons fit. */}
+      <span className={`font-display text-xl font-semibold tracking-[0.04em] max-[359px]:sr-only ${light ? 'text-white' : 'text-[#163f41]'}`}>
         IRIS
       </span>
     </span>

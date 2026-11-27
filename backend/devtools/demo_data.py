@@ -23,6 +23,21 @@ DOCTOR = {"full_name": "Dr. Kavya Menon", "email": "doctor.demo@example.com", "p
 DOCTOR_PROFILE = {"specialty": "Clinical psychology (test account)", "registration_number": "TEST-000000 (not a real registration)",
                   "languages": ["English", "Hindi", "Malayalam"]}
 
+# More fictional staff, so a demo can show two doctors racing for one request and two reviewers sharing the queue.
+EXTRA_DOCTORS = [
+    ({"full_name": "Dr. Farah Siddiqui", "email": "doctor2.demo@example.com", "password": "Demo-Doctor2-2026", "date_of_birth": "1983-09-17"},
+     {"specialty": "Psychiatry (test account)", "registration_number": "TEST-000002 (not a real registration)", "languages": ["English", "Hindi", "Urdu"]}),
+    ({"full_name": "Dr. Vikram Desai", "email": "doctor3.demo@example.com", "password": "Demo-Doctor3-2026", "date_of_birth": "1989-01-23"},
+     {"specialty": "Counselling psychology (test account)", "registration_number": "TEST-000003 (not a real registration)",
+      "languages": ["English", "Marathi", "Gujarati"]}),
+]
+EXTRA_REVIEWERS = [
+    {"full_name": "Anjali Nair", "email": "reviewer2.demo@example.com", "password": "Demo-Reviewer2-2026", "date_of_birth": "1990-07-08"},
+]
+# Every ready-made staff account, in the order the docs list them.
+REVIEWERS = [REVIEWER, *EXTRA_REVIEWERS]
+DOCTORS = [(DOCTOR, DOCTOR_PROFILE), *EXTRA_DOCTORS]
+
 
 @dataclass(frozen=True)
 class DemoUser:
@@ -118,17 +133,18 @@ def render_markdown() -> str:
       "through the real API and checks the results below.\n")
     w("## How to start the sandbox\n")
     w("The sandbox uses a **stand-in login and a throwaway database**. It never touches Supabase, needs no email, and every restart "
-      "wipes it clean (only the reviewer is re-created). Start both servers:\n")
+      "wipes it clean (only the staff accounts are re-created). Start both servers:\n")
     w("```bash\ncd backend && .venv\\Scripts\\python -m devtools.demo_server      # API on http://127.0.0.1:8000\ncd frontend && npm run dev                          # website on http://localhost:5173\n```\n")
     w("Open **http://localhost:5173**. The three patients are **not** pre-created: you sign them up by hand with the details below, "
-      "then log out and log in again to test login. The reviewer already exists.\n")
-    w("## Reviewer (already created)\n")
-    w(f"| Email | Password |\n| --- | --- |\n| `{REVIEWER['email']}` | `{REVIEWER['password']}` |\n")
+      "then log out and log in again to test login. The reviewers and doctors already exist.\n")
+    w("## Reviewers (already created)\n")
+    w("| Email | Password | Name |\n| --- | --- | --- |\n" + "".join(f"| `{r['email']}` | `{r['password']}` | {r['full_name']} (fictional) |\n" for r in REVIEWERS))
     w("Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. "
       "Click a name to open the full record (each opening is written to the audit log).\n")
-    w("## Doctor (already created)\n")
-    w(f"| Email | Password | Name |\n| --- | --- | --- |\n| `{DOCTOR['email']}` | `{DOCTOR['password']}` | {DOCTOR['full_name']} (fictional; "
-      f"registration `{DOCTOR_PROFILE['registration_number']}`) |\n")
+    w("## Doctors (already created)\n")
+    w("| Email | Password | Name | Specialty |\n| --- | --- | --- | --- |\n" + "".join(
+        f"| `{a['email']}` | `{a['password']}` | {a['full_name']} (fictional; registration `{p['registration_number']}`) | {p['specialty']} |\n"
+        for a, p in DOCTORS))
     w("Turn **on duty** on, then: open requests appear (only age, urgency and check-in level until you accept), **Accept**, read the summary, "
       "**Start conversation**, chat or video, and **End session** with the session form. A patient asks from **Talk to a doctor**, or says yes "
       "when IRIS offers a doctor after an explicit message or a High check-in.\n")

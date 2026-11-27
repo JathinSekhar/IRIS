@@ -94,16 +94,16 @@ export function AppLayout() {
     <div className={chat ? 'flex h-dvh flex-col overflow-hidden' : 'flex min-h-dvh flex-col'}>
       {!staff && <CrisisStrip />}
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-3 sm:px-5">
           <Link to="/" aria-label="IRIS home">
             <Logo />
           </Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {/* What you can do */}
             {user.role === 'user' && (
               <Link
                 to="/emergency"
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-red-50 px-2.5 py-1.5 sm:px-3 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100"
               >
                 <Phone className="size-3.5" aria-hidden />
                 Emergency<span className="hidden sm:inline"> help</span>

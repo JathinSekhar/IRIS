@@ -8,7 +8,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import get_current_user, user_out
 from ..models import CheckIn, Message, Prediction, User
-from ..schemas import FeedbackIn, MessageIn, MessageOut, SupportReplyOut
+from ..schemas import CHAT_ID, ConversationOut, FeedbackIn, MessageIn, MessageOut, SupportReplyOut
 from ..services import companion, triage
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/messages", tags=["messages"])
 def _out(m: Message) -> MessageOut:
     p = m.prediction
     cs = triage.care_status(p.status, p.first_opened_at)
-    return MessageOut(id=m.id, text=m.text, created_at=m.created_at, reply=SupportReplyOut(**p.reply), care_status=cs,
+    return MessageOut(id=m.id, conversation_id=m.conversation_id, text=m.text, created_at=m.created_at, reply=SupportReplyOut(**p.reply), care_status=cs,
                       status_text=triage.support.status_line(cs, p.message_urgent), can_rate=can_rate(m), helpful=m.helpful)
 
 
@@ -54,7 +54,8 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
     rules_found = result.rule_level                                    # stored as is: the reviewer must see what the rules really found
     reply_json = {**triage.reply_json(plan), "companion": None}
     if companion.eligible(result, floor):
-        earlier = db.scalars(select(Message).where(Message.user_id == user.id).order_by(Message.id.desc()).limit(companion.HISTORY_TURNS)).all()
+        earlier = db.scalars(select(Message).where(Message.user_id == user.id, _in_chat(body.conversation_id))
+                             .order_by(Message.id.desc()).limit(companion.HISTORY_TURNS)).all()
         history = [(m.text, (m.prediction.reply or {}).get("companion")) for m in reversed(earlier) if m.prediction]
         said, worried = companion.reply(body.text, history)
         if worried:                                                    # the model's words point to risk the rules missed: flag it, never show them
@@ -63,7 +64,7 @@ def send(body: MessageIn, user: User = Depends(get_current_user), db: Session = 
         elif said:
             reply_json["companion"] = said
 
-    msg = Message(user_id=user.id, text=body.text)
+    msg = Message(user_id=user.id, text=body.text, conversation_id=body.conversation_id)
     msg.prediction = Prediction(
         model_version=triage.MODEL_VERSION, policy_version=triage.POLICY_VERSION,
         rule_level=rules_found, rule_hits=_hits(result.reasons), baseline_floor=floor, baseline_known=known,
@@ -90,10 +91,46 @@ def _hits(reasons: tuple[str, ...]) -> list[str]:
 
 
 @router.get("", response_model=list[MessageOut])
-def history(limit: int = Query(100, ge=1, le=200), user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[MessageOut]:
-    """The signed-in person's own conversation, oldest first. Nobody else's messages are ever returned."""
-    rows = db.scalars(select(Message).where(Message.user_id == user.id).order_by(Message.id.desc()).limit(limit)).all()
+def history(limit: int = Query(100, ge=1, le=200), conversation: str | None = Query(None, max_length=36),
+            user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[MessageOut]:
+    """The signed-in person's own messages, oldest first: one chat when `conversation` is given ("earlier" = before chats existed), else all.
+    Nobody else's messages are ever returned."""
+    q = select(Message).where(Message.user_id == user.id)
+    if conversation is not None:
+        q = q.where(_in_chat(_chat_id(conversation)))
+    rows = db.scalars(q.order_by(Message.id.desc()).limit(limit)).all()
     return [_out(m) for m in reversed(rows)]
+
+
+EARLIER = "earlier"
+
+
+def _chat_id(value: str) -> str | None:
+    """A chat id from the URL: a UUID, or "earlier" for messages sent before chats existed. Anything else is refused."""
+    import re
+
+    if value == EARLIER:
+        return None
+    if not re.match(CHAT_ID, value):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unknown chat.")
+    return value
+
+
+def _in_chat(conversation_id: str | None):
+    return Message.conversation_id.is_(None) if conversation_id is None else Message.conversation_id == conversation_id
+
+
+@router.get("/conversations", response_model=list[ConversationOut])
+def conversations(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[ConversationOut]:
+    """The person's own chats for "Past chats", newest first: title = the start of the first message."""
+    rows = db.execute(select(Message.conversation_id, func.min(Message.id), func.min(Message.created_at), func.max(Message.created_at), func.count())
+                      .where(Message.user_id == user.id).group_by(Message.conversation_id)).all()
+    firsts = dict(db.execute(select(Message.id, Message.text).where(Message.id.in_([r[1] for r in rows]))).all()) if rows else {}
+    out = []
+    for cid, first_id, started, last, n in rows:
+        text = " ".join(firsts.get(first_id, "").split())
+        out.append(ConversationOut(id=cid or EARLIER, title=(text[:60] + "…") if len(text) > 60 else text, started_at=started, last_at=last, count=n))
+    return sorted(out, key=lambda c: c.last_at, reverse=True)
 
 
 @router.post("/{message_id}/feedback", response_model=MessageOut)

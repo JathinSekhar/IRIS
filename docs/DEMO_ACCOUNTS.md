@@ -4,28 +4,31 @@
 
 ## How to start the sandbox
 
-The sandbox uses a **stand-in login and a throwaway database**. It never touches Supabase, needs no email, and every restart wipes it clean (only the reviewer is re-created). Start both servers:
+The sandbox uses a **stand-in login and a throwaway database**. It never touches Supabase, needs no email, and every restart wipes it clean (only the staff accounts are re-created). Start both servers:
 
 ```bash
 cd backend && .venv\Scripts\python -m devtools.demo_server      # API on http://127.0.0.1:8000
 cd frontend && npm run dev                          # website on http://localhost:5173
 ```
 
-Open **http://localhost:5173**. The three patients are **not** pre-created: you sign them up by hand with the details below, then log out and log in again to test login. The reviewer already exists.
+Open **http://localhost:5173**. The three patients are **not** pre-created: you sign them up by hand with the details below, then log out and log in again to test login. The reviewers and doctors already exist.
 
-## Reviewer (already created)
-
-| Email | Password |
-| --- | --- |
-| `reviewer.demo@example.com` | `Demo-Reviewer-2026` |
-
-Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. Click a name to open the full record (each opening is written to the audit log).
-
-## Doctor (already created)
+## Reviewers (already created)
 
 | Email | Password | Name |
 | --- | --- | --- |
-| `doctor.demo@example.com` | `Demo-Doctor-2026` | Dr. Kavya Menon (fictional; registration `TEST-000000 (not a real registration)`) |
+| `reviewer.demo@example.com` | `Demo-Reviewer-2026` | Dr. Meera Iyer (fictional) |
+| `reviewer2.demo@example.com` | `Demo-Reviewer2-2026` | Anjali Nair (fictional) |
+
+Sign in as the reviewer after the patients have completed their check-ins. The queue is sorted with the highest urgency first. Click a name to open the full record (each opening is written to the audit log).
+
+## Doctors (already created)
+
+| Email | Password | Name | Specialty |
+| --- | --- | --- | --- |
+| `doctor.demo@example.com` | `Demo-Doctor-2026` | Dr. Kavya Menon (fictional; registration `TEST-000000 (not a real registration)`) | Clinical psychology (test account) |
+| `doctor2.demo@example.com` | `Demo-Doctor2-2026` | Dr. Farah Siddiqui (fictional; registration `TEST-000002 (not a real registration)`) | Psychiatry (test account) |
+| `doctor3.demo@example.com` | `Demo-Doctor3-2026` | Dr. Vikram Desai (fictional; registration `TEST-000003 (not a real registration)`) | Counselling psychology (test account) |
 
 Turn **on duty** on, then: open requests appear (only age, urgency and check-in level until you accept), **Accept**, read the summary, **Start conversation**, chat or video, and **End session** with the session form. A patient asks from **Talk to a doctor**, or says yes when IRIS offers a doctor after an explicit message or a High check-in.
 
