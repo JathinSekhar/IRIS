@@ -52,6 +52,8 @@ WEB_DIR = os.environ.get("IRIS_DEMO_WEB_DIR")
 ACCESS_PASSWORD = os.environ.get("IRIS_DEMO_PASSWORD", "")
 
 ACCESS_COOKIE = "iris_access"
+# Open to anyone, even before the access password: they show no data (the API behind them stays closed).
+PUBLIC_PAGES = {"/", "/emergency", "/favicon.svg"}
 ACCESS_TOKEN = secrets.token_urlsafe(32)          # a new token on every start: after a restart reviewers type the password again
 
 ACCESS_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -87,6 +89,8 @@ if ACCESS_PASSWORD:
         path = request.url.path
         if path == "/api/health":                                   # the host's health check
             return await call_next(request)
+        if request.method == "GET" and (path in PUBLIC_PAGES or path.startswith("/assets/")):
+            return await call_next(request)                         # the landing page, emergency help and the site's own files are public; no data
         if path == "/__access" and request.method == "POST":
             form = parse_qs((await request.body()).decode("utf-8", "replace"))
             pw = (form.get("password") or [""])[0]

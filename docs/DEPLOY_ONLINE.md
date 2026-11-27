@@ -5,8 +5,9 @@ database and fictional accounts. It is a prototype that no clinician has reviewe
 link and the password only with your reviewers.
 
 ## What the reviewers get
-1. The link opens an **IRIS demo** page asking for the access password.
-2. Then the normal app. They can sign up a fictional student, or sign in with the accounts in [DEMO_ACCOUNTS.md](DEMO_ACCOUNTS.md)
+1. The link opens the public **landing page** (what IRIS is, how it works, safety, helplines). The landing page and the
+   Emergency Support page are open to anyone; they show no data.
+2. **Sign in** or **Create an account** opens the **IRIS demo** page asking for the access password, then the normal app. They can sign up a fictional student, or sign in with the accounts in [DEMO_ACCOUNTS.md](DEMO_ACCOUNTS.md)
    (reviewer `reviewer.demo@example.com`, doctor `doctor.demo@example.com`).
 
 ## Deploy (about 10 minutes, once)

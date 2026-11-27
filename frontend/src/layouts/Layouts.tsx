@@ -1,8 +1,11 @@
 import { HeartHandshake, LogOut, Phone, ShieldCheck, Stethoscope, UserCheck, type LucideIcon } from 'lucide-react'
+import { lazy } from 'react'
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { homeFor, useAuth } from '../auth/AuthContext'
 import { CrisisStrip, Logo } from '../components/Brand'
 import { cx, Spinner } from '../components/ui'
+
+const Landing = lazy(() => import('../pages/Landing'))
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: ShieldCheck, title: 'Confidential', text: 'Only trained reviewers can see what you share.' },
@@ -71,7 +74,8 @@ export function AppLayout() {
   const { user, loading, logout } = useAuth()
   const { pathname } = useLocation()
   if (loading) return <Spinner />
-  if (!user) return <Navigate to="/login" replace state={{ from: pathname }} />
+  // A visitor who is not signed in sees the public landing page at "/"; any other page asks them to sign in first.
+  if (!user) return pathname === '/' ? <Landing /> : <Navigate to="/login" replace state={{ from: pathname }} />
 
   if (user.role === 'reviewer') {
     if (!pathname.startsWith('/reviewer')) return <Navigate to="/reviewer" replace />

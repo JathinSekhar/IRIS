@@ -71,6 +71,9 @@ const NO_REFRESH = [
   '/api/auth/reset-password',
 ]
 
+const ACCESS_REQUIRED = 'Access password required.'          // devtools/demo_server.py, online mode
+const PUBLIC_PATHS = ['/', '/emergency']
+
 let refreshing: Promise<boolean> | null = null
 
 /** Ask the server to swap the refresh cookie for a new session. Concurrent callers share one request. */
@@ -94,6 +97,12 @@ async function request<T>(path: string, init: RequestInit = {}, retried = false)
     })
   } catch {
     throw new ApiError(0, "Can't reach the server. Check your connection and try again.")
+  }
+  // Online demo only: the site's access password is missing (the server answers every API call this way until it is entered).
+  // Reloading lets the server show its password page and come back here. The public pages just carry on as "not signed in".
+  if (res.status === 401 && (await res.clone().json().catch(() => null))?.detail === ACCESS_REQUIRED) {
+    if (!PUBLIC_PATHS.includes(window.location.pathname)) window.location.reload()
+    throw new ApiError(401, 'Not signed in')
   }
   // The short-lived access token expired: renew it once, silently, and repeat the request.
   if (res.status === 401 && !retried && !NO_REFRESH.includes(path) && (await refreshSession())) {
